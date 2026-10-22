@@ -38,6 +38,7 @@ export function renderWithApp(
               verifyCode: noop,
               changeEmail: () => undefined,
               checkDevice: noop,
+              enterDemo: () => undefined,
               signOut: noop,
             }}
           >

@@ -15,6 +15,11 @@ describe("máquina de ingreso", () => {
     expect(run([{ type: "session_restored", hasDeviceToken: true }])).toEqual({ status: "ready" });
   });
 
+  it("modo demo: elegir un rol entra directo a la app", () => {
+    expect(run([{ type: "no_session" }, { type: "demo_entered" }])).toEqual({ status: "ready" });
+    expect(run([{ type: "demo_entered" }])).toEqual({ status: "loading" });
+  });
+
   it("con sesión pero sin token, verifica el dispositivo", () => {
     expect(run([{ type: "session_restored", hasDeviceToken: false }])).toEqual({
       status: "device-check",

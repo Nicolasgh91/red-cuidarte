@@ -18,6 +18,7 @@ import type { ApiClient } from "../api/types";
 import { authReducer, initialAuthState } from "./machine";
 import type { AuthState } from "./machine";
 import { DeviceController } from "./controller";
+import { DEMO_MODE, demoServices, setDemoUser } from "./demo";
 import type { DeviceApi, Passkeys } from "./deviceFlow";
 import { localDeviceStore } from "./deviceStore";
 import type { DeviceStore } from "./deviceStore";
@@ -33,6 +34,8 @@ interface AuthContextValue {
   changeEmail(): void;
   /** Registra o verifica la passkey de este dispositivo (gesto del usuario). */
   checkDevice(): Promise<void>;
+  /** Modo demo: entra como el usuario elegido en el selector. */
+  enterDemo(userId: string): void;
   signOut(): Promise<void>;
 }
 
@@ -73,7 +76,7 @@ interface Props {
 
 export function AuthProvider({
   children,
-  services = supabaseServices,
+  services = DEMO_MODE ? demoServices : supabaseServices,
   store = localDeviceStore,
   passkeys = webPasskeys,
   apiOverride,
@@ -100,6 +103,11 @@ export function AuthProvider({
         case "device_blocked":
           return dispatch({ type: "device_blocked", message: issue.message });
         case "not_registered":
+          // En demo, el usuario elegido ya no existe: se vuelve al selector.
+          if (DEMO_MODE) {
+            setDemoUser(null);
+            return endSession("Ese usuario ya no existe. Elegí otro.");
+          }
           return dispatch({ type: "not_registered" });
         case "device_unregistered":
           return dispatch({ type: "device_checking" });
@@ -127,7 +135,8 @@ export function AuthProvider({
         if (cancelled) return;
         if (!s) return dispatch({ type: "no_session" });
         ctl.setUser(s.userId);
-        dispatch({ type: "session_restored", hasDeviceToken: !!store.getToken() });
+        // En demo no hay passkey: la sesión ya está lista.
+        dispatch({ type: "session_restored", hasDeviceToken: DEMO_MODE || !!store.getToken() });
       })
       .catch(() => {
         if (!cancelled) dispatch({ type: "no_session" });
@@ -201,6 +210,15 @@ export function AuthProvider({
     [services, ctl],
   );
 
+  const enterDemo = useCallback(
+    (userId: string) => {
+      setDemoUser(userId);
+      ctl.setUser(userId);
+      dispatch({ type: "demo_entered" });
+    },
+    [ctl],
+  );
+
   const signOut = useCallback(async () => {
     try {
       await services.signOut();
@@ -218,9 +236,10 @@ export function AuthProvider({
       verifyCode,
       changeEmail: () => dispatch({ type: "use_other_email" }),
       checkDevice: () => checkDevice(true),
+      enterDemo,
       signOut,
     }),
-    [state, api, sendCode, verifyCode, checkDevice, signOut],
+    [state, api, sendCode, verifyCode, checkDevice, enterDemo, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

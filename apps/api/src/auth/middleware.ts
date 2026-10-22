@@ -1,12 +1,14 @@
 import { createMiddleware } from "hono/factory";
 import type { AppEnv, Role } from "../deps.js";
 import { forbidden, unauthorized } from "../errors.js";
+import { demoUserId } from "./demo.js";
 import { verifyDeviceToken } from "./deviceToken.js";
 
 /**
  * Valida el JWT de Supabase y toma el rol de la tabla users.
  * Con requireDevice exige además el token de dispositivo (passkey verificada) y que la
  * credencial siga siendo la registrada: al "Liberar" el dispositivo, el token deja de servir.
+ * Con DEMO_MODE acepta además los tokens "demo:<id>" (ver auth/demo.ts).
  */
 export const authenticate = (opts: { requireDevice: boolean }) =>
   createMiddleware<AppEnv>(async (c, next) => {
@@ -14,7 +16,10 @@ export const authenticate = (opts: { requireDevice: boolean }) =>
     const header = c.req.header("Authorization") ?? "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : "";
     if (!token) throw unauthorized();
-    const { sub } = await deps.verifier.verify(token);
+
+    // Modo demo: "demo:<id>" entra como ese usuario de la base, sin passkey.
+    const demoId = deps.env.DEMO_MODE ? demoUserId(token) : null;
+    const sub = demoId ?? (await deps.verifier.verify(token)).sub;
 
     const [row] = await deps.sql<{ role: Role; credential_id: string | null }[]>`
       select u.role, d.credential_id
@@ -28,7 +33,7 @@ export const authenticate = (opts: { requireDevice: boolean }) =>
     const user = { id: sub, role: row.role, credentialId: row.credential_id };
     c.set("user", user);
 
-    if (opts.requireDevice) {
+    if (opts.requireDevice && !demoId) {
       if (!user.credentialId) {
         throw forbidden("Falta registrar este dispositivo.", "device_unregistered");
       }

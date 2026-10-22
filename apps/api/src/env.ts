@@ -31,6 +31,14 @@ export const envSchema = z.object({
   SMTP_FROM: z.string().default("Cuidarte+ <avisos@redasistir.online>"),
   GROQ_API_KEY: z.string().min(1),
   GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
+  /**
+   * Modo demo (solo para presentaciones, nunca con datos reales): se entra sin mail ni passkey
+   * con cuentas de ejemplo, y no se mandan mails ni se crean usuarios en Supabase Auth.
+   */
+  DEMO_MODE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { Icon, Logo } from "../components/icons";
+import { errorMessage } from "../api/errors";
+import { useDemoUsers } from "../api/queries/demo";
+import type { Role } from "../api/types";
+import { ROLES } from "../lib/labels";
 import { okMail, MSG } from "../lib/validators";
 import { useAuth } from "./AuthProvider";
+import { DEMO_MODE } from "./demo";
 
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -25,6 +30,58 @@ export function Splash() {
     <AuthLayout>
       <p className="sub" role="status">
         Cargando…
+      </p>
+    </AuthLayout>
+  );
+}
+
+const DEMO_ROLES: readonly Role[] = ["admin", "caregiver", "patient"];
+
+/** Modo demo: en vez de pedir el mail, se elige como qué usuario de la base entrar. */
+export function DemoLoginScreen({ error }: { error: string | null }) {
+  const { enterDemo } = useAuth();
+  const users = useDemoUsers();
+  const shown = error ?? (users.error ? errorMessage(users.error) : null);
+  return (
+    <AuthLayout>
+      <div className="head">
+        <h1>Probá Cuidarte+</h1>
+        <p className="sub">Versión de demostración: elegí con qué usuario querés entrar.</p>
+      </div>
+      {shown && (
+        <p className="err" role="alert">
+          {shown}
+        </p>
+      )}
+      {users.isPending && (
+        <p className="sub" role="status">
+          Cargando usuarios…
+        </p>
+      )}
+      {users.data?.length === 0 && (
+        <p className="sub">Todavía no hay usuarios cargados en la base.</p>
+      )}
+      {DEMO_ROLES.map((role) => {
+        const list = users.data?.filter((u) => u.role === role) ?? [];
+        if (!list.length) return null;
+        return (
+          <section key={role} className="form" aria-label={ROLES[role]}>
+            <h2>{ROLES[role]}</h2>
+            {list.map((u) => (
+              <button
+                key={u.id}
+                className="primary-btn"
+                type="button"
+                onClick={() => enterDemo(u.id)}
+              >
+                Entrar como {u.name}
+              </button>
+            ))}
+          </section>
+        );
+      })}
+      <p className="foot-note">
+        Los cambios que hagas quedan guardados en la cuenta elegida, como si fueras esa persona.
       </p>
     </AuthLayout>
   );
@@ -249,7 +306,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
     case "loading":
       return <Splash />;
     case "signed-out":
-      return <LoginScreen error={state.error} />;
+      return DEMO_MODE ? (
+        <DemoLoginScreen error={state.error} />
+      ) : (
+        <LoginScreen error={state.error} />
+      );
     case "otp":
       return <OtpScreen email={state.email} error={state.error} />;
     case "device-check":

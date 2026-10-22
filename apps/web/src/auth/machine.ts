@@ -18,6 +18,8 @@ export type AuthEvent =
   /** Al abrir la app: hay sesión de Supabase (y, si hay token de dispositivo, se intenta usar). */
   | { type: "session_restored"; hasDeviceToken: boolean }
   | { type: "no_session" }
+  /** Modo demo: se eligió un rol en la pantalla de ingreso (sin código ni passkey). */
+  | { type: "demo_entered" }
   | { type: "code_sent"; email: string }
   | { type: "code_failed"; error: string }
   | { type: "use_other_email" }
@@ -43,6 +45,8 @@ export function authReducer(state: AuthState, event: AuthEvent): AuthState {
         : state;
     case "no_session":
       return state.status === "loading" ? { status: "signed-out", error: null } : state;
+    case "demo_entered":
+      return state.status === "signed-out" ? { status: "ready" } : state;
     case "code_sent":
       return state.status === "signed-out" || state.status === "otp"
         ? { status: "otp", email: event.email, error: null }
