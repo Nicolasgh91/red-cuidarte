@@ -22,6 +22,9 @@ export interface ApiHooks {
   onAuthIssue(issue: AuthIssue): void;
 }
 
+/** Ningún pedido queda colgado: pasado este tiempo falla y la consulta muestra «Reintentar». */
+export const REQUEST_TIMEOUT_MS = 20_000;
+
 const AUTH_CODES = new Set<string>(["device_unregistered", "device_blocked", "not_registered"]);
 
 async function errorBody(res: Response): Promise<{ code?: string; message?: string }> {
@@ -51,7 +54,9 @@ export function createApiClient(
     if (jwt) headers.set("Authorization", `Bearer ${jwt}`);
     const dt = hooks.getDeviceToken();
     if (dt) headers.set("X-Device-Token", dt);
-    return fetchImpl(input, { ...init, headers });
+    const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+    return fetchImpl(input, { ...init, headers, signal });
   };
 
   const apiFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {

@@ -21,6 +21,14 @@ function setup(responses: Response[], hooks: Partial<ApiHooks> = {}) {
 }
 
 describe("cliente de la API", () => {
+  it("todo pedido lleva un límite de tiempo (no queda «Cargando…» para siempre)", async () => {
+    const { api, fetchImpl } = setup([json(200, { id: "u1", role: "admin", profile: null })]);
+    await api.me.$get();
+    const signal = (fetchImpl.mock.calls[0]![1] as RequestInit).signal;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal!.aborted).toBe(false);
+  });
+
   it("manda el JWT y el token de dispositivo en cada pedido", async () => {
     const { api, fetchImpl } = setup([json(200, { shifts: [] })]);
     const res = await api.shifts.$get({ query: { from: "2026-10-19", to: "2026-10-25" } } as never);

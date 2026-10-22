@@ -278,3 +278,30 @@ h2.serif {
   display: grid;
   gap: 14px;
 }
+
+/* Modo demo: franja con el usuario actual y el selector para cambiarlo. */
+.demo-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.demo-bar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.demo-bar select {
+  width: auto;
+  max-width: 100%;
+  padding: 6px 10px;
+}

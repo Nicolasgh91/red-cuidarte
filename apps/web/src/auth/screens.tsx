@@ -3,11 +3,10 @@ import type { FormEvent, ReactNode } from "react";
 import { Icon, Logo } from "../components/icons";
 import { errorMessage } from "../api/errors";
 import { useDemoUsers } from "../api/queries/demo";
-import type { Role } from "../api/types";
 import { ROLES } from "../lib/labels";
 import { okMail, MSG } from "../lib/validators";
 import { useAuth } from "./AuthProvider";
-import { DEMO_MODE } from "./demo";
+import { DEMO_MODE, DEMO_ROLES } from "./demo";
 
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -34,8 +33,6 @@ export function Splash() {
     </AuthLayout>
   );
 }
-
-const DEMO_ROLES: readonly Role[] = ["admin", "caregiver", "patient"];
 
 /** Modo demo: en vez de pedir el mail, se elige como qué usuario de la base entrar. */
 export function DemoLoginScreen({ error }: { error: string | null }) {

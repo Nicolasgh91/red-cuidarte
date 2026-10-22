@@ -35,8 +35,17 @@ export function createApp(deps: Deps) {
     .use(
       "*",
       createMiddleware<AppEnv>(async (c, next) => {
-        c.set("deps", deps);
-        await next();
+        if (!deps.connect) {
+          c.set("deps", deps);
+          return next();
+        }
+        const sql = deps.connect();
+        c.set("deps", { ...deps, sql });
+        try {
+          await next();
+        } finally {
+          await sql.end({ timeout: 5 });
+        }
       }),
     );
 

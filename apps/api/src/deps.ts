@@ -20,6 +20,12 @@ export interface Mailer {
 export interface Deps {
   env: Env;
   sql: Sql;
+  /**
+   * Si está, cada pedido abre su propia conexión con esto y la cierra al terminar (en vez de usar
+   * `sql`). En Vercel la función se congela entre pedidos y el pooler corta la conexión guardada:
+   * reusarla deja el pedido colgado.
+   */
+  connect?: () => Sql;
   verifier: TokenVerifier;
   authAdmin: AuthAdmin;
   mailer: Mailer;

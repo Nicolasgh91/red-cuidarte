@@ -11,6 +11,7 @@ export function createSql(url: string, opts: { max?: number; quiet?: boolean } =
     max: opts.max ?? 1,
     prepare: false,
     idle_timeout: 20,
+    connect_timeout: 10,
     ...(opts.quiet ? { onnotice: () => {} } : {}),
     types: {
       // date como "YYYY-MM-DD" (sin pasar por Date y la zona horaria)

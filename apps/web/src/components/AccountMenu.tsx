@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import type { Role } from "../api/types";
 import { useAuth } from "../auth/AuthProvider";
+import { DEMO_MODE } from "../auth/demo";
 import { ROLES } from "../lib/labels";
 import { THEMES, applyTheme, getStoredTheme } from "../lib/theme";
 import type { Theme } from "../lib/theme";
@@ -79,7 +80,7 @@ export function AccountMenu({ role, name }: { role: Role; name: string }) {
         </div>
         <div className="mlabel">Sesión</div>
         <button type="button" className="menu-btn" onClick={() => void signOut()}>
-          Cerrar sesión
+          {DEMO_MODE ? "Volver al selector" : "Cerrar sesión"}
         </button>
       </div>
     </div>

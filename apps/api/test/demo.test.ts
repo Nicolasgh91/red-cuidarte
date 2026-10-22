@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createApp } from "../src/app.js";
+import { createSql } from "../src/db.js";
 import { TEST_ENV, createHarness, type Harness } from "./harness.js";
 
 let h: Harness;
@@ -73,5 +75,32 @@ describe("modo demo", () => {
     expect((await h.req("/me", { headers: { Authorization: "Bearer demo:basura" } })).status).toBe(
       401,
     );
+  });
+});
+
+describe("conexión por pedido (Vercel)", () => {
+  it("con connect, cada pedido abre su conexión y la cierra al terminar", async () => {
+    let opened = 0;
+    let closed = 0;
+    const app = createApp({
+      ...h.deps,
+      connect: () => {
+        opened++;
+        const sql = createSql(TEST_ENV.DATABASE_URL, { max: 1, quiet: true });
+        const end = sql.end.bind(sql);
+        sql.end = (opts) => {
+          closed++;
+          return end(opts);
+        };
+        return sql;
+      },
+    });
+    const a = await h.admin();
+    for (const path of ["/demo/users", "/me", "/admin/summary"]) {
+      const r = await app.request(path, { headers: { Authorization: `Bearer demo:${a}` } });
+      expect(r.status).toBe(200);
+    }
+    expect(opened).toBe(3);
+    expect(closed).toBe(3);
   });
 });
