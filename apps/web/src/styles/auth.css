@@ -1,0 +1,27 @@
+/* Pantallas de ingreso (código por mail y dispositivo). */
+.otp-input {
+  font-size: 1.6rem;
+  letter-spacing: 0.4em;
+  text-align: center;
+  max-width: 12em;
+}
+.who-mail {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.menu .menu-btn {
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+.menu .menu-btn:hover {
+  background: var(--soft);
+}
+.field label .light {
+  font-weight: 400;
+  color: var(--muted);
+}

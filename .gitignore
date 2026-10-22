@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.vercel/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store
+apps/web/android/app/build/
+apps/web/android/.gradle/
+apps/web/android/local.properties
+*.dump
+*.dump.gpg

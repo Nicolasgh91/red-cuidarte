@@ -1,0 +1,1475 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Cuidarte+</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cuidarte+: pausas guiadas, recursos, recordatorios, turnos, tareas y registro diario para personas que cuidan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap">
+<style>
+/* Layout: app shell — header + left sidebar nav (bottom tab bar on phones) + centered content column */
+:root {
+  --bg: #f6f4ee; --surface: #fdfcf8; --ink: #1e3a34; --text: #2a3633; --muted: #5d6b67;
+  --line: #dcdcd2; --line-strong: #8fa39d; --primary: #2f5d56; --on-primary: #ffffff; --soft: #e5ece8;
+  --brand: #c8493f; --note: #ede3d6; --urgent-bg: #f9ece8; --urgent-line: #c97366; --urgent-ink: #a33a2f;
+  --tile-blue: #b7e3fb; --tile-green: #b8f3cc; --tile-yellow: #fdee87; --tile-orange: #fed3a6; --tile-ink: #1d2f2b;
+  --wave-a: #efe1cf; --wave-b: #d9e6df;
+  --ok: #276749; --ok-bg: #dcf1e4; --warn: #8a5a00; --warn-bg: #fbefcf; --bad: #a33a2f; --bad-bg: #f9e3df;
+  --shadow: 0 1px 2px rgba(30, 58, 52, .06);
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917; --surface: #1b2320; --ink: #dfeae5; --text: #d3ddd9; --muted: #9aaba5;
+    --line: #2e3a36; --line-strong: #4f625c; --primary: #79b3a6; --on-primary: #10201c; --soft: #22312c;
+    --brand: #e57a6f; --note: #2c2720; --urgent-bg: #2b1c1a; --urgent-line: #8a4a41; --urgent-ink: #f0a196;
+    --tile-blue: #1d3a4b; --tile-green: #1c3d2c; --tile-yellow: #45401c; --tile-orange: #4a3220; --tile-ink: #eef3f0;
+    --wave-a: #3a3127; --wave-b: #24352f;
+    --ok: #8fd6ae; --ok-bg: #1d3528; --warn: #f1c86a; --warn-bg: #3a3018; --bad: #f0a196; --bad-bg: #3a201d;
+    --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917; --surface: #1b2320; --ink: #dfeae5; --text: #d3ddd9; --muted: #9aaba5;
+  --line: #2e3a36; --line-strong: #4f625c; --primary: #79b3a6; --on-primary: #10201c; --soft: #22312c;
+  --brand: #e57a6f; --note: #2c2720; --urgent-bg: #2b1c1a; --urgent-line: #8a4a41; --urgent-ink: #f0a196;
+  --tile-blue: #1d3a4b; --tile-green: #1c3d2c; --tile-yellow: #45401c; --tile-orange: #4a3220; --tile-ink: #eef3f0;
+  --wave-a: #3a3127; --wave-b: #24352f;
+  --ok: #8fd6ae; --ok-bg: #1d3528; --warn: #f1c86a; --warn-bg: #3a3018; --bad: #f0a196; --bad-bg: #3a201d;
+  --shadow: none; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); }
+body { color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: var(--primary); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+.shell {
+  display: grid; grid-template-columns: 196px minmax(0, 1fr); column-gap: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  min-height: 100%;
+}
+.shell.bare { grid-template-columns: minmax(0, 1fr); }
+.shell.bare .side { display: none; }
+.top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding-block: 20px 28px; gap: 12px; }
+.shell.bare .top { max-width: 668px; width: 100%; margin: 0 auto; }
+.logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; }
+.logo svg { width: 40px; height: 40px; }
+
+.acct { position: relative; }
+.acct-btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: var(--ink); font-weight: 500; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.acct-btn:hover { background: var(--soft); }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px; width: min(300px, calc(100vw - 32px)); box-shadow: 0 8px 24px rgba(0,0,0,.14); z-index: 30; display: grid; gap: 2px; }
+.menu a { padding: 10px 12px; border-radius: 8px; text-decoration: none; color: var(--text); }
+.menu a:hover { background: var(--soft); }
+.menu .who { padding: 8px 12px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.menu .who b { display: block; color: var(--ink); }
+.menu .who span { color: var(--muted); font-size: .88rem; }
+.menu .mlabel { padding: 10px 12px 4px; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; border-top: 1px solid var(--line); margin-top: 4px; }
+.segc { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; background: var(--soft); border-radius: 10px; margin: 0 4px 4px; }
+.segc button { border: 0; background: none; border-radius: 7px; padding: 7px 4px; font-size: .86rem; cursor: pointer; color: var(--text); }
+.segc button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+
+.side nav { display: grid; gap: 6px; align-content: start; }
+.nav-link { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 500; }
+.nav-link:hover { background: var(--soft); color: var(--ink); }
+.nav-link.on { background: var(--soft); color: var(--ink); }
+.role-tag { margin: 18px 16px 0; font-size: .8rem; color: var(--muted); }
+
+main { min-width: 0; padding-bottom: 64px; }
+.page { max-width: 852px; margin: 0 auto; display: grid; gap: 28px; }
+.page.wide { max-width: 1085px; }
+.page.narrow { max-width: 712px; }
+.back { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); text-decoration: none; font-weight: 500; justify-self: start; background: none; border: 0; padding: 0; cursor: pointer; }
+.back svg { width: 16px; height: 16px; }
+.head { display: grid; gap: 6px; }
+h1 { font-family: var(--font-display); font-weight: 600; color: var(--ink); font-size: clamp(2rem, 4.4vw, 3.05rem); line-height: 1.12; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: 1.07rem; margin: 0; }
+h2.section { font-family: var(--font-body); font-weight: 500; color: var(--ink); font-size: 1.4rem; margin: 0; }
+h2.serif { font-family: var(--font-display); font-weight: 500; color: var(--ink); font-size: 2rem; margin: 0; }
+.group { display: grid; gap: 14px; }
+
+/* Home */
+.hello { color: var(--muted); font-size: 1.1rem; margin: 0; }
+.home-h1 { text-transform: uppercase; }
+.lead-up { text-transform: uppercase; color: var(--muted); letter-spacing: .02em; margin: 0; font-size: 1.05rem; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.tile { display: flex; align-items: center; gap: 18px; min-height: 88px; padding: 20px 22px; border-radius: var(--radius); border: 0; text-align: left; text-decoration: none; color: var(--tile-ink); font-weight: 600; letter-spacing: .02em; text-transform: uppercase; font-size: 1.08rem; cursor: pointer; transition: transform .15s, filter .15s; }
+.tile:hover { filter: brightness(.97); transform: translateY(-1px); }
+.tile svg.i { width: 26px; height: 26px; }
+.t-blue { background: var(--tile-blue); } .t-green { background: var(--tile-green); } .t-yellow { background: var(--tile-yellow); } .t-orange { background: var(--tile-orange); }
+.urgent { display: flex; align-items: center; gap: 18px; background: var(--urgent-bg); border: 1px solid var(--urgent-line); border-radius: var(--radius); padding: 20px 26px; text-align: left; cursor: pointer; width: 100%; }
+.urgent strong { display: block; color: var(--urgent-ink); font-weight: 500; font-size: 1.3rem; }
+.urgent span { color: var(--text); font-size: 1.1rem; }
+.urgent svg { width: 40px; height: 40px; flex: none; }
+.cards2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.cards3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+a.card, button.card { display: flex; align-items: center; gap: 18px; padding: 22px; text-decoration: none; color: var(--text); text-align: left; width: 100%; cursor: pointer; }
+a.card:hover, button.card:hover { border-color: var(--line-strong); }
+.badge { width: 58px; height: 58px; border-radius: 50%; background: var(--soft); color: var(--ink); display: grid; place-items: center; flex: none; }
+.badge.sq { border-radius: 12px; }
+.badge svg.i { width: 26px; height: 26px; }
+.card-title { color: var(--ink); font-weight: 600; font-size: 1.12rem; margin: 0 0 4px; }
+.card-text { color: var(--muted); margin: 0; font-size: 1.02rem; }
+.grow { flex: 1; min-width: 0; }
+.chev { color: var(--ink); }
+.quote { display: flex; align-items: center; gap: 18px; border-top: 1px solid var(--line); padding-top: 30px; }
+.quote p { margin: 0; font-family: var(--font-display); color: var(--primary); font-size: 1.45rem; }
+.quote small { color: var(--muted); font-size: .95rem; }
+.quote a { color: var(--muted); }
+.disclaimer { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; color: var(--muted); font-size: .92rem; margin: 0; }
+.mini-bar { height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+.mini-bar i { display: block; height: 100%; background: var(--primary); }
+
+/* Resources */
+.res { align-items: flex-start !important; padding: 22px 26px !important; }
+.meta { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .95rem; margin-top: 12px; }
+.meta svg.i { width: 18px; height: 18px; }
+.article { display: grid; gap: 18px; font-size: 1.07rem; line-height: 1.7; }
+.article p, .article ul { margin: 0; }
+.article ul { padding-left: 1.2em; display: grid; gap: 6px; }
+.article h3 { margin: 6px 0 0; color: var(--ink); font-weight: 600; font-size: 1.15rem; }
+.tag { display: inline-flex; align-items: center; gap: 6px; background: var(--soft); color: var(--ink); border-radius: 999px; padding: 4px 12px; font-size: .88rem; font-weight: 500; justify-self: start; }
+
+/* Pause */
+.outline-btn { display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid var(--primary); border-radius: 12px; padding: 16px; color: var(--primary); text-decoration: none; font-weight: 500; font-size: 1.1rem; background: var(--surface); cursor: pointer; }
+.outline-btn:hover { background: var(--soft); }
+.outline-btn.sm { padding: 10px 16px; font-size: .98rem; }
+.help { color: var(--muted); font-size: .93rem; margin: -16px 0 0; }
+.rem { padding: 18px 20px !important; display: grid !important; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px !important; align-items: start !important; }
+.rem .badge { grid-row: span 2; width: 50px; height: 50px; }
+.rem .badge svg.i { width: 22px; height: 22px; }
+.rem .grow { overflow-wrap: break-word; }
+.rem .cfg { grid-column: 2; justify-self: start; }
+.rem .card-title { font-size: 1.05rem; margin: 0 0 2px; }
+.rem .card-text { font-size: .95rem; }
+.cfg { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 500; font-size: .95rem; white-space: nowrap; }
+.cfg svg.i { width: 16px; height: 16px; }
+.guided { padding: 22px !important; }
+.play { width: 62px; height: 62px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; flex: none; }
+.play svg { width: 18px; height: 18px; stroke: none; }
+
+/* Forms */
+.privacy { display: flex; gap: 14px; background: var(--soft); border-radius: 12px; padding: 16px 20px; color: var(--ink); }
+.privacy p { margin: 0; }
+.seg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.seg button { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 10px; padding: 15px 6px; cursor: pointer; color: var(--text); }
+.seg button:hover { border-color: var(--primary); }
+.seg button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 500; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.optional { color: var(--muted); font-size: .95rem; }
+textarea, input[type="text"], input[type="email"], input[type="time"], input[type="date"], select { width: 100%; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+textarea { min-height: 112px; resize: vertical; }
+input::placeholder, textarea::placeholder { color: var(--muted); }
+.primary-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: var(--primary); color: var(--on-primary); border: 0; border-radius: 10px; padding: 17px 20px; font-size: 1.05rem; font-weight: 500; cursor: pointer; text-decoration: none; }
+.primary-btn:hover { filter: brightness(1.08); }
+.primary-btn:disabled { opacity: .55; cursor: default; }
+.primary-btn.auto { width: auto; justify-self: end; padding: 14px 26px; }
+.primary-btn.sm { width: auto; padding: 11px 18px; font-size: .97rem; }
+.err { color: var(--urgent-ink); font-size: .92rem; margin: 0; }
+.records { display: grid; gap: 10px; }
+.record { padding: 18px 20px; display: grid; gap: 4px; }
+.record b { color: var(--ink); font-weight: 600; }
+.record .vals { color: var(--muted); }
+.record q { color: var(--text); quotes: "«" "»"; }
+.ex { font-size: .74rem; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 8px; vertical-align: 2px; white-space: nowrap; }
+
+.form { display: grid; gap: 18px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label, .lbl { color: var(--ink); font-weight: 600; font-size: .98rem; }
+.field .hint { color: var(--muted); font-size: .86rem; margin: -2px 0 2px; }
+.field label .light { font-weight: 400; color: var(--muted); }
+.check { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--primary); flex: none; }
+.check small { display: block; color: var(--muted); font-size: .87rem; margin-top: 2px; }
+.danger-outline { border: 1px solid var(--urgent-line); color: var(--urgent-ink); background: var(--surface); border-radius: 10px; padding: 12px 20px; cursor: pointer; justify-self: start; }
+.confirm { background: var(--urgent-bg); border: 1px solid var(--urgent-line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 12px; }
+.confirm p { margin: 0; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.danger { background: var(--urgent-ink); color: var(--surface); border: 0; border-radius: 10px; padding: 11px 18px; cursor: pointer; font-weight: 500; }
+.ghost { background: none; border: 1px solid var(--line-strong); border-radius: 10px; padding: 10px 16px; cursor: pointer; color: var(--text); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.ghost:hover { background: var(--soft); }
+.icon-btn { background: none; border: 0; padding: 6px; border-radius: 8px; cursor: pointer; color: var(--muted); display: inline-grid; place-items: center; text-decoration: none; }
+.icon-btn:hover { background: var(--soft); color: var(--ink); }
+.icon-btn svg.i { width: 18px; height: 18px; }
+hr.sep { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
+
+.rcard { padding: 22px; display: grid; gap: 18px; }
+.rhead { display: flex; gap: 14px; align-items: center; }
+.rhead .badge { width: 50px; height: 50px; }
+.rhead .badge svg.i { width: 22px; height: 22px; }
+.rhead h3 { margin: 0; color: var(--ink); font-weight: 500; font-size: 1.3rem; }
+.rhead p { margin: 0; color: var(--muted); font-size: .92rem; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: end; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; justify-self: start; }
+.perm { padding: 18px 20px; display: grid; gap: 14px; }
+.perm p { margin: 0; color: var(--text); }
+.perm button { justify-self: start; background: var(--surface); border: 1.5px solid var(--primary); color: var(--primary); border-radius: 10px; padding: 13px 22px; cursor: pointer; font-weight: 500; }
+.foot-note { color: var(--muted); font-size: .9rem; margin: -10px 0 0; }
+
+.about-lead { font-family: var(--font-display); color: var(--primary); font-size: 1.5rem; margin: 0; }
+.prose { display: grid; gap: 16px; font-size: 1.08rem; line-height: 1.75; }
+.prose p { margin: 0; }
+.prose h2 { margin: 8px 0 -4px; color: var(--ink); font-weight: 500; font-size: 1.3rem; }
+.note { background: var(--note); border-radius: 12px; padding: 14px 18px; color: var(--text); margin: 0; font-size: .97rem; }
+
+/* Pills */
+.pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.pill.neutral { background: var(--soft); color: var(--ink); }
+
+/* Turnos */
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: space-between; }
+.week-nav { display: flex; align-items: center; gap: 6px; }
+.week-nav strong { color: var(--ink); font-weight: 600; min-width: 0; }
+.week { padding: 6px 0; }
+.day { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; padding: 14px 20px; border-top: 1px solid var(--line); align-items: start; }
+.day:first-child { border-top: 0; }
+.day.today .dname { color: var(--primary); }
+.dname { color: var(--ink); font-weight: 600; padding-top: 6px; }
+.dname small { display: block; color: var(--muted); font-weight: 400; font-size: .85rem; }
+.shifts { display: grid; gap: 8px; }
+.shift { display: flex; align-items: center; gap: 10px; background: var(--soft); border-radius: 10px; padding: 8px 8px 8px 14px; flex-wrap: wrap; }
+.shift .hrs { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.shift .who { color: var(--text); }
+.shift .acts { margin-left: auto; display: flex; gap: 2px; }
+.empty-day { color: var(--muted); padding-top: 6px; font-size: .95rem; }
+
+/* Tareas */
+.tasks { display: grid; gap: 2px; }
+.task { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-radius: 10px; }
+.task:hover { background: var(--soft); }
+.task input { width: 20px; height: 20px; accent-color: var(--primary); flex: none; margin: 0; }
+.task .time { color: var(--muted); font-variant-numeric: tabular-nums; width: 46px; flex: none; font-size: .93rem; }
+.task .txt { flex: 1; min-width: 0; }
+.task.done .txt { text-decoration: line-through; color: var(--muted); }
+
+/* Chat */
+.chat-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 20px; align-items: start; }
+.chat { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: min(68vh, 640px); min-height: 420px; overflow: hidden; }
+.chat-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); gap: 10px; }
+.chat-head span { color: var(--muted); font-size: .88rem; }
+.msgs { overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 86%; border-radius: 14px; padding: 11px 14px; line-height: 1.55; }
+.msg p { margin: 0 0 6px; } .msg p:last-child { margin: 0; }
+.msg ul { margin: 4px 0 6px; padding-left: 1.1em; }
+.msg.user { align-self: flex-end; background: var(--primary); color: var(--on-primary); border-bottom-right-radius: 4px; white-space: pre-wrap; }
+.msg.bot { align-self: flex-start; background: var(--soft); color: var(--text); border-bottom-left-radius: 4px; }
+.msg.bot.pending { color: var(--muted); font-style: italic; }
+.msg.err-msg { align-self: flex-start; background: var(--bad-bg); color: var(--bad); font-size: .93rem; }
+.msg.card-msg { align-self: stretch; max-width: 100%; background: var(--surface); border: 1px solid var(--line-strong); display: grid; gap: 8px; }
+.msg.card-msg ul { margin: 0; }
+.composer { border-top: 1px solid var(--line); padding: 12px; display: grid; gap: 10px; }
+.composer textarea { min-height: 52px; max-height: 140px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: .88rem; cursor: pointer; text-align: left; color: var(--text); }
+.chip:hover { border-color: var(--primary); }
+.sources { padding: 18px; display: grid; gap: 12px; font-size: .94rem; }
+.sources h3 { margin: 0; color: var(--ink); font-size: 1.05rem; font-weight: 600; }
+.sources ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.sources details { border-top: 1px solid var(--line); padding-top: 10px; }
+.sources summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+.faq { display: grid; gap: 10px; margin-top: 10px; }
+.faq b { color: var(--ink); display: block; }
+
+/* Historial */
+.toggle { display: inline-grid; grid-auto-flow: column; gap: 4px; padding: 4px; background: var(--soft); border-radius: 10px; }
+.toggle button { border: 0; background: none; padding: 7px 14px; border-radius: 7px; cursor: pointer; color: var(--text); }
+.toggle button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+.weekcard { padding: 18px 20px; display: grid; gap: 14px; }
+.meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.meter { display: grid; gap: 6px; font-size: .9rem; }
+.meter span { color: var(--muted); }
+.meter b { color: var(--ink); font-weight: 600; }
+.track { height: 8px; border-radius: 99px; background: var(--soft); overflow: hidden; }
+.track i { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
+.track.inv i { background: var(--urgent-line); }
+.dots { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; max-width: 360px; }
+.dot { display: grid; gap: 4px; justify-items: center; font-size: .75rem; color: var(--muted); }
+.dot i { width: 22px; height: 22px; border-radius: 50%; border: 1.5px dashed var(--line-strong); }
+.dot i.m0 { background: var(--urgent-ink); border: 0; } .dot i.m1 { background: var(--tile-orange); border: 0; } .dot i.m2 { background: var(--tile-yellow); border: 0; } .dot i.m3 { background: var(--tile-green); border: 0; } .dot i.m4 { background: var(--primary); border: 0; }
+
+/* Admin */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.stat { padding: 16px 18px; display: grid; gap: 2px; text-decoration: none; color: var(--text); }
+.stat b { font-size: 1.9rem; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.stat span { color: var(--muted); font-size: .9rem; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .94rem; }
+th { text-align: left; color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; padding: 12px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.assign summary { cursor: pointer; color: var(--primary); font-size: .88rem; margin-top: 4px; }
+.assign label { display: flex; gap: 8px; align-items: center; margin-top: 6px; white-space: nowrap; }
+.assign input { accent-color: var(--primary); }
+.pcard { padding: 20px; display: grid; gap: 14px; }
+.checklist { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.checklist li { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.mailprev { padding: 18px 20px; display: grid; gap: 8px; }
+.mailprev .subj { color: var(--ink); font-weight: 600; }
+
+/* Overlay (player + urgency) */
+.overlay { position: fixed; inset: 0; background: rgba(15, 25, 22, .55); display: grid; place-items: center; z-index: 50;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.dialog { background: var(--surface); border-radius: 20px; width: min(520px, 100%); max-height: 100%; overflow: auto; padding: 28px; display: grid; gap: 18px; position: relative; }
+.close { position: absolute; top: 14px; right: 14px; background: none; border: 0; padding: 8px; border-radius: 50%; cursor: pointer; color: var(--muted); }
+.close:hover { background: var(--soft); }
+.dialog h2 { margin: 0; font-family: var(--font-display); color: var(--ink); font-size: 1.7rem; font-weight: 600; padding-right: 32px; }
+.stage { display: grid; place-items: center; height: 240px; }
+.orb { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, var(--tile-green), var(--soft) 70%); border: 1px solid var(--line); transform: scale(.6); transition-property: transform; transition-timing-function: ease-in-out; }
+.orb.pulse { animation: pulse 6s ease-in-out infinite; transform: scale(.85); }
+@keyframes pulse { 50% { transform: scale(.95); } }
+.step { text-align: center; font-size: 1.3rem; color: var(--ink); font-weight: 500; min-height: 3.2em; margin: 0; text-wrap: balance; }
+.timer { text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; margin: -8px 0 0; }
+.bar { height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--primary); width: 0; }
+.bignum { font-size: 3rem; font-weight: 600; color: var(--urgent-ink); font-variant-numeric: tabular-nums; user-select: all; margin: 0; line-height: 1; }
+
+.toast-wrap { position: fixed; left: 0; right: 0; bottom: 0; display: grid; justify-items: center; gap: 8px; z-index: 60; pointer-events: none;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.toast { pointer-events: auto; background: var(--ink); color: var(--bg); border-radius: 12px; padding: 13px 18px; max-width: 460px; display: flex; gap: 12px; align-items: center; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.toast a, .toast button { color: inherit; font-weight: 600; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+
+@media (max-width: 980px) {
+  .chat-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .side { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: var(--surface); border-top: 1px solid var(--line);
+    padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+  .side nav { grid-template-columns: repeat(var(--n, 4), 1fr); gap: 4px; }
+  .side .nav-link:not([data-m]) { display: none; }
+  .role-tag { display: none; }
+  .nav-link { flex-direction: column; gap: 3px; padding: 8px 2px; font-size: .74rem; text-align: center; }
+  main { padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+  .toast-wrap { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+  .shell.bare main { padding-bottom: 48px; }
+  .top { padding-block: 14px 18px; }
+  .cards3 { grid-template-columns: minmax(0, 1fr); }
+  .four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .tiles, .cards2, .two, .three { grid-template-columns: minmax(0, 1fr); }
+  .seg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .meters { grid-template-columns: minmax(0, 1fr); }
+  .acct-btn span { display: none; }
+  .logo { font-size: 1.5rem; } .logo svg { width: 34px; height: 34px; }
+  .tile { min-height: 72px; font-size: 1rem; }
+  .quote p { font-size: 1.2rem; }
+  .urgent { padding: 18px; }
+  .day { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 14px 16px; }
+  .msg { max-width: 94%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="shell" id="shell">
+  <header class="top">
+    <a class="logo" href="#" data-action="home" aria-label="Cuidarte+, ir al inicio">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="var(--brand)" stroke-width="2"/><path d="M20 28.5s-8-4.9-8-11a4.4 4.4 0 0 1 8-2.6 4.4 4.4 0 0 1 8 2.6c0 6.1-8 11-8 11z" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linejoin="round"/></svg>
+      Cuidarte+
+    </a>
+    <div class="acct">
+      <button class="acct-btn" id="acct-btn" aria-haspopup="true" aria-expanded="false" data-action="menu"></button>
+      <div class="menu" id="acct-menu" hidden></div>
+    </div>
+  </header>
+  <aside class="side"><nav id="nav" aria-label="Secciones"></nav><p class="role-tag" id="role-tag"></p></aside>
+  <main id="main" tabindex="-1"></main>
+</div>
+<div class="toast-wrap" id="toasts" aria-live="polite"></div>
+<div id="layer"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Icons ---------- */
+  const P = {
+    home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    pause: '<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
+    moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    book: '<path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    chevR: '<path d="m9 6 6 6-6 6"/>',
+    chevL: '<path d="m15 6-6 6 6 6"/>',
+    brain: '<path d="M12 5a3 3 0 0 0-5.5-1.5A3 3 0 0 0 4 8a3 3 0 0 0 0 5 3 3 0 0 0 3 5 3 3 0 0 0 5 1z"/><path d="M12 5a3 3 0 0 1 5.5-1.5A3 3 0 0 1 20 8a3 3 0 0 1 0 5 3 3 0 0 1-3 5 3 3 0 0 1-5 1z"/><path d="M12 5v14"/>',
+    sprout: '<path d="M12 20v-9"/><path d="M12 11c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M12 11c0-3 2-6 6-6 0 4-2 6-6 6z"/>',
+    coffee: '<path d="M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3v2M12 3v2"/>',
+    chat: '<path d="M3 5h12v8H8l-4 3z"/><path d="M15 9h6v8l-3-2h-6v-2"/>',
+    walk: '<circle cx="12" cy="4" r="2"/><path d="M12 7v7M8 10h8M12 14l-3 7M12 14l3 7"/>',
+    cup: '<path d="M6 3h12l-1.5 18h-9z"/><path d="M6.5 8h11"/>',
+    leaf: '<path d="M11 20A7 7 0 0 1 4 13c0-6 5-9 16-9 0 11-3 16-9 16z"/><path d="M4 20c4-4 7-7 11-9"/>',
+    wind: '<path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h15a3 3 0 1 1-3 3"/><path d="M3 16h7"/>',
+    play: '<path d="M8 5v14l11-7z" fill="currentColor"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.2.6 3.5 2.8 3.5 6"/>',
+    phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+    pill: '<path d="M10.5 3.5a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7-7z"/><path d="m7 10 7 7"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    send: '<path d="M4 12 20 4l-6 16-3-7z"/>',
+    heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+    shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>'
+  };
+  const ic = (n, extra) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"${extra || ""}>${P[n]}</svg>`;
+  const urgentIcon = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 34s-13-7.8-13-17a7 7 0 0 1 13-3.6A7 7 0 0 1 33 17c0 9.2-13 17-13 17z" fill="var(--urgent-ink)"/><path d="M20 14v12M14 20h12" stroke="var(--urgent-bg)" stroke-width="3" stroke-linecap="round"/></svg>';
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------- Static content ---------- */
+  const ARTICLES = [
+    { id: "estres", cat: "Salud mental", icon: "brain", title: "Manejo del estrés del cuidador", desc: "Señales de alerta y estrategias para prevenir el agotamiento emocional.",
+      body: [["p", "Cuidar todos los días a otra persona pide mucha energía. Es común que el cansancio se acumule sin que lo notes hasta que pesa demasiado."], ["h", "Señales de alerta"],
+        ["ul", ["Cansancio que no se va aunque descanses.", "Irritabilidad o ganas de llorar sin un motivo claro.", "Dormir mal o muy poco.", "Dejar de ver amigos o de hacer cosas que te gustaban.", "Postergar tus propios controles de salud."]], ["h", "Qué podés hacer"],
+        ["ul", ["Pedí ayuda concreta: un día, un horario, una tarea.", "Hacé pausas cortas varias veces al día, aunque sean de un minuto.", "Hablá con alguien de confianza sobre cómo te sentís.", "Si las señales duran más de dos semanas, consultá con un profesional de salud."]]] },
+    { id: "rituales", cat: "Descanso", icon: "moon", title: "Rituales para desconectar al final del día", desc: "Prácticas simples para separar tu labor de tu descanso.",
+      body: [["p", "Cuando el cuidado no tiene horario fijo, cuesta cortar. Un ritual corto le avisa a tu cuerpo que la jornada terminó."],
+        ["ul", ["Anotá en un papel lo pendiente para mañana. Lo que está escrito no hace falta recordarlo.", "Cambiate de ropa o lavate la cara y las manos: marca un antes y un después.", "Bajá la luz y dejá el celular lejos media hora antes de dormir.", "Hacé tres respiraciones lentas, con la exhalación más larga que la inhalación.", "Nombrá una cosa que hiciste bien hoy."]],
+        ["p", "Elegí uno o dos y repetilos todas las noches. La constancia importa más que la duración."]] },
+    { id: "arte", cat: "Autocuidado", icon: "sprout", title: "El arte de cuidarse mientras se cuida", desc: "Pautas esenciales para mantener tu salud física y emocional como cuidador/a.",
+      body: [["p", "Para sostener a otro necesitás estar en pie. Cuidarte no es egoísmo: es parte del cuidado."],
+        ["ul", ["Comé a horario y tomá agua durante el día.", "Mantené tus propios turnos médicos.", "Moverte un poco cada día ayuda: caminar, estirar, subir escaleras.", "Reservá un rato por semana solo para vos.", "Aceptá que no todo va a salir perfecto."]],
+        ["p", "Si sentís que no podés más, decilo. Pedir ayuda a tiempo evita que el agotamiento se vuelva enfermedad."]] },
+    { id: "micro", cat: "Autocuidado", icon: "coffee", title: "Micro-momentos de autocuidado en el día", desc: "Pequeños gestos que caben en cualquier jornada y recargan tu energía.",
+      body: [["p", "No siempre hay una hora libre, pero casi siempre hay un minuto. Estos gestos entran en cualquier rutina:"],
+        ["ul", ["Tomar un vaso de agua despacio, sin hacer otra cosa.", "Estirar brazos y cuello mientras se calienta algo.", "Salir a la ventana o al patio y mirar lejos durante un minuto.", "Escuchar una canción que te guste.", "Mandar un mensaje a alguien que te hace bien."]],
+        ["p", "Sumados, varios momentos chicos cambian cómo llegás al final del día."]] },
+    { id: "comunicacion", cat: "Técnica", icon: "chat", title: "Comunicación empática con la persona cuidada", desc: "Claves para conectar desde el respeto y la escucha activa.",
+      body: [["ul", ["Hablá de frente, a la altura de sus ojos y sin apuro.", "Usá frases cortas y una idea por vez.", "Preguntá antes de hacer: «¿Te ayudo a levantarte?».", "Escuchá sin corregir cada detalle. Muchas veces importa más la emoción que el dato.", "Ofrecé opciones simples: «¿Querés té o café?».", "Si hay enojo, bajá el tono y esperá. Volvé a intentar más tarde."]],
+        ["p", "Respetar sus tiempos y decisiones, aunque sean pequeñas, cuida su dignidad y también la relación."]] },
+    { id: "movilizacion", cat: "Técnica", icon: "walk", title: "Técnicas para la movilización de adultos mayores", desc: "Pautas seguras para asistir en transferencias y movilidad sin lesionarte.",
+      body: [["ul", ["Antes de mover, explicá qué van a hacer y pedí que colabore en lo que pueda.", "Acercate a la persona: cuanto más cerca, menos esfuerzo para tu espalda.", "Separá los pies para tener una base firme y flexioná las rodillas.", "Mantené la espalda recta y hacé fuerza con las piernas, no con la cintura.", "Evitá girar el tronco: mové los pies para cambiar de dirección.", "Usá apoyos disponibles: barandas, sillas firmes, cinturones de transferencia."]],
+        ["p", "Si el peso o la situación superan lo que podés hacer sin riesgo, no lo hagas sola/o. Pedí que un kinesiólogo o profesional te enseñe la técnica adecuada para esa persona."]] }
+  ];
+  const CATS = ["Salud mental", "Descanso", "Autocuidado", "Técnica"];
+  const FAQ = [
+    ["¿Cómo cargo mis turnos?", "Contáselos al asistente, por ejemplo «trabajo lunes y miércoles de 8 a 14 con Elena», o usá Turnos › Agregar turno."],
+    ["¿Quién ve mi registro de bienestar?", "Solo vos. Ni el administrador ni la persona cuidada pueden verlo."],
+    ["¿Qué hago si cambio de celular?", "Cada cuenta funciona en un solo dispositivo. Pedile al administrador que libere tu cuenta y entrá desde el nuevo."],
+    ["¿Cómo cambio los recordatorios?", "En Pausa › Recordatorios elegís agua, estiramientos y pausas para relajarte, con sus horarios."],
+    ["¿De dónde salen las tareas de medicación?", "De la ficha del paciente que carga el administrador. Si algo no coincide con la receta, avisale al administrador y seguí la indicación médica."],
+    ["¿Qué hago ante una urgencia?", "Llamá al SAME (107 o el número de tu ciudad) y quedate con la persona hasta que llegue la ayuda."]
+  ];
+  const PAUSES = {
+    respirar: { title: "Respirá y soltá", desc: "Respiración guiada", icon: "wind", secs: 240, breath: true },
+    escaneo: { title: "Escaneo corporal", desc: "Un recorrido por tu cuerpo", icon: "user", secs: 300,
+      steps: ["Sentate o acostate cómodo. Cerrá los ojos si querés.", "Llevá la atención a tus pies. Notá el apoyo.", "Subí a las piernas. Aflojá las rodillas.", "Notá tu abdomen subir y bajar con la respiración.", "Llevá la atención al pecho. Dejá que se expanda.", "Soltá los hombros. Dejalos caer.", "Recorré brazos y manos. Abrí los dedos.", "Aflojá el cuello y la mandíbula.", "Relajá la frente y los ojos.", "Sentí todo tu cuerpo junto. Respirá tranquilo."] },
+    micro: { title: "Micro-descanso", desc: "Energía entre tareas", icon: "coffee", secs: 120,
+      steps: ["Pará lo que estés haciendo.", "Estirá los brazos hacia arriba.", "Girá los hombros hacia atrás, despacio.", "Tomá unos tragos de agua.", "Mirá lejos, por una ventana si podés.", "Respirá hondo y volvé a tu tarea."] },
+    ritual: { title: "Ritual de desconexión", desc: "Cerrá el día con calma", icon: "moon", secs: 180,
+      steps: ["Pensá en lo pendiente para mañana y dejalo anotado.", "Reconocé algo que hiciste bien hoy.", "Soltá la jornada: lavate las manos o cambiate de ropa.", "Hacé tres respiraciones lentas.", "Elegí algo agradable para los próximos minutos.", "El día terminó. Ahora es tu momento."] },
+    estirar: { title: "Estiramientos", desc: "Cuello, hombros y espalda", icon: "walk", secs: 180,
+      steps: ["Parate derecho, con los pies separados al ancho de la cadera.", "Inclinás la cabeza hacia un hombro. Sostené. Cambiá de lado.", "Girá los hombros hacia atrás, cinco veces, despacio.", "Entrelazá los dedos y estirá los brazos hacia adelante.", "Llevá los brazos arriba y estirate hacia el techo.", "Apoyá las manos en la cintura y arqueá suave la espalda.", "Sacudí manos y piernas. Listo."] }
+  };
+  const QUOTES = ["Cuidamos a quien cuida.", "Descansar también es cuidarte.", "Pedir ayuda es una forma de cuidar.", "Un minuto para vos también cuenta.", "No tenés que poder con todo.", "Lo que hacés todos los días importa.", "Respirá. Estás haciendo lo mejor que podés."];
+  const MOODS = ["Muy bajo", "Bajo", "Neutral", "Bien", "Muy bien"];
+  const ENERGY = ["Muy poca", "Poca", "Media", "Alta", "Muy alta"];
+  const STRESS = ["Muy poco", "Poco", "Moderado", "Alto", "Muy alto"];
+  const FREQS = [[30, "Cada 30 minutos"], [60, "Cada hora"], [120, "Cada 2 horas"], [180, "Cada 3 horas"]];
+  const GENDERS = ["Mujer", "Varón", "No binario", "Prefiero no decir"];
+  const COUNTRIES = ["Argentina", "Uruguay", "Chile", "Paraguay", "Bolivia", "Perú", "Otro"];
+  const ROLES = { cuidador: "Cuidador/a", admin: "Administrador", paciente: "Persona cuidada" };
+  const WD = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  /* ---------- Date helpers ---------- */
+  const pad = n => String(n).padStart(2, "0");
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const fromIso = s => { const a = String(s).split("-").map(Number); return new Date(a[0], a[1] - 1, a[2]); };
+  const addDays = (d, n) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; };
+  const monday = d => addDays(d, -((d.getDay() + 6) % 7));
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const fmtLong = d => cap(d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }));
+  const fmtDM = d => d.toLocaleDateString("es-AR", { day: "numeric", month: "long" });
+  const toMin = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ""); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+  const durMin = (s, e) => ((toMin(e) - toMin(s)) + 1440) % 1440 || 1440;
+  const dayNum = s => { const a = String(s).split("-").map(Number); return Math.round(Date.UTC(a[0], a[1] - 1, a[2]) / 864e5); };
+  const absStart = sh => dayNum(sh.date) * 1440 + toMin(sh.start);
+  const absEnd = sh => absStart(sh) + durMin(sh.start, sh.end);
+  const nowAbs = () => { const d = new Date(); return dayNum(iso(d)) * 1440 + d.getHours() * 60 + d.getMinutes(); };
+  const fmtHours = m => { const h = Math.floor(m / 60), r = m % 60; return r ? `${h} h ${r} min` : `${h} h`; };
+  const hrsLabel = sh => `${sh.start}–${sh.end}${toMin(sh.end) <= toMin(sh.start) ? " (+1)" : ""}`;
+  function weekLabel(mon) {
+    const sun = addDays(mon, 6);
+    return mon.getMonth() === sun.getMonth() ? `Semana del ${mon.getDate()} al ${fmtDM(sun)}` : `Semana del ${fmtDM(mon)} al ${fmtDM(sun)}`;
+  }
+  function relDay(dateIso) {
+    const diff = dayNum(dateIso) - dayNum(iso(new Date()));
+    if (diff === 0) return "Hoy"; if (diff === 1) return "Mañana"; if (diff === -1) return "Ayer";
+    return fmtLong(fromIso(dateIso));
+  }
+  function ago(ts) {
+    const m = Math.round((Date.now() - ts) / 60000);
+    if (m < 60) return `hace ${Math.max(1, m)} min`; const h = Math.round(m / 60); if (h < 24) return `hace ${h} h`; return `hace ${Math.round(h / 24)} d`;
+  }
+  function parseBirth(s) { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s || ""); if (!m) return null; const d = new Date(+m[3], +m[2] - 1, +m[1]); return d.getDate() === +m[1] && d.getMonth() === +m[2] - 1 && +m[3] > 1900 && d < new Date() ? d : null; }
+  function nextBirthday(s) {
+    const b = parseBirth(s); if (!b) return null;
+    const t = addDays(new Date(), 0); let n = new Date(t.getFullYear(), b.getMonth(), b.getDate());
+    if (n < t) n = new Date(t.getFullYear() + 1, b.getMonth(), b.getDate());
+    return { date: n, days: dayNum(iso(n)) - dayNum(iso(t)), age: n.getFullYear() - b.getFullYear() };
+  }
+  const uid = () => Math.random().toString(36).slice(2, 9);
+
+  /* ---------- State ---------- */
+  const KEY = "cuidarte.v2", THEME_KEY = "cuidarte.theme";
+  function defaults() {
+    const mon = monday(new Date()), now = Date.now();
+    const S = (off, c, p, s, e) => ({ id: uid(), caregiverId: c, patientId: p, date: iso(addDays(mon, off)), start: s, end: e, source: "manual" });
+    const recs = [[1, "Bien", "Media", "Moderado", "Salimos a caminar a la plaza."], [2, "Bajo", "Poca", "Alto", ""], [4, "Neutral", "Media", "Moderado", "Me ayudó mi hermana con el turno."], [5, "Bien", "Alta", "Poco", ""], [7, "Neutral", "Media", "Moderado", ""], [8, "Bajo", "Poca", "Alto", "Noche difícil, Raúl no durmió."], [10, "Bien", "Media", "Moderado", ""], [12, "Muy bien", "Alta", "Poco", "Día tranquilo."], [14, "Neutral", "Poca", "Alto", ""], [15, "Bajo", "Muy poca", "Muy alto", ""], [17, "Neutral", "Media", "Moderado", ""], [19, "Bien", "Media", "Poco", ""]]
+      .map(r => { const d = addDays(new Date(), -r[0]); d.setHours(20, 0, 0, 0); return { at: d.toISOString(), mood: r[1], energy: r[2], stress: r[3], note: r[4], example: true }; });
+    return {
+      v: 2, role: "cuidador", meId: "c1", patientMeId: "p1",
+      caregivers: [
+        { id: "c1", nombre: "Sofía", apellidos: "Ejemplo", telefono: "342 155 000000", email: "demo@redcuidar.org", nacimiento: "14/05/1980", patients: ["p1", "p2"] },
+        { id: "c2", nombre: "Marta", apellidos: "Ejemplo", telefono: "342 155 222222", email: "marta@ejemplo.org", nacimiento: "22/10/1975", patients: ["p3"] },
+        { id: "c3", nombre: "Luis", apellidos: "Ejemplo", telefono: "342 155 333333", email: "luis@ejemplo.org", nacimiento: "03/11/1990", patients: ["p1"] }
+      ],
+      admins: [{ id: "a1", nombre: "Jorge", apellido: "Ejemplo", email: "jorge@ejemplo.org", celular: "342 155 111111" }],
+      patients: [
+        { id: "p1", nombre: "Elena", apellido: "Ejemplo", meds: [{ id: "m1", nombre: "Enalapril", dosis: "10 mg", horarios: ["08:00"] }, { id: "m2", nombre: "Metformina", dosis: "500 mg", horarios: ["08:00", "20:00"] }] },
+        { id: "p2", nombre: "Raúl", apellido: "Ejemplo", meds: [{ id: "m3", nombre: "Levotiroxina", dosis: "50 mcg", horarios: ["07:00"] }] },
+        { id: "p3", nombre: "Ana", apellido: "Ejemplo", meds: [{ id: "m4", nombre: "Atorvastatina", dosis: "20 mg", horarios: ["21:00"] }] }
+      ],
+      shifts: [S(0, "c1", "p1", "08:00", "14:00"), S(1, "c1", "p2", "14:00", "20:00"), S(2, "c1", "p1", "08:00", "14:00"), S(3, "c1", "p2", "14:00", "20:00"), S(4, "c1", "p1", "08:00", "14:00"), S(7, "c1", "p1", "08:00", "14:00"), S(9, "c1", "p1", "08:00", "14:00"),
+        S(0, "c2", "p3", "09:00", "17:00"), S(2, "c2", "p3", "09:00", "17:00"), S(4, "c2", "p3", "09:00", "17:00"), S(1, "c3", "p1", "14:00", "20:00"), S(3, "c3", "p1", "14:00", "20:00")],
+      tasks: {
+        p1: [{ id: "t1", text: "Ayudar con el desayuno", time: "08:30" }, { id: "t2", text: "Higiene y cambio de ropa", time: "09:00" }, { id: "t3", text: "Caminata corta acompañada", time: "10:30" }, { id: "t4", text: "Registrar presión arterial", time: "12:00" }, { id: "t5", text: "Almuerzo", time: "12:30" }],
+        p2: [{ id: "t6", text: "Ejercicios de movilidad", time: "15:00" }, { id: "t7", text: "Ofrecer agua", time: "16:00" }, { id: "t8", text: "Merienda", time: "17:00" }, { id: "t9", text: "Ayudar con la cena", time: "19:30" }],
+        p3: [{ id: "t10", text: "Higiene matinal", time: "09:30" }, { id: "t11", text: "Almuerzo", time: "12:30" }]
+      },
+      done: {},
+      records: recs,
+      reminders: { water: { on: true, freq: 60, from: "08:00", to: "20:00" }, stretch: { on: true, freq: 120, from: "09:00", to: "19:00" }, relax: { on: false, times: ["11:00", "16:00", "21:00"] } },
+      profile: { gender: "Mujer", nationality: "Argentina", country: "Argentina", barrio: "Barrio de ejemplo", barrioWork: "Centro", alerts: true, location: true, same: "107", terms: true },
+      devices: {
+        c1: { label: "Chrome · Android", ip: "192.0.2.14", last: now - 2 * 36e5 },
+        c2: { label: "Safari · iPhone", ip: "198.51.100.7", last: now - 26 * 36e5, blocked: { label: "Chrome · Windows", ip: "203.0.113.5", at: now - 3 * 36e5 } },
+        c3: { label: null },
+        a1: { label: "Chrome · Windows", ip: "198.51.100.22", last: now - 30 * 6e4 },
+        p1: { label: "Tablet · Android", ip: "192.0.2.40", last: now - 5 * 36e5 },
+        p2: { label: null }, p3: { label: null }
+      },
+      mailLog: []
+    };
+  }
+  function load() {
+    try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.v === 2 && s.caregivers && s.patients) return s; } } catch (e) {}
+    return defaults();
+  }
+  let state = load();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  /* ---------- Theme ---------- */
+  const hostTheme = document.documentElement.getAttribute("data-theme");
+  let theme = "system";
+  try { theme = localStorage.getItem(THEME_KEY) || "system"; } catch (e) {}
+  function applyTheme(t) {
+    theme = t;
+    if (t === "system") { if (hostTheme) document.documentElement.setAttribute("data-theme", hostTheme); else document.documentElement.removeAttribute("data-theme"); }
+    else document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+  }
+  applyTheme(theme);
+
+  /* ---------- Domain helpers ---------- */
+  const $ = (s, r) => (r || document).querySelector(s);
+  const me = () => state.caregivers.find(c => c.id === state.meId) || state.caregivers[0];
+  const patient = id => state.patients.find(p => p.id === id);
+  const pName = p => p ? `${p.nombre} ${p.apellido}`.trim() : "Paciente";
+  const cName = c => c ? `${c.nombre} ${c.apellidos}`.trim() : "";
+  const myPatients = () => (me() ? me().patients : []).map(patient).filter(Boolean);
+  const freqLabel = f => (FREQS.find(x => x[0] === +f) || FREQS[1])[1];
+  const listJoin = a => a.length <= 1 ? a.join("") : a.slice(0, -1).join(", ") + " y " + a[a.length - 1];
+  function intervalSummary(r) { return r.on ? `${freqLabel(r.freq)}, de ${r.from} a ${r.to}` : "Apagado"; }
+  function relaxSummary() { const r = state.reminders.relax; const t = r.times.filter(Boolean).sort(); return r.on && t.length ? `A las ${listJoin(t)}` : "Apagado"; }
+  function myShifts() { return state.shifts.filter(s => s.caregiverId === state.meId).sort((a, b) => absStart(a) - absStart(b)); }
+  function nextShift(cid, pid) {
+    const n = nowAbs();
+    return state.shifts.filter(s => (!cid || s.caregiverId === cid) && (!pid || s.patientId === pid) && absEnd(s) > n).sort((a, b) => absStart(a) - absStart(b))[0];
+  }
+  function tasksFor(pid) {
+    const p = patient(pid); if (!p) return [];
+    const meds = [];
+    p.meds.forEach(m => m.horarios.forEach(h => meds.push({ id: `med-${m.id}-${h}`, text: `Dar ${m.nombre} ${m.dosis}`, time: h, med: true })));
+    return meds.concat((state.tasks[pid] || []).map(t => Object.assign({}, t))).sort((a, b) => (toMin(a.time) ?? 9999) - (toMin(b.time) ?? 9999));
+  }
+  const doneKey = (date, pid) => `${date}|${pid}`;
+  function progress(date, pids) {
+    let total = 0, ok = 0;
+    pids.forEach(pid => { const d = state.done[doneKey(date, pid)] || {}; tasksFor(pid).forEach(t => { total++; if (d[t.id]) ok++; }); });
+    return { total, ok };
+  }
+  function overlaps(cid, date, start, end, ignoreId) {
+    const cand = { date, start, end }; const a = absStart(cand), b = absEnd(cand);
+    return state.shifts.find(s => s.caregiverId === cid && s.id !== ignoreId && absStart(s) < b && absEnd(s) > a);
+  }
+  function gcalShift(sh) {
+    const p = patient(sh.patientId); const d = fromIso(sh.date); const end = addDays(d, toMin(sh.end) <= toMin(sh.start) ? 1 : 0);
+    const f = (day, t) => `${day.getFullYear()}${pad(day.getMonth() + 1)}${pad(day.getDate())}T${t.replace(":", "")}00`;
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent("Turno · " + pName(p)) +
+      "&details=" + encodeURIComponent("Turno de cuidado cargado en Cuidarte+.") + "&dates=" + f(d, sh.start) + "/" + f(end, sh.end);
+  }
+  function gcalPause() {
+    const s = new Date(); s.setMinutes(0, 0, 0); s.setHours(s.getHours() + 1);
+    const e = new Date(s.getTime() + 15 * 60000);
+    const f = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent("Pausa · Cuidarte+") +
+      "&details=" + encodeURIComponent("Un momento para vos: respirá, tomá agua y estirate.") + "&dates=" + f(s) + "/" + f(e);
+  }
+  function toast(html, ms) {
+    const t = document.createElement("div"); t.className = "toast"; t.innerHTML = html;
+    $("#toasts").appendChild(t); setTimeout(() => t.remove(), ms || 4000);
+  }
+  function md(t) {
+    const lines = esc(t).split("\n"); let out = "", inList = false;
+    lines.forEach(line => {
+      const m = /^\s*(?:[-•*]|\d+\.)\s+(.*)$/.exec(line);
+      if (m) { if (!inList) { out += "<ul>"; inList = true; } out += `<li>${m[1]}</li>`; }
+      else { if (inList) { out += "</ul>"; inList = false; } if (line.trim()) out += `<p>${line}</p>`; }
+    });
+    if (inList) out += "</ul>";
+    return out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  }
+
+  /* ---------- Views: caregiver ---------- */
+  const back = (href, label) => `<a class="back" href="#${href}">${ic("chevL")} ${label}</a>`;
+  const quoteOfDay = () => QUOTES[Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 864e5) % QUOTES.length];
+
+  function viewInicio() {
+    const c = me(), ns = nextShift(state.meId), today = iso(new Date());
+    const pr = progress(today, c.patients);
+    return `<div class="page wide">
+      <div class="head">
+        <p class="hello">${c.nombre ? "Hola, " + esc(c.nombre) : "Hola"}</p>
+        <h1 class="home-h1">Tu momento especial para vos...!!!</h1>
+        <p class="lead-up">Comencemos hoy para ser tu mejor versión.</p>
+      </div>
+      <div class="group">
+        <div class="tiles">
+          <a class="tile t-blue" href="#bienestar">${ic("sun")} Registrar cómo estoy...</a>
+          <a class="tile t-green" href="#pausa">${ic("pause")} Hacer una pausa</a>
+          <button class="tile t-yellow" data-action="play" data-id="escaneo">${ic("user")} Escaneo corporal</button>
+          <button class="tile t-orange" data-action="play" data-id="ritual">${ic("moon")} Ritual fin de la jornada</button>
+        </div>
+        <button class="urgent" data-action="urgent">${urgentIcon}<div><strong>Urgencia</strong><span>Llamar al SAME ${esc(state.profile.same || "107")}</span></div></button>
+      </div>
+      <div class="group">
+        <h2 class="serif">Tu día</h2>
+        <div class="cards2">
+          <a class="card" href="#turnos"><span class="badge">${ic("calendar")}</span><div class="grow"><p class="card-title">Próximo turno</p><p class="card-text">${ns ? `${relDay(ns.date)}, ${hrsLabel(ns)} · ${esc(pName(patient(ns.patientId)))}` : "No tenés turnos cargados. Contáselos al asistente."}</p></div>${ic("chevR", ' class="i chev"')}</a>
+          <a class="card" href="#tareas"><span class="badge">${ic("list")}</span><div class="grow"><p class="card-title">Tareas de hoy</p><p class="card-text tnum">${pr.total ? `${pr.ok} de ${pr.total} hechas` : "Sin tareas para hoy."}</p>${pr.total ? `<div class="mini-bar"><i style="width:${Math.round(pr.ok / pr.total * 100)}%"></i></div>` : ""}</div>${ic("chevR", ' class="i chev"')}</a>
+        </div>
+      </div>
+      <div class="group">
+        <h2 class="serif">Para acompañarte</h2>
+        <div class="cards2">
+          <a class="card" href="#recursos"><span class="badge">${ic("book")}</span><div class="grow"><p class="card-title">Cuidarte mientras cuidás</p><p class="card-text">Estrés, descanso, autocuidado y técnicas para el día a día.</p></div>${ic("chevR", ' class="i chev"')}</a>
+          <a class="card" href="#asistente"><span class="badge">${ic("sparkle")}</span><div class="grow"><p class="card-title">Asistente</p><p class="card-text">Preguntale lo que necesites o contale tus turnos.</p></div>${ic("chevR", ' class="i chev"')}</a>
+        </div>
+      </div>
+      <div class="quote">
+        <svg width="108" height="44" viewBox="0 0 108 44" aria-hidden="true"><path d="M0 44V30C18 10 34 8 52 22s34 6 56-14v36z" fill="var(--wave-a)"/><path d="M0 44V36c22-10 40-12 58-4s32 2 50-8v20z" fill="var(--wave-b)"/></svg>
+        <div><p>${esc(quoteOfDay())}</p><small>Frase del día · <a href="#acerca">Red Cuidar</a></small></div>
+      </div>
+      <p class="disclaimer">Es una herramienta de orientación y soporte destinada a complementar el cuidado personal. No reemplaza bajo ninguna circunstancia el consejo, diagnóstico o tratamiento médico profesional. Ante una emergencia, contáctese inmediatamente a su servicio de salud local.</p>
+    </div>`;
+  }
+
+  function viewRecursos() {
+    const sections = CATS.map(c => `<section class="group"><h2 class="section">${c}</h2>${
+      ARTICLES.filter(a => a.cat === c).map(a => `<a class="card res" href="#recurso-${a.id}"><span class="badge sq">${ic(a.icon)}</span><div class="grow"><p class="card-title">${a.title}</p><p class="card-text">${a.desc}</p><span class="meta">${ic("clock")} 1 min de lectura</span></div>${ic("chevR", ' class="i chev"')}</a>`).join("")
+    }</section>`).join("");
+    return `<div class="page"><div class="head"><h1>Cuidarte mientras cuidás</h1><p class="sub">Recursos para acompañar tu tarea cotidiana.</p></div>${sections}</div>`;
+  }
+
+  function viewArticulo(id) {
+    const a = ARTICLES.find(x => x.id === id);
+    if (!a) return viewRecursos();
+    const body = a.body.map(b => b[0] === "p" ? `<p>${esc(b[1])}</p>` : b[0] === "h" ? `<h3>${esc(b[1])}</h3>` : `<ul>${b[1].map(li => `<li>${esc(li)}</li>`).join("")}</ul>`).join("");
+    return `<div class="page narrow">${back("recursos", "Recursos")}
+      <div class="head"><span class="tag">${ic(a.icon, ' style="width:16px;height:16px"')} ${a.cat}</span><h1>${a.title}</h1><p class="sub">${a.desc}</p></div>
+      <article class="article">${body}</article>
+      <p class="note">Cuidarte+ acompaña, pero no reemplaza la atención profesional.</p></div>`;
+  }
+
+  function viewPausa() {
+    const cards = ["respirar", "escaneo", "estirar", "micro", "ritual"].map(k => { const p = PAUSES[k];
+      return `<button class="card guided" data-action="play" data-id="${k}" aria-label="Empezar ${p.title}"><span class="badge sq">${ic(p.icon)}</span><div class="grow"><p class="card-title">${p.title}</p><p class="card-text">${p.desc}</p><span class="meta" style="margin-top:6px">${ic("clock")} ${p.secs / 60} min</span></div><span class="play">${ic("play")}</span></button>`; });
+    const r = state.reminders;
+    return `<div class="page"><div class="head"><h1>Descansar también es cuidarte</h1><p class="sub">Elegí una pausa con el tiempo que tengas.</p></div>
+      <a class="outline-btn" href="${gcalPause()}" target="_blank" rel="noopener">${ic("clock")} Programar pausa en Google Calendar</a>
+      <p class="help">Se abrirá un evento con una hora sugerida. Elegí la fecha, el horario y los avisos, y guardalo en Google Calendar. No se guarda automáticamente ni se sincroniza con Cuidarte+.</p>
+      <section class="group"><h2 class="section">Recordatorios</h2><div class="cards3">
+        <a class="card rem" href="#recordatorios"><span class="badge sq">${ic("cup")}</span><div class="grow"><p class="card-title">1 minuto para hidratarte</p><p class="card-text">${esc(intervalSummary(r.water))}</p></div><span class="cfg">Configurar ${ic("chevR")}</span></a>
+        <a class="card rem" href="#recordatorios"><span class="badge sq">${ic("walk")}</span><div class="grow"><p class="card-title">Estiramientos</p><p class="card-text">${esc(intervalSummary(r.stretch))}</p></div><span class="cfg">Configurar ${ic("chevR")}</span></a>
+        <a class="card rem" href="#recordatorios"><span class="badge sq">${ic("leaf")}</span><div class="grow"><p class="card-title">5 minutos para relajarte</p><p class="card-text">${esc(relaxSummary())}</p></div><span class="cfg">Configurar ${ic("chevR")}</span></a>
+      </div></section>
+      <section class="group"><h2 class="section">Pausas guiadas</h2><div class="cards2">${cards.slice(0, 4).join("")}</div>${cards[4]}</section></div>`;
+  }
+
+  /* Bienestar + historial */
+  let draft = { mood: null, energy: null, stress: null };
+  let histMode = "dia";
+  function seg(key, opts) {
+    return `<div class="seg" role="group" aria-label="${key}">${opts.map(o => `<button type="button" data-action="seg" data-k="${key}" data-v="${o}" aria-pressed="${draft[key] === o}">${o}</button>`).join("")}</div>`;
+  }
+  function historyHtml() {
+    const recs = state.records.slice().sort((a, b) => b.at.localeCompare(a.at));
+    if (!recs.length) return `<div class="card record"><span class="vals">Todavía no hay registros. Elegí cómo estás y tocá «Guardar registro».</span></div>`;
+    if (histMode === "dia") {
+      return `<div class="records">${recs.map(r => `<div class="card record"><b>${esc(fmtLong(new Date(r.at)))}${r.example ? '<span class="ex">Ejemplo</span>' : ""}</b><span class="vals">Ánimo: ${esc(r.mood)} · Energía: ${esc(r.energy)} · Estrés: ${esc(r.stress)}</span>${r.note ? `<q>${esc(r.note)}</q>` : ""}</div>`).join("")}</div>`;
+    }
+    const groups = {};
+    recs.forEach(r => { const k = iso(monday(new Date(r.at))); (groups[k] = groups[k] || []).push(r); });
+    return `<div class="records">${Object.keys(groups).sort().reverse().map(k => {
+      const g = groups[k], mon = fromIso(k);
+      const avg = (arr, key, opts) => g.reduce((s, r) => s + Math.max(0, opts.indexOf(r[key])), 0) / g.length;
+      const am = avg(g, "mood", MOODS), ae = avg(g, "energy", ENERGY), as = avg(g, "stress", STRESS);
+      const meter = (lbl, v, opts, inv) => `<div class="meter"><span>${lbl}: <b>${opts[Math.round(v)]}</b></span><div class="track${inv ? " inv" : ""}"><i style="width:${Math.round((v + 1) / 5 * 100)}%"></i></div></div>`;
+      const byDay = {}; g.forEach(r => { byDay[iso(new Date(r.at))] = MOODS.indexOf(r.mood); });
+      const dots = WD.map((w, i) => { const d = iso(addDays(mon, i)); const m = byDay[d]; return `<div class="dot"><i class="${m != null && m >= 0 ? "m" + m : ""}" title="${m != null && m >= 0 ? MOODS[m] : "Sin registro"}"></i>${w}</div>`; }).join("");
+      return `<div class="card weekcard"><div class="row-between"><b style="color:var(--ink)">${weekLabel(mon)}</b><span class="pill neutral tnum">${g.length} ${g.length === 1 ? "registro" : "registros"}</span></div>
+        <div class="meters">${meter("Ánimo", am, MOODS)}${meter("Energía", ae, ENERGY)}${meter("Estrés", as, STRESS, true)}</div>
+        <div class="dots" aria-label="Ánimo por día">${dots}</div></div>`;
+    }).join("")}<p class="foot-note" style="margin:0">Los puntos muestran el ánimo de cada día: del más bajo (rojo) al mejor (verde oscuro). Vacío = sin registro.</p></div>`;
+  }
+  function viewBienestar() {
+    return `<div class="page narrow"><div class="head"><h1>¿Cómo estás hoy?</h1><p class="sub">No hay una respuesta correcta.</p></div>
+      <div class="privacy">${ic("lock")}<p>Lo que registrás acá lo ves solo vos. En esta demo se guarda en este navegador. <a href="#terminos">Más sobre privacidad</a></p></div>
+      <form class="form" data-form="reg" novalidate>
+        <div class="group"><h2 class="section">Estado emocional</h2>${seg("mood", MOODS)}</div>
+        <div class="group"><h2 class="section">Energía</h2>${seg("energy", ENERGY)}</div>
+        <div class="group"><h2 class="section">Nivel de estrés</h2>${seg("stress", STRESS)}</div>
+        <div class="group"><div class="row-between"><label for="reg-note" style="font-size:1.4rem;font-weight:500;color:var(--ink)">¿Querés anotar algo?</label><span class="optional">Opcional</span></div>
+          <textarea id="reg-note" maxlength="500" placeholder="Algo que quieras recordar de hoy..."></textarea></div>
+        <p class="err" id="reg-err" hidden>Elegí una opción en estado emocional, energía y estrés para guardar.</p>
+        <button class="primary-btn" type="submit">${ic("check")} Guardar registro</button>
+      </form>
+      <section class="group"><div class="row-between"><h2 class="section">Tu historial</h2>
+        <div class="toggle" role="group" aria-label="Vista del historial"><button type="button" data-action="hist" data-m="dia" aria-pressed="${histMode === "dia"}">Diario</button><button type="button" data-action="hist" data-m="semana" aria-pressed="${histMode === "semana"}">Semanal</button></div></div>
+        <div id="hist">${historyHtml()}</div></section></div>`;
+  }
+
+  /* Turnos */
+  let weekOff = 0;
+  function viewTurnos() {
+    const mon = addDays(monday(new Date()), weekOff * 7), todayIso = iso(new Date());
+    const mine = myShifts();
+    let total = 0;
+    const days = WD.map((w, i) => {
+      const d = addDays(mon, i), di = iso(d);
+      const list = mine.filter(s => s.date === di);
+      list.forEach(s => total += durMin(s.start, s.end));
+      const items = list.length ? list.map(s => `<div class="shift"><span class="hrs">${hrsLabel(s)}</span><span class="who">${esc(pName(patient(s.patientId)))}</span>${s.source === "asistente" ? '<span class="pill neutral">Asistente</span>' : ""}
+        <span class="acts"><a class="icon-btn" href="${gcalShift(s)}" target="_blank" rel="noopener" title="Agregar a Google Calendar" aria-label="Agregar a Google Calendar">${ic("calendar")}</a><button class="icon-btn" data-action="shift-del" data-id="${s.id}" title="Borrar turno" aria-label="Borrar turno">${ic("trash")}</button></span></div>`).join("")
+        : `<span class="empty-day">Libre</span>`;
+      return `<div class="day${di === todayIso ? " today" : ""}"><div class="dname">${cap(d.toLocaleDateString("es-AR", { weekday: "long" }))}<small>${fmtDM(d)}${di === todayIso ? " · hoy" : ""}</small></div><div class="shifts">${items}</div></div>`;
+    }).join("");
+    const pts = myPatients();
+    return `<div class="page"><div class="head"><h1>Tus turnos</h1><p class="sub">Cargalos acá o contáselos al asistente y se agregan solos.</p></div>
+      <div class="toolbar"><div class="week-nav"><button class="icon-btn" data-action="week" data-d="-1" aria-label="Semana anterior">${ic("chevL")}</button><strong>${weekLabel(mon)}</strong><button class="icon-btn" data-action="week" data-d="1" aria-label="Semana siguiente">${ic("chevR")}</button>${weekOff ? `<button class="ghost" data-action="week" data-d="0">Esta semana</button>` : ""}</div>
+        <span class="pill neutral tnum">${fmtHours(total || 0).replace(/^0 h$/, "0 h")} esta semana</span></div>
+      <div class="card week">${days}</div>
+      <div class="btn-row"><a class="outline-btn sm" href="#asistente">${ic("sparkle")} Contáselos al asistente</a></div>
+      <section class="card rcard"><h2 class="section" style="font-size:1.2rem">Agregar turno</h2>
+        <form class="form" data-form="shift-add" novalidate>
+          <div class="four">
+            <div class="field"><label for="sh-p">Paciente</label><select id="sh-p">${pts.map(p => `<option value="${p.id}">${esc(pName(p))}</option>`).join("")}</select></div>
+            <div class="field"><label for="sh-d">Fecha</label><input type="date" id="sh-d" value="${iso(addDays(mon, weekOff ? 0 : Math.max(0, (new Date().getDay() + 6) % 7)))}"></div>
+            <div class="field"><label for="sh-s">Desde</label><input type="time" id="sh-s" value="08:00"></div>
+            <div class="field"><label for="sh-e">Hasta</label><input type="time" id="sh-e" value="14:00"></div>
+          </div>
+          <div class="field"><label for="sh-r">Repetir</label><select id="sh-r"><option value="1">Solo ese día</option><option value="4">Cada semana, por 4 semanas</option><option value="8">Cada semana, por 8 semanas</option></select></div>
+          <p class="err" id="sh-err" hidden></p>
+          <button class="primary-btn auto" type="submit">${ic("plus")} Agregar turno</button>
+        </form></section>
+      <p class="foot-note">Cada turno tiene un botón para pasarlo a Google Calendar. En la versión final los turnos se sincronizan solos con tu calendario.</p></div>`;
+  }
+
+  /* Tareas */
+  let dayOff = 0;
+  function viewTareas() {
+    const d = addDays(new Date(), dayOff), di = iso(d), pts = myPatients();
+    const cards = pts.map(p => {
+      const list = tasksFor(p.id), dn = state.done[doneKey(di, p.id)] || {};
+      const ok = list.filter(t => dn[t.id]).length;
+      return `<section class="card pcard"><div class="row-between"><div><h2 class="section" style="font-size:1.25rem">${esc(pName(p))}</h2></div><span class="pill ${ok === list.length && list.length ? "ok" : "neutral"} tnum">${ok} de ${list.length}</span></div>
+        <div class="mini-bar" style="margin:0"><i style="width:${list.length ? Math.round(ok / list.length * 100) : 0}%"></i></div>
+        <div class="tasks">${list.map(t => `<label class="task${dn[t.id] ? " done" : ""}"><input type="checkbox" data-task="${t.id}" data-pid="${p.id}"${dn[t.id] ? " checked" : ""}><span class="time">${esc(t.time || "—")}</span><span class="txt">${esc(t.text)}</span>${t.med ? `<span class="pill warn">${ic("pill", ' style="width:13px;height:13px"')} Medicación</span>` : `<button type="button" class="icon-btn" data-action="task-del" data-pid="${p.id}" data-tid="${t.id}" aria-label="Quitar tarea diaria">${ic("x")}</button>`}</label>`).join("")}</div>
+        <form class="btn-row" data-form="task-add" data-pid="${p.id}" novalidate><input type="text" name="text" placeholder="Nueva tarea diaria" aria-label="Nueva tarea diaria para ${esc(pName(p))}" style="flex:1;min-width:180px"><input type="time" name="time" aria-label="Horario" style="width:130px"><button class="ghost" type="submit">${ic("plus")} Agregar</button></form>
+      </section>`;
+    }).join("");
+    return `<div class="page narrow"><div class="head"><h1>Tareas del día</h1><p class="sub">Un checklist por cada persona que cuidás. Se arma solo todos los días.</p></div>
+      <div class="toolbar"><div class="week-nav"><button class="icon-btn" data-action="day" data-d="-1" aria-label="Día anterior">${ic("chevL")}</button><strong>${relDay(di) === "Hoy" ? "Hoy, " + fmtDM(d) : fmtLong(d)}</strong><button class="icon-btn" data-action="day" data-d="1" aria-label="Día siguiente">${ic("chevR")}</button>${dayOff ? `<button class="ghost" data-action="day" data-d="0">Hoy</button>` : ""}</div></div>
+      ${cards || `<div class="card record"><span class="vals">Todavía no tenés pacientes asignados. Pedile al administrador que te los asigne.</span></div>`}
+      <p class="foot-note">Las tareas de medicación salen de la ficha de cada paciente que carga el administrador. Las demás las podés agregar o quitar vos.</p></div>`;
+  }
+
+  /* Asistente */
+  const chat = { turns: [], items: [], busy: false, ctl: null, disabled: false };
+  const SUGGEST = ["La semana que viene trabajo lunes y miércoles de 8 a 14 con Elena", "¿Qué turnos tengo esta semana?", "¿Cómo ayudo a Raúl a pararse sin lastimarme la espalda?", "Estoy agotada, ¿qué puedo hacer hoy?"];
+  function msgsHtml() {
+    if (!chat.items.length) return `<div class="msg bot"><p>Hola${me().nombre ? ", " + esc(me().nombre) : ""}. Puedo responder dudas sobre el cuidado y tus recursos, decirte tus turnos o cargarlos en tu calendario si me los contás.</p></div>`;
+    return chat.items.map((m, i) => {
+      if (m.type === "user") return `<div class="msg user">${esc(m.text)}</div>`;
+      if (m.type === "err") return `<div class="msg err-msg">${esc(m.text)}</div>`;
+      if (m.type === "card") {
+        const list = m.ids.map(id => state.shifts.find(s => s.id === id) || m.snap[id]).filter(Boolean);
+        return `<div class="msg card-msg"><b style="color:var(--ink)">${m.undone ? "Deshiciste estos turnos" : `Agregué ${list.length} ${list.length === 1 ? "turno" : "turnos"} a tu calendario`}</b><ul>${list.map(s => `<li>${esc(relDay(s.date))} · ${hrsLabel(s)} · ${esc(pName(patient(s.patientId)))}</li>`).join("")}</ul>${m.undone ? "" : `<div class="btn-row"><a class="ghost" href="#turnos">Ver en Turnos</a><button class="ghost" data-action="chat-undo" data-i="${i}">Deshacer</button></div>`}</div>`;
+      }
+      return `<div class="msg bot${m.pending ? " pending" : ""}">${m.pending ? "Pensando…" : md(m.text)}</div>`;
+    }).join("");
+  }
+  function viewAsistente() {
+    const pts = myPatients();
+    return `<div class="page wide"><div class="head"><h1>Asistente</h1><p class="sub">Preguntá lo que necesites o contale tus turnos.</p></div>
+      <div class="chat-grid">
+        <section class="card chat" aria-label="Conversación con el asistente">
+          <div class="chat-head"><span>La conversación no se guarda.</span><button class="ghost" data-action="chat-clear" style="padding:6px 12px">Nueva conversación</button></div>
+          <div class="msgs" id="msgs" aria-live="polite">${msgsHtml()}</div>
+          <form class="composer" data-form="chat" novalidate>
+            ${chat.items.length ? "" : `<div class="chips">${SUGGEST.map(s => `<button type="button" class="chip" data-action="suggest" data-q="${esc(s)}">${esc(s)}</button>`).join("")}</div>`}
+            <textarea id="chat-in" placeholder="Escribí tu mensaje…" aria-label="Mensaje" ${chat.disabled ? "disabled" : ""}></textarea>
+            <div class="row-between"><span class="optional" id="chat-status">${chat.disabled ? "El asistente no está disponible en esta vista." : "Enter envía · Shift+Enter hace un salto de línea"}</span>
+              ${chat.busy ? `<button type="button" class="ghost" data-action="chat-stop">Detener</button>` : `<button class="primary-btn sm" type="submit" ${chat.disabled ? "disabled" : ""}>${ic("send")} Enviar</button>`}</div>
+          </form>
+        </section>
+        <aside class="card sources" aria-label="Con qué se alimenta el asistente">
+          <h3>Con qué se alimenta</h3>
+          <ul>
+            <li>Los ${ARTICLES.length} recursos de Cuidarte mientras cuidás.</li>
+            <li>${FAQ.length} preguntas frecuentes, revisadas por Red Cuidar.</li>
+            <li>Tus turnos y tus pacientes: ${esc(listJoin(pts.map(pName))) || "ninguno"}.</li>
+            <li>La medicación cargada en la ficha de cada paciente.</li>
+          </ul>
+          <p class="optional" style="margin:0">No busca en internet, no ve tu registro de bienestar y no da diagnósticos. Solo puede consultar y agregar turnos tuyos.</p>
+          <details><summary>Ver preguntas frecuentes</summary><div class="faq">${FAQ.map(f => `<div><b>${esc(f[0])}</b>${esc(f[1])}</div>`).join("")}</div></details>
+        </aside>
+      </div></div>`;
+  }
+  function renderMsgs() { const box = $("#msgs"); if (!box) return; box.innerHTML = msgsHtml(); box.scrollTop = box.scrollHeight; }
+  function renderComposer() { if (location.hash.slice(1) === "asistente") { const v = $("#chat-in") ? $("#chat-in").value : ""; render(true); const t = $("#chat-in"); if (t) { t.value = v; if (!chat.busy) t.focus(); } renderMsgs(); } }
+
+  function rules(toolsOk) {
+    const c = me(), pts = myPatients(), t = new Date();
+    const res = ARTICLES.map(a => `## ${a.title}\n` + a.body.map(b => b[0] === "ul" ? b[1].map(x => "- " + x).join("\n") : b[1]).join("\n")).join("\n\n");
+    const meds = pts.map(p => `${pName(p)}: ` + (p.meds.length ? p.meds.map(m => `${m.nombre} ${m.dosis} a las ${m.horarios.join(" y ")}`).join("; ") : "sin medicación cargada")).join("\n");
+    return `Sos el asistente de Cuidarte+, una app de Red Cuidar para personas que cuidan a adultos mayores. Hablás en español rioplatense (vos), con calidez y frases cortas. Respondé en 2 a 6 oraciones, o en una lista corta si ayuda. Sin títulos.
+Hoy es ${fmtLong(t)} de ${t.getFullYear()} (${iso(t)}). Hora actual: ${pad(t.getHours())}:${pad(t.getMinutes())}. Las semanas empiezan el lunes.
+Usuaria/o: ${cName(c) || "sin nombre"}. Pacientes asignados: ${pts.map(pName).join(", ") || "ninguno"}.
+Medicación cargada por el administrador:
+${meds || "ninguna"}
+
+Reglas:
+- Usá solo la información de este mensaje (recursos, preguntas frecuentes, pacientes, medicación, turnos). Si no lo sabés, decilo y sugerí consultar a un profesional.
+- No des diagnósticos ni indiques cambiar dosis o medicación. Para eso, médico tratante.
+- Si te cuentan algo que puede ser una urgencia (dolor de pecho, falta de aire, desmayo, caída con golpe en la cabeza, confusión repentina), decí primero que llamen al SAME ${state.profile.same || "107"} ya.
+- Si notás agotamiento fuerte, validalo y sugerí una pausa guiada de la app o pedir ayuda concreta.
+${toolsOk ? `- Turnos: si la persona cuenta turnos de trabajo (días, horarios, paciente), convertí cada uno a fecha exacta YYYY-MM-DD y horas HH:MM (24 h) y llamá a agregar_turnos UNA sola vez con todos. Un día de la semana sin más ("el lunes") es el próximo a partir de hoy, incluyendo hoy. "La semana que viene" es la semana siguiente de lunes a domingo. "Todos los lunes" sin plazo: cargá las próximas 4 semanas. Si falta el paciente y hay más de uno asignado, preguntá antes de cargar. Si falta el horario, preguntá. Después confirmá en una línea qué quedó cargado y mencioná cualquier error que devuelva la herramienta.
+- Para responder sobre turnos ya cargados, usá listar_turnos.` : `- En esta vista no podés ver ni cargar turnos. Si te los cuentan, pedí que los carguen en la sección Turnos.`}
+
+PREGUNTAS FRECUENTES
+${FAQ.map(f => `P: ${f[0]}\nR: ${f[1]}`).join("\n")}
+
+RECURSOS
+${res}`;
+  }
+  function chatTools(added) {
+    return [
+      { name: "listar_turnos", description: "Devuelve los turnos de la persona entre dos fechas (incluidas). Usalo para responder qué turnos tiene.",
+        inputSchema: { type: "object", properties: { desde: { type: "string", description: "YYYY-MM-DD" }, hasta: { type: "string", description: "YYYY-MM-DD" } }, required: ["desde", "hasta"] },
+        execute(input) {
+          const a = dayNum(String(input.desde)), b = dayNum(String(input.hasta));
+          if (!isFinite(a) || !isFinite(b)) throw new Error("Fechas inválidas, usá YYYY-MM-DD.");
+          return myShifts().filter(s => dayNum(s.date) >= a && dayNum(s.date) <= b).map(s => ({ fecha: s.date, dia: fmtLong(fromIso(s.date)), desde: s.start, hasta: s.end, paciente: pName(patient(s.patientId)) }));
+        } },
+      { name: "agregar_turnos", description: "Agrega uno o más turnos al calendario de la persona. Devuelve los agregados y los errores (por ejemplo superposición o paciente desconocido).",
+        inputSchema: { type: "object", properties: { turnos: { type: "array", items: { type: "object", properties: { paciente: { type: "string", description: "Nombre del paciente asignado" }, fecha: { type: "string", description: "YYYY-MM-DD" }, desde: { type: "string", description: "HH:MM 24 h" }, hasta: { type: "string", description: "HH:MM 24 h" } }, required: ["paciente", "fecha", "desde", "hasta"] } } }, required: ["turnos"] },
+        execute(input) {
+          const list = Array.isArray(input.turnos) ? input.turnos : [];
+          const ok = [], errores = [];
+          list.slice(0, 40).forEach(t => {
+            const name = String(t.paciente || "").toLowerCase().trim();
+            const p = myPatients().find(x => pName(x).toLowerCase().includes(name) || (name && name.includes(x.nombre.toLowerCase())));
+            const fecha = String(t.fecha || ""), desde = String(t.desde || ""), hasta = String(t.hasta || "");
+            if (!p) return errores.push(`${t.paciente}: no es un paciente asignado.`);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || toMin(desde) == null || toMin(hasta) == null) return errores.push(`${fecha} ${desde}-${hasta}: formato inválido.`);
+            if (desde === hasta) return errores.push(`${fecha}: el turno no puede durar 0 minutos.`);
+            const clash = overlaps(state.meId, fecha, desde, hasta);
+            if (clash) return errores.push(`${fecha} ${desde}-${hasta}: se superpone con ${clash.start}-${clash.end}.`);
+            const sh = { id: uid(), caregiverId: state.meId, patientId: p.id, date: fecha, start: desde, end: hasta, source: "asistente" };
+            state.shifts.push(sh); added.push(sh.id); ok.push({ fecha, desde, hasta, paciente: pName(p) });
+          });
+          save();
+          return { agregados: ok, errores };
+        } }
+    ];
+  }
+  const samplePromise = (window.claude && typeof window.claude.use === "function") ? window.claude.use("sample").catch(() => null) : Promise.resolve(null);
+  async function sendChat(text) {
+    if (chat.busy || !text.trim()) return;
+    chat.items.push({ type: "user", text }); chat.turns.push({ role: "user", content: text });
+    const bot = { type: "bot", text: "", pending: true }; chat.items.push(bot);
+    chat.busy = true; renderComposer();
+    const sample = await samplePromise;
+    if (!sample) { chat.items.pop(); chat.items.push({ type: "err", text: "El asistente no está disponible en esta vista. Abrí Cuidarte+ desde Claude para usarlo." }); chat.busy = false; chat.disabled = true; renderComposer(); return; }
+    const lim = await sample.limits().catch(() => null);
+    const toolsOk = !!(lim && lim.tools);
+    const added = [];
+    chat.ctl = new AbortController();
+    const input = [{ role: "user", content: rules(toolsOk) }].concat(chat.turns.slice(-14));
+    try {
+      const opts = { cache: false, signal: chat.ctl.signal, modelTier: "quick", onText: ({ text }) => { bot.text = text; bot.pending = false; renderMsgs(); } };
+      if (toolsOk) opts.tools = chatTools(added);
+      const res = await sample(input, opts);
+      bot.text = res.text; bot.pending = false;
+      chat.turns.push({ role: "assistant", content: res.text });
+      if (res.truncated) chat.items.push({ type: "err", text: "La respuesta se cortó. Pedí algo más corto." });
+    } catch (e) {
+      const code = e && e.code;
+      if (e && e.text) { bot.text = e.text; bot.pending = false; } else chat.items.splice(chat.items.indexOf(bot), 1);
+      const msg = { not_granted: "El asistente necesita tu permiso para usar Claude. Sin ese permiso no puede responder.", sampling_disabled: "Claude no está disponible para esta cuenta.", rate_limited: "Hay muchas consultas seguidas. Probá de nuevo en un rato.", session_expired: "Tu sesión de Claude venció. Volvé a iniciar sesión.", refused: "No puedo responder eso. Probá preguntarlo de otra forma.", cancelled: "" }[code];
+      if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].indexOf(code) > -1) chat.disabled = true;
+      const m = msg === undefined ? "Se cortó la respuesta. Probá de nuevo." : msg;
+      if (m) chat.items.push({ type: "err", text: m });
+    }
+    if (added.length) { const snap = {}; added.forEach(id => { const s = state.shifts.find(x => x.id === id); if (s) snap[id] = Object.assign({}, s); }); chat.items.push({ type: "card", ids: added.slice(), snap }); }
+    chat.busy = false; chat.ctl = null; renderComposer();
+  }
+
+  /* Perfil */
+  function field(id, label, value, hint, extra, type) {
+    return `<div class="field"><label for="${id}">${label}</label>${hint ? `<p class="hint">${hint}</p>` : ""}<input type="${type || "text"}" id="${id}" value="${esc(value)}" ${extra || ""}><p class="err" id="${id}-err" hidden></p></div>`;
+  }
+  function select(id, label, opts, value) {
+    return `<div class="field"><label for="${id}">${label}</label><select id="${id}">${value ? "" : '<option value="">Elegí una opción</option>'}${opts.map(o => `<option${o === value ? " selected" : ""}>${o}</option>`).join("")}</select></div>`;
+  }
+  function viewPerfil() {
+    const c = me(), p = state.profile, dev = state.devices[c.id] || {};
+    return `<div class="page narrow">${back("inicio", "Inicio")}
+      <div class="head"><h1>Mi perfil</h1><p class="sub">${esc(c.email || "Sin mail cargado")}</p></div>
+      <form class="form" data-form="profile" novalidate>
+        <h2 class="section">Tus datos</h2>
+        <div class="two">${field("p-nombre", "Nombre", c.nombre, "", 'autocomplete="given-name"')}${field("p-apellidos", "Apellidos", c.apellidos, "", 'autocomplete="family-name"')}</div>
+        ${field("p-email", "Mail", c.email, "", 'autocomplete="email"', "email")}
+        ${field("p-phone", "Celular con código de área", c.telefono, "Sin el 0 ni el 15 adelante, por ejemplo 342 155 123456.", 'inputmode="tel" autocomplete="tel"')}
+        ${field("p-birth", "Fecha de nacimiento", c.nacimiento, "Escribí día/mes/año completo, por ejemplo 14/05/1980. La usamos para saludarte en tu cumpleaños.", 'inputmode="numeric" placeholder="dd/mm/aaaa"')}
+        ${select("p-gender", "Género", GENDERS, p.gender)}
+        ${field("p-nat", "Nacionalidad", p.nationality)}
+        <h2 class="section" style="margin-top:10px">Dónde estás</h2>
+        ${select("p-country", "País o región donde vivís", COUNTRIES, p.country)}
+        ${field("p-barrio", "Barrio donde vivís", p.barrio)}
+        ${field("p-work", 'Barrio donde trabajás <span class="light">(opcional)</span>', p.barrioWork, "Si cuidás en otro barrio, nos ayuda a ubicar recursos cercanos.")}
+        <h2 class="section" style="margin-top:10px">Avisos y urgencias</h2>
+        <label class="check"><input type="checkbox" id="p-alerts"${p.alerts ? " checked" : ""}><span>Quiero recibir alertas y recordatorios en mi celular<small>Opcional. Recordatorios para hidratarte, estirarte y relajarte. Los configurás en <a href="#recordatorios">Recordatorios</a>.</small></span></label>
+        <label class="check"><input type="checkbox" id="p-loc"${p.location ? " checked" : ""}><span>Permitir usar la ubicación de este dispositivo en caso de urgencia<small>Opcional. Solo se usa cuando tocás el botón de urgencia, para que puedas compartirla. No la guardamos.</small></span></label>
+        ${field("p-same", "Número de emergencias (SAME)", p.same, "Revisá cuál es el número de emergencias médicas en tu ciudad.", 'inputmode="tel"')}
+        <label class="check"><input type="checkbox" id="p-terms"${p.terms ? " checked" : ""}><span>Acepto los <a href="#terminos">términos, condiciones y la política de privacidad</a></span></label>
+        <p class="err" id="p-terms-err" hidden>Para guardar tus datos tenés que aceptar los términos.</p>
+        <button class="primary-btn auto" type="submit">Guardar cambios</button>
+      </form>
+      <hr class="sep">
+      <section class="group"><h2 class="section">Tu dispositivo</h2>
+        <div class="card rcard" style="gap:10px"><div class="rhead"><span class="badge">${ic("phone")}</span><div><h3 style="font-size:1.1rem">${esc(dev.label || "Sin dispositivo registrado")}</h3><p>${dev.label ? `Último acceso ${ago(dev.last)}` : "Se registra la próxima vez que entres."}</p></div></div>
+        <p class="optional" style="margin:0">Tu cuenta funciona en un solo dispositivo. Si cambiás de celular, pedile al administrador que libere tu cuenta.</p></div>
+      </section>
+      <section class="group"><h2 class="section">Borrar mi cuenta</h2>
+        <p class="sub" style="font-size:1rem">Se borran tu perfil, tus registros de bienestar, tus turnos y tus recordatorios. No se puede deshacer.</p>
+        <div id="del-zone"><button class="danger-outline" data-action="del-ask">Borrar mi cuenta</button></div>
+      </section></div>`;
+  }
+
+  /* Recordatorios */
+  function intervalCard(key, icon, title, sub, label) {
+    const r = state.reminders[key];
+    return `<div class="card rcard">
+      <div class="rhead"><span class="badge">${ic(icon)}</span><div><h3>${title}</h3><p>${sub}</p></div></div>
+      <label class="check"><input type="checkbox" id="${key}-on" data-toggle="${key}-opts"${r.on ? " checked" : ""}><span>${label}</span></label>
+      <div id="${key}-opts" class="form"${r.on ? "" : " hidden"}>
+        <div class="field"><label for="${key}-freq">Frecuencia</label><select id="${key}-freq">${FREQS.map(f => `<option value="${f[0]}"${f[0] === +r.freq ? " selected" : ""}>${f[1]}</option>`).join("")}</select></div>
+        <div class="two"><div class="field"><label for="${key}-from">Desde</label><input type="time" id="${key}-from" value="${r.from}"></div><div class="field"><label for="${key}-to">Hasta</label><input type="time" id="${key}-to" value="${r.to}"></div></div>
+        <p class="err" id="${key}-err" hidden>El horario «Hasta» tiene que ser posterior a «Desde».</p>
+      </div>
+      <button type="button" class="link-btn" data-action="test" data-t="${key}">Probar este aviso</button>
+    </div>`;
+  }
+  function viewRecordatorios() {
+    const r = state.reminders.relax;
+    const perm = ("Notification" in window) ? Notification.permission : "unsupported";
+    const permHtml = perm === "granted"
+      ? `<p>Las notificaciones del navegador están activadas.</p>`
+      : `<p>Para que los avisos lleguen como notificación, el navegador necesita tu permiso.</p><button type="button" data-action="perm">Permitir notificaciones</button><p class="err" id="perm-msg" hidden></p>`;
+    return `<div class="page narrow">${back("pausa", "Pausas")}
+      <div class="head"><h1>Recordatorios</h1><p class="sub">Avisos para hidratarte, estirarte y relajarte durante el día.</p></div>
+      <div class="card perm">${permHtml}</div>
+      <form class="form" data-form="rem" novalidate>
+        ${intervalCard("water", "cup", "1 minuto para hidratarte", "Un aviso para tomar agua.", "Recordarme hidratarme")}
+        ${intervalCard("stretch", "walk", "Estiramientos", "Un aviso para mover cuello, hombros y espalda.", "Recordarme estirarme")}
+        <div class="card rcard">
+          <div class="rhead"><span class="badge">${ic("leaf")}</span><div><h3>5 minutos para relajarte</h3><p>Elegí los horarios que te queden mejor.</p></div></div>
+          <label class="check"><input type="checkbox" id="relax-on" data-toggle="relax-opts"${r.on ? " checked" : ""}><span>Recordarme hacer una pausa</span></label>
+          <div id="relax-opts" class="form"${r.on ? "" : " hidden"}>
+            <div class="three">${[0, 1, 2].map(i => `<div class="field"><label for="relax-t${i}">Horario ${i + 1}</label><input type="time" id="relax-t${i}" value="${r.times[i] || ""}"></div>`).join("")}</div>
+            <p class="optional" style="margin:0;font-size:.86rem">Dejá vacío el horario que no uses.</p>
+          </div>
+          <button type="button" class="link-btn" data-action="test" data-t="relax">Probar este aviso</button>
+        </div>
+        <button class="primary-btn" type="submit">Guardar recordatorios</button>
+      </form>
+      <p class="foot-note">En esta demo los avisos aparecen mientras la app está abierta. En la versión final llegan como notificación aunque esté cerrada. En iPhone, primero hay que agregar Cuidarte+ a la pantalla de inicio.</p></div>`;
+  }
+
+  function viewAcerca() {
+    return `<div class="page narrow">
+      <div class="head"><h1>Acerca de Red Cuidar</h1><p class="sub">Cuidamos a quien cuida</p></div>
+      <div class="prose"><p class="about-lead">Vos sostenés a otros. Nosotros te acompañamos a vos.</p>
+      <p>La Red Cuidar acompaña a las personas que cuidan a adultos mayores: familiares y profesionales que sostienen el cuidado todos los días.</p>
+      <p>Cuidarte+ es su espacio digital: pausas guiadas, recursos, recordatorios, turnos, tareas y un registro diario de cómo estás, para que cuidar a otro no signifique dejar de cuidarte.</p>
+      <p class="note">Cuidarte+ acompaña, pero no reemplaza la atención profesional.</p></div></div>`;
+  }
+
+  function viewTerminos() {
+    return `<div class="page narrow" style="max-width:668px"><button class="back" data-action="goback">${ic("chevL")} Volver</button>
+      <h1>Términos y privacidad</h1>
+      <p class="note">Texto provisorio para la demo. Los términos definitivos deben ser revisados por un profesional legal antes del lanzamiento.</p>
+      <div class="prose">
+        <h2>Qué datos pedimos</h2><p>Para cuidadores: nombre, apellidos, mail, celular y fecha de nacimiento, y opcionalmente género, nacionalidad, país y barrios. Para personas cuidadas: nombre, apellido y medicación. Los administradores se cargan directamente en el sistema.</p>
+        <h2>Tu registro de bienestar</h2><p>Cómo te sentís es información sensible según la Ley 25.326. Tus registros los ves solo vos. En esta demo se guardan únicamente en este navegador y no se envían a ningún servidor.</p>
+        <h2>Datos de salud de la persona cuidada</h2><p>La medicación es un dato de salud. Solo la ven el administrador y los cuidadores asignados a esa persona, y se carga con el consentimiento de la persona cuidada o de quien la represente.</p>
+        <h2>Un dispositivo por cuenta</h2><p>Cada cuenta se usa desde un solo dispositivo. Guardamos qué dispositivo es y la última dirección IP de acceso para proteger tu cuenta. Para cambiar de dispositivo, el administrador libera la cuenta.</p>
+        <h2>Ubicación, alertas y mails</h2><p>La ubicación y las alertas son opcionales. La ubicación se usa solo cuando tocás el botón de urgencia y no se guarda. Usamos tu fecha de nacimiento para mandarte un saludo por mail en tu cumpleaños.</p>
+        <h2>Asistente</h2><p>El asistente responde con los recursos de la app, preguntas frecuentes, tus turnos y la medicación de tus pacientes. No ve tu registro de bienestar.</p>
+        <h2>Tus derechos</h2><p>Podés ver y corregir tus datos en Mi perfil, y borrar tu cuenta con todos tus datos.</p>
+      </div>
+      <p class="disclaimer">Es una herramienta de orientación y soporte destinada a complementar el cuidado personal. No reemplaza bajo ninguna circunstancia el consejo, diagnóstico o tratamiento médico profesional. Ante una emergencia, contáctese inmediatamente a su servicio de salud local.</p></div>`;
+  }
+
+  /* ---------- Views: persona cuidada ---------- */
+  function viewPaciente() {
+    const p = patient(state.patientMeId) || state.patients[0];
+    const today = iso(new Date()), n = nowAbs();
+    const todays = state.shifts.filter(s => s.patientId === p.id && s.date === today).sort((a, b) => absStart(a) - absStart(b));
+    const cur = todays.find(s => absStart(s) <= n && absEnd(s) > n), nxt = nextShift(null, p.id);
+    const cg = s => state.caregivers.find(c => c.id === s.caregiverId);
+    const doses = []; p.meds.forEach(m => m.horarios.forEach(h => doses.push({ h, m })));
+    doses.sort((a, b) => toMin(a.h) - toMin(b.h));
+    return `<div class="page narrow"><div class="head"><p class="hello">Hola, ${esc(p.nombre)}</p><h1>Tu día</h1><p class="sub">${fmtLong(new Date())}</p></div>
+      <button class="urgent" data-action="urgent">${urgentIcon}<div><strong>Urgencia</strong><span>Llamar al SAME ${esc(state.profile.same || "107")}</span></div></button>
+      <section class="card rcard"><div class="rhead"><span class="badge">${ic("users")}</span><div><h3>${cur ? "Te está cuidando" : "Quién te cuida"}</h3><p>${cur ? `${esc(cName(cg(cur)))}, hasta las ${cur.end}` : nxt ? `${esc(cName(cg(nxt)))} · ${relDay(nxt.date)}, ${hrsLabel(nxt)}` : "No hay turnos cargados."}</p></div></div>
+        ${todays.length ? `<div class="tasks">${todays.map(s => `<div class="task"><span class="time" style="width:auto">${hrsLabel(s)}</span><span class="txt">${esc(cName(cg(s)))}</span></div>`).join("")}</div>` : ""}</section>
+      <section class="group"><h2 class="section">Tu medicación de hoy</h2>
+        <div class="card pcard">${doses.length ? `<div class="tasks">${doses.map(d => `<div class="task"><span class="time">${d.h}</span><span class="txt">${esc(d.m.nombre)} ${esc(d.m.dosis)}</span></div>`).join("")}</div>` : `<p class="optional" style="margin:0">No hay medicación cargada.</p>`}</div>
+        <p class="foot-note" style="margin:0">Si algo no coincide con lo que te indicó tu médico, avisale a quien te cuida.</p></section>
+      <div class="quote"><div><p>${esc(quoteOfDay())}</p><small>Frase del día · Red Cuidar</small></div></div></div>`;
+  }
+
+  /* ---------- Views: admin ---------- */
+  function viewAdmin() {
+    const mon = monday(new Date()), a = dayNum(iso(mon)), b = a + 6;
+    const weekShifts = state.shifts.filter(s => dayNum(s.date) >= a && dayNum(s.date) <= b).length;
+    const blocked = Object.keys(state.devices).filter(k => state.devices[k].blocked);
+    const bdays = state.caregivers.map(c => ({ c, nb: nextBirthday(c.nacimiento) })).filter(x => x.nb).sort((x, y) => x.nb.days - y.nb.days);
+    const nb = bdays[0];
+    const who = k => { const c = state.caregivers.find(x => x.id === k); if (c) return cName(c); const p = patient(k); if (p) return pName(p); const ad = state.admins.find(x => x.id === k); return ad ? `${ad.nombre} ${ad.apellido}` : k; };
+    return `<div class="page wide"><div class="head"><p class="hello">Hola, ${esc(state.admins[0].nombre)}</p><h1>Panel</h1><p class="sub">Cuidadores, personas cuidadas, dispositivos y correos.</p></div>
+      <div class="stats">
+        <a class="card stat" href="#admin-cuidadores"><b>${state.caregivers.length}</b><span>Cuidadores</span></a>
+        <a class="card stat" href="#admin-pacientes"><b>${state.patients.length}</b><span>Personas cuidadas</span></a>
+        <div class="card stat"><b>${weekShifts}</b><span>Turnos esta semana</span></div>
+        <a class="card stat" href="#admin-dispositivos"><b>${blocked.length}</b><span>Accesos bloqueados</span></a>
+        <a class="card stat" href="#admin-correos"><b>${nb ? (nb.nb.days === 0 ? "Hoy" : nb.nb.days + " d") : "—"}</b><span>${nb ? "Cumple " + esc(nb.c.nombre) : "Sin cumpleaños"}</span></a>
+      </div>
+      <section class="group"><h2 class="section">Requiere atención</h2>
+        ${blocked.map(k => `<div class="card rcard" style="gap:10px"><div class="row-between"><div><b style="color:var(--ink)">${esc(who(k))}</b> intentó entrar desde otro dispositivo</div><span class="pill bad">Bloqueado</span></div><p class="optional" style="margin:0">${esc(state.devices[k].blocked.label)} · IP ${esc(state.devices[k].blocked.ip)} · ${ago(state.devices[k].blocked.at)}</p><div class="btn-row"><a class="ghost" href="#admin-dispositivos">Revisar</a></div></div>`).join("")}
+        <div class="card rcard" style="gap:10px"><div class="row-between"><b style="color:var(--ink)">Casilla de correo en DonWeb</b><span class="pill warn">Pendiente</span></div><p class="optional" style="margin:0">Hace falta para mandar los saludos de cumpleaños. Se configura fuera de la app.</p><div class="btn-row"><a class="ghost" href="#admin-correos">Ver pasos</a></div></div>
+      </section></div>`;
+  }
+  function viewAdminCuidadores() {
+    const rows = state.caregivers.map(c => `<tr><td><b style="color:var(--ink)">${esc(c.nombre)}</b></td><td>${esc(c.apellidos)}</td><td class="n">${esc(c.telefono)}</td><td>${esc(c.email)}</td><td class="n">${esc(c.nacimiento)}</td>
+      <td>${esc(c.patients.map(id => patient(id)).filter(Boolean).map(p => p.nombre).join(", ") || "—")}<details class="assign"><summary>Asignar</summary>${state.patients.map(p => `<label><input type="checkbox" data-assign="${c.id}" data-pid="${p.id}"${c.patients.indexOf(p.id) > -1 ? " checked" : ""}> ${esc(pName(p))}</label>`).join("")}</details></td></tr>`).join("");
+    const ad = state.admins.map(a => `<tr><td><b style="color:var(--ink)">${esc(a.nombre)}</b></td><td>${esc(a.apellido)}</td><td>${esc(a.email)}</td><td class="n">${esc(a.celular)}</td></tr>`).join("");
+    return `<div class="page wide"><div class="head"><h1>Cuidadores</h1><p class="sub">Datos de cada cuidador/a y a quién cuida. Datos de ejemplo.</p></div>
+      <div class="card tbl-wrap"><table><thead><tr><th>Nombre</th><th>Apellidos</th><th>Teléfono</th><th>Mail</th><th>Nacimiento</th><th>Pacientes</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <section class="card rcard"><h2 class="section" style="font-size:1.2rem">Agregar cuidador/a</h2>
+        <form class="form" data-form="cg-add" novalidate>
+          <div class="two">${field("ac-nombre", "Nombre", "")}${field("ac-apellidos", "Apellidos", "")}</div>
+          <div class="two">${field("ac-tel", "Teléfono", "", "Con código de área, sin 0 ni 15.", 'inputmode="tel"')}${field("ac-email", "Mail", "", "", "", "email")}</div>
+          ${field("ac-nac", "Fecha de nacimiento", "", "dd/mm/aaaa", 'inputmode="numeric" placeholder="dd/mm/aaaa"')}
+          <div class="field"><span class="lbl">Pacientes que cuida</span><div class="btn-row">${state.patients.map(p => `<label class="check" style="padding:10px 14px"><input type="checkbox" name="ac-p" value="${p.id}"><span>${esc(pName(p))}</span></label>`).join("")}</div></div>
+          <button class="primary-btn auto" type="submit">${ic("plus")} Agregar</button>
+        </form></section>
+      <section class="group"><div class="row-between"><h2 class="section">Administradores</h2><span class="pill neutral">Se cargan en la base de datos</span></div>
+        <div class="card tbl-wrap"><table><thead><tr><th>Nombre</th><th>Apellido</th><th>Mail</th><th>Celular</th></tr></thead><tbody>${ad}</tbody></table></div></section></div>`;
+  }
+  function viewAdminPacientes() {
+    const cards = state.patients.map(p => {
+      const cgs = state.caregivers.filter(c => c.patients.indexOf(p.id) > -1).map(cName);
+      return `<section class="card pcard"><div class="row-between"><h2 class="section" style="font-size:1.25rem">${esc(pName(p))}</h2><span class="optional">${cgs.length ? "Cuidan: " + esc(cgs.join(", ")) : "Sin cuidadores asignados"}</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Medicamento</th><th>Dosis</th><th>Horarios</th><th></th></tr></thead><tbody>${p.meds.length ? p.meds.map(m => `<tr><td>${esc(m.nombre)}</td><td>${esc(m.dosis)}</td><td class="n">${esc(m.horarios.join(", "))}</td><td style="text-align:right"><button class="icon-btn" data-action="med-del" data-pid="${p.id}" data-mid="${m.id}" aria-label="Quitar ${esc(m.nombre)}">${ic("trash")}</button></td></tr>`).join("") : `<tr><td colspan="4" class="optional">Sin medicación cargada.</td></tr>`}</tbody></table></div>
+        <form class="four" data-form="med-add" data-pid="${p.id}" novalidate>
+          <div class="field"><label for="mn-${p.id}">Medicamento</label><input type="text" id="mn-${p.id}" name="nombre"></div>
+          <div class="field"><label for="md-${p.id}">Dosis</label><input type="text" id="md-${p.id}" name="dosis" placeholder="10 mg"></div>
+          <div class="field"><label for="mh-${p.id}">Horarios</label><input type="text" id="mh-${p.id}" name="horarios" placeholder="08:00, 20:00"></div>
+          <button class="ghost" type="submit" style="justify-content:center;padding:12px">${ic("plus")} Agregar</button>
+        </form><p class="err" id="med-err-${p.id}" hidden></p></section>`;
+    }).join("");
+    return `<div class="page"><div class="head"><h1>Personas cuidadas</h1><p class="sub">Nombre, apellido y medicación. Datos de ejemplo.</p></div>
+      <p class="note">La medicación es un dato de salud: la ven solo el administrador y los cuidadores asignados. Cada toma aparece como tarea en el checklist diario del cuidador.</p>
+      ${cards}
+      <section class="card rcard"><h2 class="section" style="font-size:1.2rem">Agregar persona cuidada</h2>
+        <form class="form" data-form="pt-add" novalidate><div class="two">${field("ap-nombre", "Nombre", "")}${field("ap-apellido", "Apellido", "")}</div><button class="primary-btn auto" type="submit">${ic("plus")} Agregar</button></form></section></div>`;
+  }
+  function viewAdminDispositivos() {
+    const users = state.caregivers.map(c => [c.id, cName(c), ROLES.cuidador]).concat(state.admins.map(a => [a.id, `${a.nombre} ${a.apellido}`, ROLES.admin]), state.patients.map(p => [p.id, pName(p), ROLES.paciente]));
+    const rows = users.map(([k, n, r]) => { const d = state.devices[k] || {};
+      const st = d.blocked ? '<span class="pill bad">Intento bloqueado</span>' : d.label ? '<span class="pill ok">Activo</span>' : '<span class="pill warn">Sin dispositivo</span>';
+      const acts = (d.blocked ? `<button class="ghost" data-action="dev-allow" data-u="${k}">Autorizar el nuevo</button>` : "") + (d.label ? `<button class="ghost" data-action="dev-free" data-u="${k}">Liberar</button>` : "");
+      return `<tr><td><b style="color:var(--ink)">${esc(n)}</b><br><span class="optional">${r}</span></td><td>${esc(d.label || "—")}${d.blocked ? `<br><span class="optional">Intentó: ${esc(d.blocked.label)}</span>` : ""}</td><td class="n">${esc(d.ip || "—")}${d.blocked ? `<br><span class="optional">${esc(d.blocked.ip)}</span>` : ""}</td><td class="n">${d.label ? ago(d.last) : "—"}</td><td>${st}</td><td><div class="btn-row" style="flex-wrap:nowrap">${acts}</div></td></tr>`; }).join("");
+    return `<div class="page wide"><div class="head"><h1>Dispositivos</h1><p class="sub">Cada cuenta entra desde un solo dispositivo.</p></div>
+      <div class="card tbl-wrap"><table><thead><tr><th>Usuario</th><th>Dispositivo</th><th>Última IP</th><th>Último acceso</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="privacy">${ic("shield")}<p>El dispositivo se reconoce por una credencial que queda guardada en él al primer ingreso. La IP se guarda solo como registro: cambia seguido en datos móviles y wifi, así que no sirve para identificar el equipo. Los navegadores no permiten leer la dirección MAC. «Liberar» deja la cuenta lista para registrar un dispositivo nuevo en el próximo ingreso.</p></div></div>`;
+  }
+  function viewAdminCorreos() {
+    const bd = state.caregivers.map(c => ({ c, nb: nextBirthday(c.nacimiento) })).filter(x => x.nb).sort((x, y) => x.nb.days - y.nb.days);
+    const first = bd[0] ? bd[0].c : me();
+    const steps = ["Crear la casilla de envío en el panel de DonWeb (por ejemplo avisos@ con el dominio de la app).", "Cargar los datos SMTP que da DonWeb (servidor, puerto, usuario y contraseña) como variables de entorno del backend.", "Configurar SPF, DKIM y DMARC en el DNS del dominio para que los mails no caigan en spam.", "Mandar un mail de prueba y revisar que llegue a la bandeja de entrada."];
+    return `<div class="page"><div class="head"><h1>Correos</h1><p class="sub">Saludos automáticos de cumpleaños para cada cuidador/a.</p></div>
+      <section class="card rcard"><div class="row-between"><h2 class="section" style="font-size:1.2rem">Casilla de envío en DonWeb</h2><span class="pill warn">Pendiente</span></div>
+        <ol class="checklist">${steps.map((s, i) => `<li><span><b style="color:var(--ink)">${i + 1}.</b> ${esc(s)}</span></li>`).join("")}</ol>
+        <p class="optional" style="margin:0">Se configura en DonWeb y en el servidor. Esta demo no puede mandar mails.</p></section>
+      <section class="group"><h2 class="section">Próximos cumpleaños</h2>
+        <div class="card tbl-wrap"><table><thead><tr><th>Cuidador/a</th><th>Mail</th><th>Cumple</th><th>Falta</th><th>Estado</th></tr></thead><tbody>${bd.map(x => `<tr><td><b style="color:var(--ink)">${esc(cName(x.c))}</b></td><td>${esc(x.c.email)}</td><td class="n">${fmtDM(x.nb.date)} · ${x.nb.age} años</td><td class="n">${x.nb.days === 0 ? "Hoy" : x.nb.days + " días"}</td><td>${x.nb.days === 0 ? '<span class="pill ok">Se envía hoy 09:00</span>' : '<span class="pill neutral">Programado</span>'}</td></tr>`).join("")}</tbody></table></div>
+        <p class="foot-note" style="margin:0">El servidor revisa todos los días a las 09:00 quién cumple años y le manda el saludo. Si el mail falla, lo reintenta y queda registrado.</p></section>
+      <section class="group"><h2 class="section">Así llega el mail</h2>
+        <div class="card mailprev"><span class="optional">Para: ${esc(first.email)}</span><span class="subj">¡Feliz cumpleaños, ${esc(first.nombre)}!</span>
+          <p style="margin:0">Hoy queremos cuidarte a vos. Gracias por todo lo que hacés por las personas que acompañás. Regalate un momento: en Cuidarte+ tenés una pausa guiada esperándote.</p><p style="margin:0;color:var(--muted)">Red Cuidar · Cuidamos a quien cuida</p></div>
+        <div class="btn-row"><button class="ghost" data-action="bday-test">${ic("mail")} Simular envío de prueba</button></div>
+        ${state.mailLog.length ? `<div class="card tbl-wrap"><table><thead><tr><th>Fecha</th><th>Para</th><th>Asunto</th><th>Estado</th></tr></thead><tbody>${state.mailLog.slice().reverse().map(l => `<tr><td class="n">${new Date(l.at).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td><td>${esc(l.to)}</td><td>${esc(l.subj)}</td><td><span class="pill neutral">Simulado</span></td></tr>`).join("")}</tbody></table></div>` : ""}
+      </section></div>`;
+  }
+
+  /* ---------- Router ---------- */
+  const NAV = {
+    cuidador: [["inicio", "Inicio", "home", 1], ["turnos", "Turnos", "calendar", 1], ["tareas", "Tareas", "list", 1], ["asistente", "Asistente", "sparkle", 1], ["bienestar", "Bienestar", "sun", 1], ["pausa", "Pausa", "pause"], ["recursos", "Recursos", "search"]],
+    admin: [["admin", "Panel", "grid", 1], ["admin-cuidadores", "Cuidadores", "users", 1], ["admin-pacientes", "Pacientes", "heart", 1], ["admin-dispositivos", "Dispositivos", "phone", 1], ["admin-correos", "Correos", "mail", 1]],
+    paciente: [["paciente", "Hoy", "home", 1]]
+  };
+  const HOME = { cuidador: "inicio", admin: "admin", paciente: "paciente" };
+  const VIEWS = {
+    cuidador: { inicio: viewInicio, recursos: viewRecursos, pausa: viewPausa, bienestar: viewBienestar, perfil: viewPerfil, recordatorios: viewRecordatorios, turnos: viewTurnos, tareas: viewTareas, asistente: viewAsistente, acerca: viewAcerca, terminos: viewTerminos },
+    admin: { admin: viewAdmin, "admin-cuidadores": viewAdminCuidadores, "admin-pacientes": viewAdminPacientes, "admin-dispositivos": viewAdminDispositivos, "admin-correos": viewAdminCorreos, acerca: viewAcerca, terminos: viewTerminos },
+    paciente: { paciente: viewPaciente, acerca: viewAcerca, terminos: viewTerminos }
+  };
+  let lastRoute = "inicio", menuOpen = false;
+  function currentRoute() {
+    const h = (location.hash || "").slice(1), role = state.role;
+    if (role === "cuidador" && h.indexOf("recurso-") === 0) return h;
+    return VIEWS[role][h] ? h : HOME[role];
+  }
+  function menuHtml() {
+    const r = state.role;
+    const who = r === "cuidador" ? cName(me()) : r === "admin" ? `${state.admins[0].nombre} ${state.admins[0].apellido}` : pName(patient(state.patientMeId));
+    const links = r === "cuidador" ? `<a href="#perfil">Mi perfil</a><a href="#recordatorios">Recordatorios</a>` : "";
+    return `<div class="who"><b>${esc(who || "Sin nombre")}</b><span>${ROLES[r]}</span></div>${links}<a href="#acerca">Acerca de Red Cuidar</a><a href="#terminos">Términos y privacidad</a>
+      <div class="mlabel">Tema</div><div class="segc" role="group" aria-label="Tema">${[["light", "Claro"], ["dark", "Oscuro"], ["system", "Sistema"]].map(t => `<button type="button" data-action="theme" data-t="${t[0]}" aria-pressed="${theme === t[0]}">${t[1]}</button>`).join("")}</div>
+      <div class="mlabel">Ver la app como (demo)</div><div class="segc" role="group" aria-label="Rol">${[["cuidador", "Cuidador/a"], ["admin", "Admin"], ["paciente", "Cuidada"]].map(t => `<button type="button" data-action="role" data-r="${t[0]}" aria-pressed="${r === t[0]}">${t[1]}</button>`).join("")}</div>`;
+  }
+  function render(keepScroll) {
+    const route = currentRoute(), role = state.role;
+    let html, section = route;
+    if (route.indexOf("recurso-") === 0) { html = viewArticulo(route.slice(8)); section = "recursos"; }
+    else html = VIEWS[role][route]();
+    if (route === "recordatorios") section = "pausa";
+    if (route !== "terminos") lastRoute = route;
+    $("#shell").classList.toggle("bare", route === "terminos");
+    const nav = NAV[role];
+    $("#nav").style.setProperty("--n", nav.filter(n => n[3]).length);
+    $("#nav").innerHTML = nav.map(n => `<a class="nav-link${section === n[0] ? " on" : ""}" href="#${n[0]}"${n[3] ? " data-m" : ""}${section === n[0] ? ' aria-current="page"' : ""}>${ic(n[2])}<span>${n[1]}</span></a>`).join("");
+    $("#role-tag").textContent = "Viendo como: " + ROLES[role];
+    $("#acct-btn").innerHTML = `${ic("user")}<span>Mi cuenta</span>`;
+    $("#acct-menu").innerHTML = menuHtml();
+    $("#acct-menu").hidden = !menuOpen; $("#acct-btn").setAttribute("aria-expanded", String(menuOpen));
+    $("#main").innerHTML = html;
+    if (route === "asistente") renderMsgs();
+    if (!keepScroll) window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", () => { menuOpen = false; render(); });
+
+  /* ---------- Player ---------- */
+  let player = null;
+  function openPlayer(id) {
+    const p = PAUSES[id]; if (!p) return;
+    closeLayer();
+    $("#layer").innerHTML = `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pl-title"><div class="dialog">
+      <button class="close" data-action="close" aria-label="Cerrar">${ic("x")}</button>
+      <h2 id="pl-title">${p.title}</h2>
+      <div class="stage"><div class="orb${p.breath ? "" : " pulse"}" id="orb"></div></div>
+      <p class="step" id="pl-step"></p><p class="timer" id="pl-time"></p>
+      <div class="bar"><i id="pl-bar"></i></div>
+      <div class="btn-row" id="pl-btns"><button class="primary-btn" style="flex:1" data-action="toggle" id="pl-toggle">Pausar</button><button class="ghost" data-action="close">Terminar</button></div>
+    </div></div>`;
+    player = { id, p, elapsed: 0, running: true, last: performance.now(), phase: null };
+    player.timer = setInterval(tick, 200); tick();
+    $("#pl-toggle").focus();
+  }
+  function tick() {
+    if (!player) return;
+    const now = performance.now();
+    if (player.running) player.elapsed += (now - player.last) / 1000;
+    player.last = now;
+    const { p } = player, t = Math.min(player.elapsed, p.secs);
+    let text;
+    if (p.breath) {
+      const c = t % 12; const phase = c < 4 ? "in" : c < 6 ? "hold" : "out";
+      text = phase === "in" ? "Inhalá por la nariz…" : phase === "hold" ? "Sostené un momento…" : "Soltá el aire despacio por la boca…";
+      if (phase !== player.phase && player.running) {
+        const orb = $("#orb");
+        if (orb) { if (phase === "in") { orb.style.transitionDuration = "4s"; orb.style.transform = "scale(1)"; } else if (phase === "out") { orb.style.transitionDuration = "6s"; orb.style.transform = "scale(.6)"; } }
+        player.phase = phase;
+      }
+    } else {
+      const per = p.secs / p.steps.length; text = p.steps[Math.min(p.steps.length - 1, Math.floor(t / per))];
+    }
+    const left = Math.ceil(p.secs - t);
+    $("#pl-step").textContent = player.running ? text : "En pausa";
+    $("#pl-time").textContent = `${Math.floor(left / 60)}:${pad(left % 60)} restantes`;
+    $("#pl-bar").style.width = (t / p.secs * 100) + "%";
+    if (t >= p.secs) finishPlayer();
+  }
+  function finishPlayer() {
+    clearInterval(player.timer); player = null;
+    $("#pl-step").textContent = "Terminaste. Bien hecho.";
+    $("#pl-time").textContent = "Tomate un momento antes de volver.";
+    const orb = $("#orb"); if (orb) { orb.classList.remove("pulse"); orb.style.transform = "scale(.85)"; }
+    $("#pl-btns").innerHTML = `<a class="primary-btn" style="flex:1" href="#bienestar" data-action="close">Registrar cómo estoy</a><button class="ghost" data-action="close">Cerrar</button>`;
+  }
+  function closeLayer() { if (player) { clearInterval(player.timer); player = null; } $("#layer").innerHTML = ""; }
+  function openUrgent() {
+    closeLayer();
+    const n = state.profile.same || "107";
+    $("#layer").innerHTML = `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="ur-title"><div class="dialog">
+      <button class="close" data-action="close" aria-label="Cerrar">${ic("x")}</button>
+      <h2 id="ur-title">Urgencia</h2>
+      <p style="margin:0">Llamá al servicio de emergencias médicas:</p>
+      <p class="bignum" id="ur-num">${esc(n)}</p>
+      <div class="btn-row"><a class="danger" style="text-decoration:none" href="tel:${esc(n.replace(/[^\d+]/g, ""))}">Llamar al ${esc(n)}</a><button class="ghost" data-action="copy">Copiar número</button></div>
+      <p class="note" style="font-size:.92rem">Si el botón no abre el teléfono, marcá el número a mano. ${state.profile.location ? "En esta demo no se accede a la ubicación del dispositivo; en la app instalada vas a poder compartirla desde acá." : "Podés activar compartir ubicación en Mi perfil."}</p>
+    </div></div>`;
+  }
+
+  /* ---------- Reminders (while open) ---------- */
+  const fired = {};
+  const REM_MSG = { water: ["cup", "Es hora de tomar agua. Un minuto para hidratarte."], stretch: ["walk", "Hora de estirarte: cuello, hombros y espalda."], relax: ["leaf", "Tomate 5 minutos para relajarte."] };
+  function notify(type) {
+    const m = REM_MSG[type];
+    const extra = type === "stretch" ? ` <button data-action="play" data-id="estirar">Empezar</button>` : type === "relax" ? ` <a href="#pausa">Ver pausas</a>` : "";
+    toast(`${ic(m[0])} <span>${m[1]}${extra}</span>`, 9000);
+    try { if ("Notification" in window && Notification.permission === "granted") new Notification("Cuidarte+", { body: m[1] }); } catch (e) {}
+  }
+  function checkReminders() {
+    if (state.role !== "cuidador") return;
+    const d = new Date(), now = d.getHours() * 60 + d.getMinutes(), day = d.toDateString(), hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    ["water", "stretch"].forEach(k => { const r = state.reminders[k]; if (!r.on) return; const a = toMin(r.from), b = toMin(r.to);
+      if (a != null && b != null && now >= a && now <= b && (now - a) % (+r.freq) === 0 && !fired[k + day + hm]) { fired[k + day + hm] = 1; notify(k); } });
+    const r = state.reminders.relax;
+    if (r.on && r.times.indexOf(hm) > -1 && !fired["r" + day + hm]) { fired["r" + day + hm] = 1; notify("relax"); }
+  }
+  setInterval(checkReminders, 20000);
+
+  /* ---------- Events ---------- */
+  let lastDeleted = null;
+  document.addEventListener("click", async e => {
+    const el = e.target.closest("[data-action]");
+    if (!el) { if (menuOpen && !e.target.closest(".acct")) { menuOpen = false; $("#acct-menu").hidden = true; $("#acct-btn").setAttribute("aria-expanded", "false"); } return; }
+    const a = el.dataset.action;
+    if (a === "menu") { menuOpen = !menuOpen; $("#acct-menu").hidden = !menuOpen; el.setAttribute("aria-expanded", String(menuOpen)); }
+    else if (a === "home") { e.preventDefault(); location.hash = HOME[state.role]; }
+    else if (a === "theme") { applyTheme(el.dataset.t); $("#acct-menu").innerHTML = menuHtml(); }
+    else if (a === "role") { state.role = el.dataset.r; save(); menuOpen = false; if (location.hash.slice(1) === HOME[state.role]) render(); else location.hash = HOME[state.role]; }
+    else if (a === "play") openPlayer(el.dataset.id);
+    else if (a === "urgent") openUrgent();
+    else if (a === "close") closeLayer();
+    else if (a === "toggle" && player) { player.running = !player.running; player.last = performance.now(); el.textContent = player.running ? "Pausar" : "Reanudar"; player.phase = null; tick(); }
+    else if (a === "copy") {
+      const n = $("#ur-num").textContent;
+      try { await navigator.clipboard.writeText(n); toast("Número copiado."); }
+      catch (err) { const r = document.createRange(); r.selectNodeContents($("#ur-num")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Número seleccionado. Copialo desde el menú."); }
+    }
+    else if (a === "seg") {
+      draft[el.dataset.k] = el.dataset.v;
+      el.parentElement.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === el)));
+      if (draft.mood && draft.energy && draft.stress) $("#reg-err").hidden = true;
+    }
+    else if (a === "hist") { histMode = el.dataset.m; el.parentElement.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === el))); $("#hist").innerHTML = historyHtml(); }
+    else if (a === "goback") { location.hash = lastRoute; }
+    else if (a === "test") notify(el.dataset.t);
+    else if (a === "perm") {
+      const msg = $("#perm-msg");
+      try {
+        if (!("Notification" in window)) throw new Error("x");
+        const res = await Notification.requestPermission();
+        if (res === "granted") { toast("Notificaciones activadas."); render(true); return; }
+        throw new Error("x");
+      } catch (err) { msg.hidden = false; msg.textContent = "Este navegador no dio permiso para notificaciones. Igual vas a ver los avisos dentro de la app mientras esté abierta."; }
+    }
+    else if (a === "del-ask") { $("#del-zone").innerHTML = `<div class="confirm"><p>¿Seguro? Se borran tu perfil, tus registros, tus turnos y tus recordatorios de este navegador.</p><div class="btn-row"><button class="danger" data-action="del-yes">Sí, borrar todo</button><button class="ghost" data-action="del-no">Cancelar</button></div></div>`; }
+    else if (a === "del-no") { $("#del-zone").innerHTML = `<button class="danger-outline" data-action="del-ask">Borrar mi cuenta</button>`; }
+    else if (a === "del-yes") {
+      const c = me(); Object.assign(c, { nombre: "", apellidos: "", telefono: "", email: "", nacimiento: "" });
+      state.records = []; state.shifts = state.shifts.filter(s => s.caregiverId !== c.id);
+      ["water", "stretch"].forEach(k => state.reminders[k].on = false); state.reminders.relax.on = false;
+      state.profile = { gender: "", nationality: "", country: "Argentina", barrio: "", barrioWork: "", alerts: false, location: false, same: "107", terms: false };
+      state.devices[c.id] = { label: null }; save(); location.hash = "inicio"; render(); toast("Tu cuenta y tus datos se borraron.");
+    }
+    else if (a === "week") { weekOff = el.dataset.d === "0" ? 0 : weekOff + (+el.dataset.d); render(true); }
+    else if (a === "day") { dayOff = el.dataset.d === "0" ? 0 : dayOff + (+el.dataset.d); render(true); }
+    else if (a === "shift-del") {
+      const i = state.shifts.findIndex(s => s.id === el.dataset.id); if (i < 0) return;
+      lastDeleted = state.shifts.splice(i, 1)[0]; save(); render(true);
+      toast(`<span>Turno borrado.</span> <button data-action="undo-del">Deshacer</button>`, 6000);
+    }
+    else if (a === "undo-del" && lastDeleted) { state.shifts.push(lastDeleted); lastDeleted = null; save(); el.closest(".toast").remove(); render(true); }
+    else if (a === "task-del") { const pid = el.dataset.pid; state.tasks[pid] = (state.tasks[pid] || []).filter(t => t.id !== el.dataset.tid); save(); render(true); }
+    else if (a === "suggest") { const t = $("#chat-in"); if (t) { t.value = el.dataset.q; t.focus(); } }
+    else if (a === "chat-stop") { if (chat.ctl) chat.ctl.abort(); }
+    else if (a === "chat-clear") { if (chat.ctl) chat.ctl.abort(); chat.turns = []; chat.items = []; render(true); }
+    else if (a === "chat-undo") {
+      const m = chat.items[+el.dataset.i]; if (!m || m.undone) return;
+      state.shifts = state.shifts.filter(s => m.ids.indexOf(s.id) < 0); m.undone = true; save();
+      chat.turns.push({ role: "user", content: "(Deshice los turnos que agregaste recién. Ya no están cargados.)" }, { role: "assistant", content: "Entendido, esos turnos ya no están cargados." });
+      renderMsgs(); toast("Turnos deshechos.");
+    }
+    else if (a === "med-del") { const p = patient(el.dataset.pid); p.meds = p.meds.filter(m => m.id !== el.dataset.mid); save(); render(true); }
+    else if (a === "dev-free") { state.devices[el.dataset.u] = { label: null }; save(); render(true); toast("Dispositivo liberado. Se registra uno nuevo en el próximo ingreso."); }
+    else if (a === "dev-allow") { const d = state.devices[el.dataset.u]; state.devices[el.dataset.u] = { label: d.blocked.label, ip: d.blocked.ip, last: Date.now() }; save(); render(true); toast("Nuevo dispositivo autorizado. El anterior quedó sin acceso."); }
+    else if (a === "bday-test") { const c = state.caregivers.find(x => x.email) || me(); state.mailLog.push({ at: Date.now(), to: c.email, subj: `¡Feliz cumpleaños, ${c.nombre}!` }); save(); render(true); toast("Envío simulado. En la versión final sale por la casilla de DonWeb."); }
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { if ($("#layer").innerHTML) closeLayer(); else if (menuOpen) { menuOpen = false; $("#acct-menu").hidden = true; } }
+    if (e.key === "Enter" && !e.shiftKey && e.target.id === "chat-in") { e.preventDefault(); const v = e.target.value; if (v.trim() && !chat.busy && !chat.disabled) { e.target.value = ""; sendChat(v.trim()); } }
+  });
+  document.addEventListener("change", e => {
+    const t = e.target;
+    if (t.dataset.toggle) $("#" + t.dataset.toggle).hidden = !t.checked;
+    if (t.dataset.task) {
+      const di = iso(addDays(new Date(), dayOff)), k = doneKey(di, t.dataset.pid);
+      state.done[k] = state.done[k] || {}; if (t.checked) state.done[k][t.dataset.task] = true; else delete state.done[k][t.dataset.task];
+      save(); render(true);
+    }
+    if (t.dataset.assign) {
+      const c = state.caregivers.find(x => x.id === t.dataset.assign), pid = t.dataset.pid;
+      c.patients = t.checked ? c.patients.concat(c.patients.indexOf(pid) < 0 ? [pid] : []) : c.patients.filter(x => x !== pid);
+      save(); toast("Asignación guardada.");
+      const row = t.closest("td"); if (row && row.firstChild) row.firstChild.textContent = c.patients.map(patient).filter(Boolean).map(p => p.nombre).join(", ") || "—";
+    }
+  });
+
+  function setErr(id, msg) { const el = $("#" + id + "-err"); if (!el) return !msg; el.hidden = !msg; el.textContent = msg || ""; return !msg; }
+  const okPhone = s => /^[1-9][\d ]{7,14}$/.test(s), okMail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  document.addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target, kind = f.dataset.form;
+    if (kind === "reg") {
+      if (!(draft.mood && draft.energy && draft.stress)) { $("#reg-err").hidden = false; return; }
+      state.records.push({ at: new Date().toISOString(), mood: draft.mood, energy: draft.energy, stress: draft.stress, note: $("#reg-note").value.trim() });
+      save(); draft = { mood: null, energy: null, stress: null };
+      render(true); toast(`${ic("check")} <span>Registro guardado.</span>`);
+    }
+    else if (kind === "profile") {
+      const v = id => $("#" + id).value.trim();
+      const nombre = v("p-nombre"), apellidos = v("p-apellidos"), email = v("p-email"), phone = v("p-phone"), birth = v("p-birth"), same = v("p-same");
+      let ok = [setErr("p-nombre", nombre ? "" : "Escribí tu nombre."), setErr("p-apellidos", apellidos ? "" : "Escribí tus apellidos."), setErr("p-email", okMail(email) ? "" : "Revisá el mail, por ejemplo nombre@dominio.com."),
+        setErr("p-phone", okPhone(phone) ? "" : "Escribí el celular con código de área, sin el 0 ni el 15."), setErr("p-birth", parseBirth(birth) ? "" : "Revisá la fecha: día/mes/año, por ejemplo 14/05/1980."),
+        setErr("p-same", /^\d{2,6}$/.test(same) ? "" : "Escribí solo números, por ejemplo 107.")].every(Boolean);
+      const terms = $("#p-terms").checked; $("#p-terms-err").hidden = terms; if (!terms) ok = false;
+      if (!ok) { const first = f.querySelector(".err:not([hidden])"); if (first) first.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+      Object.assign(me(), { nombre, apellidos, email, telefono: phone, nacimiento: birth });
+      Object.assign(state.profile, { same, gender: $("#p-gender").value, nationality: v("p-nat"), country: $("#p-country").value, barrio: v("p-barrio"), barrioWork: v("p-work"), alerts: $("#p-alerts").checked, location: $("#p-loc").checked, terms });
+      save(); toast(`${ic("check")} <span>Cambios guardados.</span>`);
+    }
+    else if (kind === "rem") {
+      let ok = true;
+      ["water", "stretch"].forEach(k => {
+        const on = $("#" + k + "-on").checked, from = $("#" + k + "-from").value, to = $("#" + k + "-to").value;
+        const bad = on && !(toMin(to) > toMin(from)); $("#" + k + "-err").hidden = !bad; if (bad) { ok = false; return; }
+        state.reminders[k] = { on, freq: +$("#" + k + "-freq").value, from: from || "08:00", to: to || "20:00" };
+      });
+      if (!ok) return;
+      state.reminders.relax = { on: $("#relax-on").checked, times: [0, 1, 2].map(i => $("#relax-t" + i).value) };
+      save(); toast(`${ic("check")} <span>Recordatorios guardados.</span>`);
+    }
+    else if (kind === "shift-add") {
+      const pid = $("#sh-p").value, d = $("#sh-d").value, s = $("#sh-s").value, en = $("#sh-e").value, rep = +$("#sh-r").value, err = $("#sh-err");
+      const fail = m => { err.hidden = false; err.textContent = m; };
+      if (!pid) return fail("Primero necesitás un paciente asignado.");
+      if (!d || !s || !en) return fail("Completá fecha, desde y hasta.");
+      if (s === en) return fail("El turno no puede empezar y terminar a la misma hora.");
+      const list = []; for (let i = 0; i < rep; i++) list.push(iso(addDays(fromIso(d), i * 7)));
+      const clash = list.map(x => ({ x, c: overlaps(state.meId, x, s, en) })).find(o => o.c);
+      if (clash) return fail(`Se superpone con tu turno del ${fmtLong(fromIso(clash.x))} de ${clash.c.start} a ${clash.c.end}.`);
+      list.forEach(x => state.shifts.push({ id: uid(), caregiverId: state.meId, patientId: pid, date: x, start: s, end: en, source: "manual" }));
+      save(); render(true); toast(`${ic("check")} <span>${list.length === 1 ? "Turno agregado." : list.length + " turnos agregados."}</span>`);
+    }
+    else if (kind === "task-add") {
+      const text = f.elements.text.value.trim(), time = f.elements.time.value, pid = f.dataset.pid;
+      if (!text) { f.elements.text.focus(); return; }
+      (state.tasks[pid] = state.tasks[pid] || []).push({ id: uid(), text, time }); save(); render(true);
+    }
+    else if (kind === "chat") { const t = $("#chat-in"); const v = t.value.trim(); if (v && !chat.busy && !chat.disabled) { t.value = ""; sendChat(v); } }
+    else if (kind === "cg-add") {
+      const v = id => $("#" + id).value.trim();
+      const ok = [setErr("ac-nombre", v("ac-nombre") ? "" : "Falta el nombre."), setErr("ac-apellidos", v("ac-apellidos") ? "" : "Faltan los apellidos."), setErr("ac-tel", okPhone(v("ac-tel")) ? "" : "Revisá el teléfono."),
+        setErr("ac-email", okMail(v("ac-email")) ? "" : "Revisá el mail."), setErr("ac-nac", parseBirth(v("ac-nac")) ? "" : "Usá dd/mm/aaaa.")].every(Boolean);
+      if (!ok) return;
+      if (state.caregivers.some(c => c.email.toLowerCase() === v("ac-email").toLowerCase())) { setErr("ac-email", "Ya hay una cuenta con ese mail."); return; }
+      const id = "c" + uid();
+      state.caregivers.push({ id, nombre: v("ac-nombre"), apellidos: v("ac-apellidos"), telefono: v("ac-tel"), email: v("ac-email"), nacimiento: v("ac-nac"), patients: Array.from(f.querySelectorAll('input[name="ac-p"]:checked')).map(x => x.value) });
+      state.devices[id] = { label: null }; save(); render(true); toast("Cuidador/a agregado. Le va a llegar un mail para activar la cuenta en la versión final.");
+    }
+    else if (kind === "pt-add") {
+      const n = $("#ap-nombre").value.trim(), ap = $("#ap-apellido").value.trim();
+      if (![setErr("ap-nombre", n ? "" : "Falta el nombre."), setErr("ap-apellido", ap ? "" : "Falta el apellido.")].every(Boolean)) return;
+      const id = "p" + uid(); state.patients.push({ id, nombre: n, apellido: ap, meds: [] }); state.tasks[id] = []; state.devices[id] = { label: null };
+      save(); render(true); toast("Persona cuidada agregada.");
+    }
+    else if (kind === "med-add") {
+      const pid = f.dataset.pid, p = patient(pid), err = $("#med-err-" + pid);
+      const nombre = f.elements.nombre.value.trim(), dosis = f.elements.dosis.value.trim();
+      const hs = f.elements.horarios.value.split(/[,\sy]+/).map(x => x.trim()).filter(Boolean).map(x => /^\d{1,2}$/.test(x) ? pad(x) + ":00" : x);
+      const bad = hs.find(h => toMin(h) == null || toMin(h) >= 1440);
+      if (!nombre || !dosis || !hs.length || bad) { err.hidden = false; err.textContent = bad ? `«${bad}» no es un horario válido. Usá HH:MM, separados por coma.` : "Completá medicamento, dosis y al menos un horario."; return; }
+      p.meds.push({ id: "m" + uid(), nombre, dosis, horarios: hs.map(h => { const m = toMin(h); return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }).sort() }); save(); render(true);
+    }
+  });
+
+  if (!location.hash) location.replace("#" + HOME[state.role]);
+  render();
+})();
+</script>
+
+</body></html>

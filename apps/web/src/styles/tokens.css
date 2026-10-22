@@ -1,0 +1,101 @@
+/* Design tokens (portados del prototipo): claro por defecto, oscuro por prefers-color-scheme y [data-theme]. */
+:root {
+  --bg: #f6f4ee;
+  --surface: #fdfcf8;
+  --ink: #1e3a34;
+  --text: #2a3633;
+  --muted: #5d6b67;
+  --line: #dcdcd2;
+  --line-strong: #8fa39d;
+  --primary: #2f5d56;
+  --on-primary: #ffffff;
+  --soft: #e5ece8;
+  --brand: #c8493f;
+  --note: #ede3d6;
+  --urgent-bg: #f9ece8;
+  --urgent-line: #c97366;
+  --urgent-ink: #a33a2f;
+  --tile-blue: #b7e3fb;
+  --tile-green: #b8f3cc;
+  --tile-yellow: #fdee87;
+  --tile-orange: #fed3a6;
+  --tile-ink: #1d2f2b;
+  --wave-a: #efe1cf;
+  --wave-b: #d9e6df;
+  --ok: #276749;
+  --ok-bg: #dcf1e4;
+  --warn: #8a5a00;
+  --warn-bg: #fbefcf;
+  --bad: #a33a2f;
+  --bad-bg: #f9e3df;
+  --shadow: 0 1px 2px rgba(30, 58, 52, 0.06);
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917;
+    --surface: #1b2320;
+    --ink: #dfeae5;
+    --text: #d3ddd9;
+    --muted: #9aaba5;
+    --line: #2e3a36;
+    --line-strong: #4f625c;
+    --primary: #79b3a6;
+    --on-primary: #10201c;
+    --soft: #22312c;
+    --brand: #e57a6f;
+    --note: #2c2720;
+    --urgent-bg: #2b1c1a;
+    --urgent-line: #8a4a41;
+    --urgent-ink: #f0a196;
+    --tile-blue: #1d3a4b;
+    --tile-green: #1c3d2c;
+    --tile-yellow: #45401c;
+    --tile-orange: #4a3220;
+    --tile-ink: #eef3f0;
+    --wave-a: #3a3127;
+    --wave-b: #24352f;
+    --ok: #8fd6ae;
+    --ok-bg: #1d3528;
+    --warn: #f1c86a;
+    --warn-bg: #3a3018;
+    --bad: #f0a196;
+    --bad-bg: #3a201d;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917;
+  --surface: #1b2320;
+  --ink: #dfeae5;
+  --text: #d3ddd9;
+  --muted: #9aaba5;
+  --line: #2e3a36;
+  --line-strong: #4f625c;
+  --primary: #79b3a6;
+  --on-primary: #10201c;
+  --soft: #22312c;
+  --brand: #e57a6f;
+  --note: #2c2720;
+  --urgent-bg: #2b1c1a;
+  --urgent-line: #8a4a41;
+  --urgent-ink: #f0a196;
+  --tile-blue: #1d3a4b;
+  --tile-green: #1c3d2c;
+  --tile-yellow: #45401c;
+  --tile-orange: #4a3220;
+  --tile-ink: #eef3f0;
+  --wave-a: #3a3127;
+  --wave-b: #24352f;
+  --ok: #8fd6ae;
+  --ok-bg: #1d3528;
+  --warn: #f1c86a;
+  --warn-bg: #3a3018;
+  --bad: #f0a196;
+  --bad-bg: #3a201d;
+  --shadow: none;
+  color-scheme: dark;
+}

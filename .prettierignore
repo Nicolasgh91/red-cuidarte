@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+tasks/
+apps/web/android/
+supabase/migrations/

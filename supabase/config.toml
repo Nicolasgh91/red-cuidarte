@@ -1,0 +1,6 @@
+# Configuración de Supabase CLI (migraciones). Los proyectos reales son cuidarte-dev y cuidarte-prod.
+project_id = "red-cuidarte"
+
+[db]
+# Verificar en Dashboard › Settings › Infrastructure que coincide con los proyectos.
+major_version = 17
