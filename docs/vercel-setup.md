@@ -7,7 +7,11 @@ Hay **dos proyectos** en Vercel, cada uno con su URL y sus variables:
 | API: `red-cuidarte` (`prj_modaWbefB1aqgIbznK8aAA3RQpWZ`) | `apps/api`     | `https://red-cuidarte.vercel.app`     |
 | Web: `red-cuidarte-web`                                  | `apps/web`     | `https://red-cuidarte-web.vercel.app` |
 
-El proyecto `red-cuidarte-api` no sirve ninguna URL: las variables de la API van en `red-cuidarte`.
+Las variables de la API van en el proyecto `red-cuidarte`.
+
+**Cómo se conectan:** la web llama a la API por su propio dominio, en `https://red-cuidarte-web.vercel.app/api/...`. Un rewrite de `apps/web/vercel.json` reenvía esos pedidos a `https://red-cuidarte.vercel.app`. Así el navegador no hace CORS ni preflight, lo que ahorra una ida y vuelta por pedido. Si cambia el dominio de la API, hay que cambiar ese rewrite.
+
+**Región:** la función de la API corre en `cle1` (Cleveland), la misma zona que Supabase (`us-east-2`), configurada en `apps/api/vercel.json`.
 
 Cada deploy tiene además su propia URL (`<proyecto>-<hash>-...vercel.app`) que cambia cada vez: no usarla en la configuración. Las URLs de arriba apuntan siempre al último deploy de producción.
 
@@ -47,12 +51,12 @@ Verificación: `https://red-cuidarte.vercel.app/health` → `{"ok":true}`, y `/d
 
 Se leen al compilar: siempre redeploy después de cambiarlas.
 
-| #   | Hecho | Variable                 | Para qué                        | Valor                                           |
-| --- | ----- | ------------------------ | ------------------------------- | ----------------------------------------------- |
-| 18  | [x]   | `VITE_API_URL`           | URL de la API                   | `https://red-cuidarte.vercel.app`               |
-| 19  | [ ]   | `VITE_SUPABASE_URL`      | Login por mail                  | `https://iahuyqmgfegtmocrhmdr.supabase.co`      |
-| 20  | [ ]   | `VITE_SUPABASE_ANON_KEY` | Login por mail (clave pública)  | Supabase › Project Settings › API Keys › `anon` |
-| 21  | [x]   | `VITE_DEMO_MODE`         | Mostrar el selector de usuarios | `true` para la demo                             |
+| #   | Hecho | Variable                 | Para qué                        | Valor                                                            |
+| --- | ----- | ------------------------ | ------------------------------- | ---------------------------------------------------------------- |
+| 18  | [ ]   | `VITE_API_URL`           | URL de la API                   | `/api` (por el rewrite; antes `https://red-cuidarte.vercel.app`) |
+| 19  | [ ]   | `VITE_SUPABASE_URL`      | Login por mail                  | `https://iahuyqmgfegtmocrhmdr.supabase.co`                       |
+| 20  | [ ]   | `VITE_SUPABASE_ANON_KEY` | Login por mail (clave pública)  | Supabase › Project Settings › API Keys › `anon`                  |
+| 21  | [x]   | `VITE_DEMO_MODE`         | Mostrar el selector de usuarios | `true` para la demo                                              |
 
 Abrir la web siempre por `https://red-cuidarte-web.vercel.app`: es la única que acepta la API (variable 7).
 

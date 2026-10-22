@@ -26,12 +26,12 @@ Para desarrollo local, `DATABASE_URL` puede apuntar al Postgres de `docker-compo
 
 ## Proyecto Vercel `web` (`apps/web`, variables de build)
 
-| Variable                 | Para qué                                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `VITE_API_URL`           | `https://api.redasistir.online`                                                                          |
-| `VITE_SUPABASE_URL`      | URL del proyecto de Supabase                                                                             |
-| `VITE_SUPABASE_ANON_KEY` | Clave anon (pública por diseño: la Data API no expone nada, ver RLS)                                     |
-| `VITE_DEMO_MODE`         | `true` = el ingreso muestra un selector con los usuarios de la base (requiere `DEMO_MODE=true` en `api`) |
+| Variable                 | Para qué                                                                                                                            |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`           | `/api` en la web (rewrite de `apps/web/vercel.json` a la API: mismo dominio, sin CORS ni preflight). URL absoluta en la app Android |
+| `VITE_SUPABASE_URL`      | URL del proyecto de Supabase                                                                                                        |
+| `VITE_SUPABASE_ANON_KEY` | Clave anon (pública por diseño: la Data API no expone nada, ver RLS)                                                                |
+| `VITE_DEMO_MODE`         | `true` = el ingreso muestra un selector con los usuarios de la base (requiere `DEMO_MODE=true` en `api`)                            |
 
 ## Configuración de Supabase Auth (👤, en el panel)
 

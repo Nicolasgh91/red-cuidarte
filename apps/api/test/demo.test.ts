@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
-import { createSql } from "../src/db.js";
+import { createRecyclingSql, createSql } from "../src/db.js";
 import { TEST_ENV, createHarness, type Harness } from "./harness.js";
 
 let h: Harness;
@@ -78,21 +78,22 @@ describe("modo demo", () => {
   });
 });
 
-describe("conexión por pedido (Vercel)", () => {
-  it("con connect, cada pedido abre su conexión y la cierra al terminar", async () => {
-    let opened = 0;
-    let closed = 0;
+describe("conexión compartida (Vercel)", () => {
+  it("con sqlPool, pedidos seguidos usan una sola conexión y get/release quedan balanceados", async () => {
+    let created = 0;
+    let gets = 0;
+    let releases = 0;
+    const inner = createRecyclingSql(TEST_ENV.DATABASE_URL, {
+      create: (url) => {
+        created++;
+        return createSql(url, { quiet: true });
+      },
+    });
     const app = createApp({
       ...h.deps,
-      connect: () => {
-        opened++;
-        const sql = createSql(TEST_ENV.DATABASE_URL, { max: 1, quiet: true });
-        const end = sql.end.bind(sql);
-        sql.end = (opts) => {
-          closed++;
-          return end(opts);
-        };
-        return sql;
+      sqlPool: {
+        get: () => (gets++, inner.get()),
+        release: () => (releases++, inner.release()),
       },
     });
     const a = await h.admin();
@@ -100,7 +101,9 @@ describe("conexión por pedido (Vercel)", () => {
       const r = await app.request(path, { headers: { Authorization: `Bearer demo:${a}` } });
       expect(r.status).toBe(200);
     }
-    expect(opened).toBe(3);
-    expect(closed).toBe(3);
+    expect(created).toBe(1);
+    expect(gets).toBe(3);
+    expect(releases).toBe(3);
+    await inner.get().end();
   });
 });

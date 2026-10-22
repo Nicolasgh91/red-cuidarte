@@ -1,5 +1,5 @@
 import type { Env } from "./env.js";
-import type { Sql } from "./db.js";
+import type { Sql, SqlPool } from "./db.js";
 import type { LlmClient } from "./services/llm.js";
 
 export interface TokenVerifier {
@@ -21,11 +21,10 @@ export interface Deps {
   env: Env;
   sql: Sql;
   /**
-   * Si está, cada pedido abre su propia conexión con esto y la cierra al terminar (en vez de usar
-   * `sql`). En Vercel la función se congela entre pedidos y el pooler corta la conexión guardada:
-   * reusarla deja el pedido colgado.
+   * Si está, cada pedido toma la conexión de acá (y la devuelve al terminar) en vez de usar `sql`.
+   * En Vercel la renueva después de un rato sin uso: ver createRecyclingSql en db.ts.
    */
-  connect?: () => Sql;
+  sqlPool?: SqlPool;
   verifier: TokenVerifier;
   authAdmin: AuthAdmin;
   mailer: Mailer;

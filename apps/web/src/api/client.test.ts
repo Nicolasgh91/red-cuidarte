@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createApiClient } from "./client";
+import { createApiClient, resolveApiUrl } from "./client";
 import type { ApiHooks } from "./client";
 import { ApiError, unwrap } from "./errors";
 
@@ -21,6 +21,11 @@ function setup(responses: Response[], hooks: Partial<ApiHooks> = {}) {
 }
 
 describe("cliente de la API", () => {
+  it("VITE_API_URL relativa se completa con el origen de la web; absoluta queda igual", () => {
+    expect(resolveApiUrl("/api", "https://web.test")).toBe("https://web.test/api");
+    expect(resolveApiUrl("https://api.test", "https://web.test")).toBe("https://api.test");
+  });
+
   it("todo pedido lleva un límite de tiempo (no queda «Cargando…» para siempre)", async () => {
     const { api, fetchImpl } = setup([json(200, { id: "u1", role: "admin", profile: null })]);
     await api.me.$get();

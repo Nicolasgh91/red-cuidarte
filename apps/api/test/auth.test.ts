@@ -102,4 +102,22 @@ describe("seguridad (F3)", () => {
     const bad = await h.req("/health", { headers: { Origin: "https://evil.example" } });
     expect(bad.headers.get("access-control-allow-origin")).toBeNull();
   });
+
+  it("Cache-Control private, no-store en toda respuesta salvo el preflight", async () => {
+    const c = await h.caregiver();
+    const cases = [
+      await h.req("/health"),
+      await h.req("/me", { as: c }),
+      await h.req("/no-existe", { as: c }),
+      await h.req("/me"), // 401
+    ];
+    expect(cases.map((r) => r.status)).toEqual([200, 200, 404, 401]);
+    for (const r of cases) expect(r.headers.get("cache-control")).toBe("private, no-store");
+    const pre = await h.req("/me", {
+      method: "OPTIONS",
+      headers: { Origin: "https://redasistir.online", "Access-Control-Request-Method": "GET" },
+    });
+    expect(pre.status).toBe(204);
+    expect(pre.headers.get("cache-control")).toBeNull();
+  });
 });

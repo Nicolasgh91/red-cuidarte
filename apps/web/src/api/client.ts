@@ -2,7 +2,16 @@ import { hc } from "hono/client";
 import type { AppType } from "api";
 import type { ApiClient } from "./types";
 
-export const API_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8787";
+/**
+ * URL de la API. Puede ser relativa ("/api"): la web la sirve por un rewrite de Vercel en su mismo
+ * dominio, así el navegador no hace CORS ni preflight. Se completa con el origen de la página.
+ */
+export const resolveApiUrl = (url: string, origin = globalThis.location?.origin ?? ""): string =>
+  url.startsWith("/") ? `${origin}${url}` : url;
+
+export const API_URL: string = resolveApiUrl(
+  import.meta.env.VITE_API_URL ?? "http://localhost:8787",
+);
 
 export interface AuthIssue {
   code:

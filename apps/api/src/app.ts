@@ -29,22 +29,30 @@ export function createApp(deps: Deps) {
         origin: (origin) => (deps.env.ALLOWED_ORIGINS.includes(origin) ? origin : null),
         allowHeaders: ["Authorization", "Content-Type", "X-Device-Token"],
         allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        maxAge: 600,
+        maxAge: 7200,
+      }),
+    )
+    // Respuestas por usuario: que ningún CDN o proxy (la web llama por un rewrite) las guarde.
+    .use(
+      "*",
+      createMiddleware<AppEnv>(async (c, next) => {
+        await next();
+        if (c.req.method !== "OPTIONS") c.res.headers.set("Cache-Control", "private, no-store");
       }),
     )
     .use(
       "*",
       createMiddleware<AppEnv>(async (c, next) => {
-        if (!deps.connect) {
+        const pool = deps.sqlPool;
+        if (!pool) {
           c.set("deps", deps);
           return next();
         }
-        const sql = deps.connect();
-        c.set("deps", { ...deps, sql });
+        c.set("deps", { ...deps, sql: pool.get() });
         try {
           await next();
         } finally {
-          await sql.end({ timeout: 5 });
+          pool.release();
         }
       }),
     );
