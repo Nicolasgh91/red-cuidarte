@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Me } from "../api/types";
@@ -99,5 +99,29 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: "Sistema" }));
     expect(localStorage.getItem("cuidarte.theme")).toBe("system");
     expect(document.documentElement).not.toHaveAttribute("data-theme");
+  });
+
+  it("cambiar de sección no rompe la app aunque scrollTo devuelva una Promise", async () => {
+    const scrollTo = vi
+      .spyOn(window, "scrollTo")
+      .mockImplementation((() => Promise.resolve()) as typeof window.scrollTo);
+    try {
+      const user = userEvent.setup();
+      renderWithApp(
+        <AppShell me={me("caregiver", { first_name: "Sofía", last_names: "Ejemplo" })} />,
+        {
+          api: quiet,
+          route: "/inicio",
+        },
+      );
+      const nav = screen.getByRole("navigation", { name: "Secciones" });
+      await user.click(within(nav).getByRole("link", { name: "Recursos" }));
+      expect(screen.getByRole("navigation", { name: "Secciones" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Cuidarte mientras cuidás" }),
+      ).toBeInTheDocument();
+    } finally {
+      scrollTo.mockRestore();
+    }
   });
 });

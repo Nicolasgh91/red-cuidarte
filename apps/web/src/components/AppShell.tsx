@@ -18,7 +18,9 @@ export function AppShell({ me }: { me: Me }) {
   const section = sectionOf(pathname);
   const bare = section === "terminos";
 
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <div className={`shell${bare ? " bare" : ""}`}>
