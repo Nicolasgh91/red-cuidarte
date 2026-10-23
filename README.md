@@ -4,7 +4,7 @@ App para personas que cuidan a adultos mayores (Red Cuidar): turnos, tareas, bie
 
 - Fuente de verdad funcional: [`tasks/spec-v2.md`](tasks/spec-v2.md). Plan de ejecución: [`tasks/roadmap.md`](tasks/roadmap.md). Estado: [`tasks/progress.md`](tasks/progress.md).
 - Referencia visual: [`tasks/prototipo-cuidarte.html`](tasks/prototipo-cuidarte.html).
-- Decisiones: [`docs/decisions.md`](docs/decisions.md) · variables de entorno: [`docs/env.md`](docs/env.md) · límites de las capas gratuitas: [`docs/free-tier.md`](docs/free-tier.md).
+- Arquitectura: [`docs/architecture.md`](docs/architecture.md) · decisiones: [`docs/decisions.md`](docs/decisions.md) · variables de entorno: [`docs/env.md`](docs/env.md) · límites de las capas gratuitas: [`docs/free-tier.md`](docs/free-tier.md).
 
 ## Estructura
 
