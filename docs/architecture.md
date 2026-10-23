@@ -155,15 +155,15 @@ El control por rol es por prefijo (en `app.ts`); el control por **asignación** 
 
 [`src/deps.ts`](../apps/api/src/deps.ts) define la interfaz `Deps`; [`src/createDeps.ts`](../apps/api/src/createDeps.ts) arma las reales a partir de `process.env`:
 
-| Dependencia       | Real                                                      | En tests (`test/harness.ts`)              | En demo              |
-| ----------------- | --------------------------------------------------------- | ----------------------------------------- | -------------------- |
-| `env`             | `loadEnv()` (zod, [`src/env.ts`](../apps/api/src/env.ts)) | objeto literal                            | –                    |
-| `sql` / `sqlPerRequest` | `createSql(DATABASE_URL)` per request.                | conexión a `cuidarte_test`                | –                    |
-| `verifier`        | JWKS remoto de Supabase                                   | JWKS local con clave ES256 generada       | acepta `demo:<uuid>` |
-| `authAdmin`       | Admin API de Supabase (service role)                      | registra altas/bajas en memoria           | UUID al azar         |
-| `mailer`          | SMTP (nodemailer)                                         | guarda en `sent[]`, puede fallar a pedido | solo loguea          |
-| `llm`             | Groq                                                      | respuestas guionadas con `setLlm()`       | –                    |
-| `now`             | `new Date()`                                              | reloj fijo (`setNow()`)                   | –                    |
+| Dependencia             | Real                                                      | En tests (`test/harness.ts`)              | En demo              |
+| ----------------------- | --------------------------------------------------------- | ----------------------------------------- | -------------------- |
+| `env`                   | `loadEnv()` (zod, [`src/env.ts`](../apps/api/src/env.ts)) | objeto literal                            | –                    |
+| `sql` / `sqlPerRequest` | `createSql(DATABASE_URL)` per request.                    | conexión a `cuidarte_test`                | –                    |
+| `verifier`              | JWKS remoto de Supabase                                   | JWKS local con clave ES256 generada       | acepta `demo:<uuid>` |
+| `authAdmin`             | Admin API de Supabase (service role)                      | registra altas/bajas en memoria           | UUID al azar         |
+| `mailer`                | SMTP (nodemailer)                                         | guarda en `sent[]`, puede fallar a pedido | solo loguea          |
+| `llm`                   | Groq                                                      | respuestas guionadas con `setLlm()`       | –                    |
+| `now`                   | `new Date()`                                              | reloj fijo (`setNow()`)                   | –                    |
 
 Los handlers leen todo con `c.get("deps")`; nunca importan clientes globales. Para agregar un servicio externo, sumalo a `Deps`, a `createDeps` y al harness.
 
