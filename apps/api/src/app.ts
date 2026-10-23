@@ -43,16 +43,16 @@ export function createApp(deps: Deps) {
     .use(
       "*",
       createMiddleware<AppEnv>(async (c, next) => {
-        const pool = deps.sqlPool;
-        if (!pool) {
+        if (!deps.sqlPerRequest) {
           c.set("deps", deps);
           return next();
         }
-        c.set("deps", { ...deps, sql: pool.get() });
+        const sql = deps.sqlPerRequest();
+        c.set("deps", { ...deps, sql });
         try {
           await next();
         } finally {
-          pool.release();
+          await sql.end({ timeout: 0 }).catch(() => undefined);
         }
       }),
     );

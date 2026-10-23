@@ -158,7 +158,7 @@ El control por rol es por prefijo (en `app.ts`); el control por **asignación** 
 | Dependencia       | Real                                                      | En tests (`test/harness.ts`)              | En demo              |
 | ----------------- | --------------------------------------------------------- | ----------------------------------------- | -------------------- |
 | `env`             | `loadEnv()` (zod, [`src/env.ts`](../apps/api/src/env.ts)) | objeto literal                            | –                    |
-| `sql` / `sqlPool` | `createRecyclingSql(DATABASE_URL)`                        | conexión a `cuidarte_test`                | –                    |
+| `sql` / `sqlPerRequest` | `createSql(DATABASE_URL)` per request.                | conexión a `cuidarte_test`                | –                    |
 | `verifier`        | JWKS remoto de Supabase                                   | JWKS local con clave ES256 generada       | acepta `demo:<uuid>` |
 | `authAdmin`       | Admin API de Supabase (service role)                      | registra altas/bajas en memoria           | UUID al azar         |
 | `mailer`          | SMTP (nodemailer)                                         | guarda en `sent[]`, puede fallar a pedido | solo loguea          |
@@ -173,7 +173,7 @@ Los handlers leen todo con `c.get("deps")`; nunca importan clientes globales. Pa
 
 - Siempre a través del **pooler de Supabase en modo transacción**: `max: 1`, `prepare: false`.
 - Las columnas `date` vuelven como texto `"YYYY-MM-DD"` (sin `Date` ni zonas horarias).
-- `createRecyclingSql`: si la conexión estuvo 30 s ociosa, abre una nueva y cierra la vieja sin esperar. Evita los pedidos colgados cuando Vercel descongela una instancia cuya conexión el pooler ya cortó.
+- Un cliente SQL por pedido, cerrado al terminar (postgres.js abre la conexión física recién en la primera consulta); no sobrevive ninguna conexión entre pedidos, así una instancia congelada no puede reusar una conexión muerta. El `sql` global de createDeps nunca se consulta en producción (el middleware lo reemplaza) y por eso no abre conexión.
 - Consultas con _tagged templates_ (`` sql`...` ``); transacciones con `sql.begin(...)`. Ejemplos: alta de cuidador/persona cuidada (si falla el insert, se borra el usuario recién creado en Auth), registro de dispositivo, `createShifts` (bloquea la fila del cuidador con `for update` y traduce el error `23P01` de la restricción de exclusión a 409 `shift_overlap`).
 
 ### 3.5 Errores y validación

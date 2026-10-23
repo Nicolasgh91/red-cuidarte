@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
-import { createRecyclingSql, createSql } from "../src/db.js";
+import { createSql, type Sql } from "../src/db.js";
 import { TEST_ENV, createHarness, type Harness } from "./harness.js";
 
 let h: Harness;
@@ -78,32 +78,71 @@ describe("modo demo", () => {
   });
 });
 
-describe("conexión compartida (Vercel)", () => {
-  it("con sqlPool, pedidos seguidos usan una sola conexión y get/release quedan balanceados", async () => {
-    let created = 0;
-    let gets = 0;
-    let releases = 0;
-    const inner = createRecyclingSql(TEST_ENV.DATABASE_URL, {
-      create: (url) => {
-        created++;
-        return createSql(url, { quiet: true });
-      },
-    });
-    const app = createApp({
-      ...h.deps,
-      sqlPool: {
-        get: () => (gets++, inner.get()),
-        release: () => (releases++, inner.release()),
-      },
-    });
+describe("conexión por pedido (Vercel)", () => {
+  const trackingFactory = (inner?: () => Sql) => {
+    const clients: Sql[] = [];
+    let ended = 0;
+    const create = inner ?? (() => createSql(TEST_ENV.DATABASE_URL, { quiet: true }));
+    const sqlPerRequest = () => {
+      const sql = create();
+      const origEnd = sql.end.bind(sql);
+      sql.end = ((opts?: Parameters<Sql["end"]>[0]) => {
+        ended++;
+        return origEnd(opts);
+      }) as Sql["end"];
+      clients.push(sql);
+      return sql;
+    };
+    return { sqlPerRequest, clients, ended: () => ended };
+  };
+
+  it("cada pedido crea y cierra su propio cliente", async () => {
+    const t = trackingFactory();
+    const app = createApp({ ...h.deps, sqlPerRequest: t.sqlPerRequest });
     const a = await h.admin();
     for (const path of ["/demo/users", "/me", "/admin/summary"]) {
       const r = await app.request(path, { headers: { Authorization: `Bearer demo:${a}` } });
       expect(r.status).toBe(200);
     }
-    expect(created).toBe(1);
-    expect(gets).toBe(3);
-    expect(releases).toBe(3);
-    await inner.get().end();
+    expect(t.clients).toHaveLength(3);
+    expect(t.ended()).toBe(3);
+    expect(new Set(t.clients).size).toBe(3);
+  });
+
+  it("un pedido colgado no bloquea a otro", async () => {
+    let calls = 0;
+    const t = trackingFactory(() => {
+      calls++;
+      if (calls === 1) {
+        return Object.assign(() => new Promise<never>(() => {}), {
+          end: async () => {},
+        }) as unknown as Sql;
+      }
+      return createSql(TEST_ENV.DATABASE_URL, { quiet: true });
+    });
+    const app = createApp({ ...h.deps, sqlPerRequest: t.sqlPerRequest });
+    const a = await h.admin();
+    const headers = { Authorization: `Bearer demo:${a}` };
+    void app.request("/me", { headers });
+    const r = await Promise.race([
+      app.request("/demo/users", { headers }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("pedido B bloqueado por A")), 3_000),
+      ),
+    ]);
+    expect(r.status).toBe(200);
+    expect(t.clients).toHaveLength(2);
+    expect(t.clients[0]).not.toBe(t.clients[1]);
+  });
+
+  it("cierra el cliente cuando el pedido falla", async () => {
+    const t = trackingFactory();
+    const app = createApp({ ...h.deps, sqlPerRequest: t.sqlPerRequest });
+    const r = await app.request("/me", {
+      headers: { Authorization: `Bearer demo:${randomUUID()}` },
+    });
+    expect(r.status).toBe(403);
+    expect(t.clients).toHaveLength(1);
+    expect(t.ended()).toBe(1);
   });
 });
