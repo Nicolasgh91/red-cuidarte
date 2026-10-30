@@ -14,6 +14,7 @@ import { me } from "./routes/me.js";
 import { patient } from "./routes/patient.js";
 import { reminders } from "./routes/reminders.js";
 import { shifts } from "./routes/shifts.js";
+import { signup } from "./routes/signup.js";
 import { tasks } from "./routes/tasks.js";
 import { wellbeing } from "./routes/wellbeing.js";
 
@@ -87,6 +88,7 @@ export function createApp(deps: Deps) {
     .get("/health", (c) => c.json({ ok: true as const }))
     .route("/internal", internal)
     .route("/demo", demo)
+    .route("/signup", signup)
     .route("/device", device_)
     .route("/", bound);
 

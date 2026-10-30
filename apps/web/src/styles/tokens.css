@@ -32,6 +32,12 @@
   --font-display: "Lora", Georgia, "Times New Roman", serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --radius: 14px;
+  /* Pantallas sin sesión: velo sobre la foto de fondo, tarjetas translúcidas y halo del texto. */
+  --scene-veil: rgba(253, 246, 238, 0.16);
+  --glass: rgba(253, 252, 248, 0.8);
+  --glass-line: rgba(255, 255, 255, 0.7);
+  --scene-glow: rgba(255, 244, 232, 0.75);
+  --scene-shadow: 0 18px 50px rgba(92, 48, 26, 0.18);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -64,6 +70,11 @@
     --bad: #f0a196;
     --bad-bg: #3a201d;
     --shadow: none;
+    --scene-veil: rgba(10, 16, 14, 0.62);
+    --glass: rgba(27, 35, 32, 0.84);
+    --glass-line: rgba(255, 255, 255, 0.08);
+    --scene-glow: rgba(10, 16, 14, 0.8);
+    --scene-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
 }
@@ -97,5 +108,10 @@
   --bad: #f0a196;
   --bad-bg: #3a201d;
   --shadow: none;
+  --scene-veil: rgba(10, 16, 14, 0.62);
+  --glass: rgba(27, 35, 32, 0.84);
+  --glass-line: rgba(255, 255, 255, 0.08);
+  --scene-glow: rgba(10, 16, 14, 0.8);
+  --scene-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }

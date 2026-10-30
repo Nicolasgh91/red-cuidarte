@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { API_URL, createApiClient } from "../api/client";
 import type { AuthIssue } from "../api/client";
-import { unwrap } from "../api/errors";
+import { ApiError, errorMessage, unwrap } from "../api/errors";
 import { call } from "../api/rpc";
 import type { ApiClient } from "../api/types";
 import { authReducer, initialAuthState } from "./machine";
@@ -29,14 +29,39 @@ import type { AuthServices } from "./services";
 interface AuthContextValue {
   state: AuthState;
   api: ApiClient;
-  sendCode(email: string): Promise<void>;
-  verifyCode(email: string, code: string): Promise<void>;
-  changeEmail(): void;
+  /**
+   * Las acciones de ingreso abren la sesión y pasan a verificar el dispositivo. Si fallan lanzan
+   * AuthFlowError con el mensaje para mostrar en la pantalla.
+   */
+  signIn(email: string, password: string): Promise<void>;
+  /** Autorregistro de cuidador/a: crea la cuenta en la API y después inicia sesión. */
+  signUp(data: SignupData): Promise<void>;
+  sendRecoveryCode(email: string): Promise<void>;
+  resetPassword(email: string, code: string, password: string): Promise<void>;
   /** Registra o verifica la passkey de este dispositivo (gesto del usuario). */
   checkDevice(): Promise<void>;
   /** Modo demo: entra como el usuario elegido en el selector. */
   enterDemo(userId: string): void;
   signOut(): Promise<void>;
+}
+
+export interface SignupData {
+  first_name: string;
+  last_names: string;
+  phone: string;
+  email: string;
+  birth_date: string;
+  password: string;
+}
+
+/** Cualquier falla del ingreso sale como AuthFlowError, con un mensaje listo para mostrar. */
+async function flow<T>(p: Promise<T>, fallback: string): Promise<T> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof AuthFlowError) throw e;
+    throw new AuthFlowError(e instanceof ApiError ? errorMessage(e) : fallback);
+  }
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -145,7 +170,7 @@ export function AuthProvider({
     try {
       off = services.onSignedOut(() => endSession(null));
     } catch {
-      /* sin configuración de Supabase: el error se muestra al pedir el código */
+      /* sin configuración de Supabase: el error se muestra al intentar ingresar */
     }
     return () => {
       cancelled = true;
@@ -175,39 +200,55 @@ export function AuthProvider({
     void ctl.check({ interactive: false }).then((event) => event && dispatch(event));
   }, [waiting, ctl]);
 
-  const sendCode = useCallback(
-    async (email: string) => {
-      try {
-        await services.sendCode(email);
-        dispatch({ type: "code_sent", email });
-      } catch (e) {
-        dispatch({
-          type: "code_failed",
-          error:
-            e instanceof AuthFlowError ? e.message : "No pudimos mandar el código. Probá de nuevo.",
-        });
-      }
+  const opened = useCallback(
+    (userId: string) => {
+      ctl.setUser(userId);
+      dispatch({ type: "signed_in" });
     },
+    [ctl],
+  );
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const { userId } = await flow(
+        services.signIn(email, password),
+        "No pudimos iniciar sesión. Probá de nuevo.",
+      );
+      opened(userId);
+    },
+    [services, opened],
+  );
+
+  const signUp = useCallback(
+    async (data: SignupData) => {
+      await flow(
+        unwrap(call(api.signup.$post, { json: data })),
+        "No pudimos crear la cuenta. Probá de nuevo.",
+      );
+      const { userId } = await flow(
+        services.signIn(data.email, data.password),
+        "Tu cuenta quedó creada, pero no pudimos abrirla. Ingresá con tu mail y contraseña.",
+      );
+      opened(userId);
+    },
+    [api, services, opened],
+  );
+
+  const sendRecoveryCode = useCallback(
+    (email: string) =>
+      flow(services.sendRecoveryCode(email), "No pudimos mandar el código. Probá de nuevo."),
     [services],
   );
 
-  const verifyCode = useCallback(
-    async (email: string, code: string) => {
-      try {
-        const { userId } = await services.verifyCode(email, code);
-        ctl.setUser(userId);
-        dispatch({ type: "otp_verified" });
-      } catch (e) {
-        dispatch({
-          type: "code_failed",
-          error:
-            e instanceof AuthFlowError
-              ? e.message
-              : "No pudimos verificar el código. Probá de nuevo.",
-        });
-      }
+  const resetPassword = useCallback(
+    async (email: string, code: string, password: string) => {
+      const { userId } = await flow(
+        services.resetPassword(email, code, password),
+        "No pudimos guardar la contraseña. Probá de nuevo.",
+      );
+      opened(userId);
     },
-    [services, ctl],
+    [services, opened],
   );
 
   const enterDemo = useCallback(
@@ -232,14 +273,15 @@ export function AuthProvider({
     () => ({
       state,
       api,
-      sendCode,
-      verifyCode,
-      changeEmail: () => dispatch({ type: "use_other_email" }),
+      signIn,
+      signUp,
+      sendRecoveryCode,
+      resetPassword,
       checkDevice: () => checkDevice(true),
       enterDemo,
       signOut,
     }),
-    [state, api, sendCode, verifyCode, checkDevice, enterDemo, signOut],
+    [state, api, signIn, signUp, sendRecoveryCode, resetPassword, checkDevice, enterDemo, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

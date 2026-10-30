@@ -48,8 +48,9 @@ export function switchDemoUser(
 export const demoServices: AuthServices = {
   getSession: async () => (current ? { userId: current } : null),
   onSignedOut: () => () => undefined,
-  sendCode: async () => undefined,
-  verifyCode: async () => ({ userId: current ?? "" }),
+  signIn: async () => ({ userId: current ?? "" }),
+  sendRecoveryCode: async () => undefined,
+  resetPassword: async () => ({ userId: current ?? "" }),
   signOut: async () => setDemoUser(null),
   getAccessToken: async () => (current ? `demo:${current}` : null),
 };

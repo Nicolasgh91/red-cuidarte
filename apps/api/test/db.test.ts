@@ -11,7 +11,7 @@ describe("esquema (F2)", () => {
     const rows = await h.sql<
       { tablename: string; rowsecurity: boolean }[]
     >`select tablename, rowsecurity from pg_tables where schemaname = 'public'`;
-    expect(rows.length).toBe(17);
+    expect(rows.length).toBe(18);
     expect(rows.filter((r) => !r.rowsecurity)).toEqual([]);
   });
 
@@ -30,6 +30,7 @@ describe("esquema (F2)", () => {
       "wellbeing_records",
       "devices",
       "contact_messages",
+      "signup_attempts",
     ]) {
       await expect(
         h.sql.begin(async (tx) => {

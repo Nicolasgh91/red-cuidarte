@@ -1,14 +1,14 @@
 /**
  * Máquina de estados del ingreso:
- *   loading → signed-out → otp → device-check → ready | blocked | not-registered
- * Es un reducer puro: la E/S (Supabase, WebAuthn, API) vive en AuthProvider y deviceFlow.
+ *   loading → signed-out → device-check → ready | blocked | not-registered
+ * El login, el registro y la recuperación de contraseña son pasos locales de cada pantalla: la
+ * máquina solo se entera cuando hay sesión (signed_in). Es un reducer puro: la E/S (Supabase, WebAuthn, API) vive en AuthProvider y deviceFlow.
  */
 export type DevicePhase = "checking" | "register" | "login";
 
 export type AuthState =
   | { status: "loading" }
   | { status: "signed-out"; error: string | null }
-  | { status: "otp"; email: string; error: string | null }
   | { status: "device-check"; phase: DevicePhase; error: string | null }
   | { status: "blocked"; message: string }
   | { status: "not-registered" }
@@ -20,10 +20,8 @@ export type AuthEvent =
   | { type: "no_session" }
   /** Modo demo: se eligió un rol en la pantalla de ingreso (sin código ni passkey). */
   | { type: "demo_entered" }
-  | { type: "code_sent"; email: string }
-  | { type: "code_failed"; error: string }
-  | { type: "use_other_email" }
-  | { type: "otp_verified" }
+  /** Se abrió la sesión de Supabase (contraseña, registro o código de recuperación). */
+  | { type: "signed_in" }
   /** Hay que verificar el dispositivo (automático, sin pedir nada todavía). */
   | { type: "device_checking" }
   /** Hace falta un gesto del usuario (registrar o verificar la passkey). */
@@ -47,20 +45,8 @@ export function authReducer(state: AuthState, event: AuthEvent): AuthState {
       return state.status === "loading" ? { status: "signed-out", error: null } : state;
     case "demo_entered":
       return state.status === "signed-out" ? { status: "ready" } : state;
-    case "code_sent":
-      return state.status === "signed-out" || state.status === "otp"
-        ? { status: "otp", email: event.email, error: null }
-        : state;
-    case "code_failed":
+    case "signed_in":
       return state.status === "signed-out"
-        ? { status: "signed-out", error: event.error }
-        : state.status === "otp"
-          ? { ...state, error: event.error }
-          : state;
-    case "use_other_email":
-      return state.status === "otp" ? { status: "signed-out", error: null } : state;
-    case "otp_verified":
-      return state.status === "otp"
         ? { status: "device-check", phase: "checking", error: null }
         : state;
     case "device_checking":

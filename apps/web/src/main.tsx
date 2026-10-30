@@ -26,12 +26,20 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </StrictMode>,
+// `pnpm dev:mock`: API simulada con mock/db.json. El import dinámico queda fuera del build de producción.
+const ready =
+  import.meta.env.DEV && import.meta.env.VITE_MOCK === "true"
+    ? import("./mock/server").then((m) => m.installMock())
+    : Promise.resolve();
+
+void ready.then(() =>
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </StrictMode>,
+  ),
 );
 
 // En la app Android los assets ya están dentro del paquete: no hace falta service worker.

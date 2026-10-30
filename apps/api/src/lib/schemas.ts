@@ -44,6 +44,14 @@ export const contactMessage = z.object({
     .max(2000, "El mensaje puede tener hasta 2000 caracteres."),
 });
 
+/** Autorregistro: la ficha más la contraseña (bcrypt de Supabase usa hasta 72 bytes). */
+export const signup = caregiverProfile.extend({
+  password: z
+    .string()
+    .min(8, "La contraseña tiene que tener al menos 8 caracteres.")
+    .max(72, "La contraseña puede tener hasta 72 caracteres."),
+});
+
 export const newCaregiver = caregiverProfile.extend({ patient_ids: z.array(uuid).default([]) });
 export const newPatient = z.object({
   first_name: name("el nombre"),

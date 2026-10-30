@@ -11,14 +11,13 @@ import { z } from "zod";
 import { signDeviceToken } from "../auth/deviceToken.js";
 import type { AppEnv } from "../deps.js";
 import { badRequest, forbidden, notFound } from "../errors.js";
+import { clientIp } from "../lib/clientIp.js";
 import { validate } from "../lib/validate.js";
 
 const CHALLENGE_TTL_MS = 5 * 60_000;
 const BLOCKED_MSG =
   "Tu cuenta ya está registrada en otro dispositivo. Pedile al administrador que la libere o que autorice este dispositivo.";
 
-const clientIp = (c: Context<AppEnv>) =>
-  c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || null;
 const labelOf = (c: Context<AppEnv>, label?: string) =>
   (label?.trim() || c.req.header("user-agent") || "Dispositivo").slice(0, 80);
 

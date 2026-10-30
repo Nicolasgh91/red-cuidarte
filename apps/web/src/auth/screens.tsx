@@ -1,12 +1,8 @@
-import { useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Icon, Logo } from "../components/icons";
-import { errorMessage } from "../api/errors";
-import { useDemoUsers } from "../api/queries/demo";
-import { CONTACT_EMAIL, ROLES } from "../lib/labels";
-import { okMail, MSG } from "../lib/validators";
+import { CONTACT_EMAIL } from "../lib/labels";
 import { useAuth } from "./AuthProvider";
-import { DEMO_MODE, DEMO_ROLES } from "./demo";
+import { PublicRoutes } from "./public";
 
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -30,185 +26,6 @@ export function Splash() {
       <p className="sub" role="status">
         Cargando…
       </p>
-    </AuthLayout>
-  );
-}
-
-/** Modo demo: en vez de pedir el mail, se elige como qué usuario de la base entrar. */
-export function DemoLoginScreen({ error }: { error: string | null }) {
-  const { enterDemo } = useAuth();
-  const users = useDemoUsers();
-  const shown = error ?? (users.error ? errorMessage(users.error) : null);
-  return (
-    <AuthLayout>
-      <div className="head">
-        <h1>Probá Cuidarte+</h1>
-        <p className="sub">Versión de demostración: elegí con qué usuario querés entrar.</p>
-      </div>
-      {shown && (
-        <p className="err" role="alert">
-          {shown}
-        </p>
-      )}
-      {users.isPending && (
-        <p className="sub" role="status">
-          Cargando usuarios…
-        </p>
-      )}
-      {users.data?.length === 0 && (
-        <p className="sub">Todavía no hay usuarios cargados en la base.</p>
-      )}
-      {DEMO_ROLES.map((role) => {
-        const list = users.data?.filter((u) => u.role === role) ?? [];
-        if (!list.length) return null;
-        return (
-          <section key={role} className="form" aria-label={ROLES[role]}>
-            <h2>{ROLES[role]}</h2>
-            {list.map((u) => (
-              <button
-                key={u.id}
-                className="primary-btn"
-                type="button"
-                onClick={() => enterDemo(u.id)}
-              >
-                Entrar como {u.name}
-              </button>
-            ))}
-          </section>
-        );
-      })}
-      <p className="foot-note">
-        Los cambios que hagas quedan guardados en la cuenta elegida, como si fueras esa persona.
-      </p>
-    </AuthLayout>
-  );
-}
-
-export function LoginScreen({ error }: { error: string | null }) {
-  const { sendCode } = useAuth();
-  const [email, setEmail] = useState("");
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const value = email.trim().toLowerCase();
-    if (!okMail(value)) return setLocalError(MSG.mail);
-    setLocalError(null);
-    setBusy(true);
-    await sendCode(value);
-    setBusy(false);
-  }
-  const shown = localError ?? error;
-
-  return (
-    <AuthLayout>
-      <div className="head">
-        <h1>Ingresá a Cuidarte+</h1>
-        <p className="sub">
-          Te mandamos un código de 6 dígitos por mail. No hace falta contraseña.
-        </p>
-      </div>
-      <form className="form" onSubmit={submit} noValidate>
-        <div className="field">
-          <label htmlFor="login-email">Mail</label>
-          <input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-describedby={shown ? "login-err" : undefined}
-          />
-          {shown && (
-            <p className="err" id="login-err" role="alert">
-              {shown}
-            </p>
-          )}
-        </div>
-        <button className="primary-btn" type="submit" disabled={busy}>
-          <Icon name="mail" /> {busy ? "Enviando…" : "Enviarme el código"}
-        </button>
-      </form>
-      <p className="foot-note">
-        Solo pueden ingresar las cuentas que dio de alta el administrador. ¿Problemas para ingresar?
-        Escribinos a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
-      </p>
-    </AuthLayout>
-  );
-}
-
-const RESEND_SECONDS = 30;
-
-export function OtpScreen({ email, error }: { email: string; error: string | null }) {
-  const { verifyCode, sendCode, changeEmail } = useAuth();
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [wait, setWait] = useState(RESEND_SECONDS);
-  const [resent, setResent] = useState(false);
-
-  useEffect(() => {
-    if (wait <= 0) return;
-    const t = setTimeout(() => setWait((w) => w - 1), 1000);
-    return () => clearTimeout(t);
-  }, [wait]);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (code.trim().length < 6) return;
-    setBusy(true);
-    await verifyCode(email, code.trim());
-    setBusy(false);
-  }
-  async function resend() {
-    setResent(false);
-    await sendCode(email);
-    setResent(true);
-    setWait(RESEND_SECONDS);
-  }
-
-  return (
-    <AuthLayout>
-      <div className="head">
-        <h1>Revisá tu mail</h1>
-        <p className="sub">
-          Te mandamos un código de 6 dígitos a <b className="who-mail">{email}</b>.
-        </p>
-      </div>
-      <form className="form" onSubmit={submit} noValidate>
-        <div className="field">
-          <label htmlFor="otp-code">Código</label>
-          <input
-            id="otp-code"
-            type="text"
-            className="otp-input tnum"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            aria-describedby={error ? "otp-err" : undefined}
-          />
-          {error && (
-            <p className="err" id="otp-err" role="alert">
-              {error}
-            </p>
-          )}
-          {resent && !error && <p className="optional">Te mandamos un código nuevo.</p>}
-        </div>
-        <button className="primary-btn" type="submit" disabled={busy || code.length < 6}>
-          <Icon name="check" /> {busy ? "Verificando…" : "Ingresar"}
-        </button>
-        <div className="btn-row">
-          <button type="button" className="ghost" onClick={resend} disabled={wait > 0}>
-            {wait > 0 ? `Reenviar código (${wait} s)` : "Reenviar código"}
-          </button>
-          <button type="button" className="link-btn" onClick={changeEmail}>
-            Usar otro mail
-          </button>
-        </div>
-      </form>
     </AuthLayout>
   );
 }
@@ -300,20 +117,14 @@ export function NotRegisteredScreen() {
   );
 }
 
-/** Muestra la pantalla que corresponde al estado del ingreso; con sesión lista, la app. */
+/** Sin sesión, las rutas públicas (landing, ingreso, registro); con sesión, el paso que falta o la app. */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { state } = useAuth();
   switch (state.status) {
     case "loading":
       return <Splash />;
     case "signed-out":
-      return DEMO_MODE ? (
-        <DemoLoginScreen error={state.error} />
-      ) : (
-        <LoginScreen error={state.error} />
-      );
-    case "otp":
-      return <OtpScreen email={state.email} error={state.error} />;
+      return <PublicRoutes error={state.error} />;
     case "device-check":
       return <DeviceScreen phase={state.phase} error={state.error} />;
     case "blocked":

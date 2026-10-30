@@ -23,7 +23,7 @@ Actualizado el 2026-10-22. Nada está commiteado: los cambios están en el árbo
 
 1. Crear `cuidarte-dev` (Supabase), el MCP de Supabase solo a dev, cuenta y API key de Groq, los dos proyectos de Vercel (`web` raíz `apps/web`, `api` raíz `apps/api`), la casilla y el SMTP de DonWeb, Google Play Console.
 2. Cargar variables en Vercel y secretos en GitHub (`docs/env.md`). Crear el Environment `production` en GitHub.
-3. Configurar Supabase Auth: registro abierto apagado, SMTP propio, plantilla con `{{ .Token }}` (`docs/env.md`).
+3. Configurar Supabase Auth: registro abierto apagado, contraseñas de 8+ caracteres, SMTP propio, plantilla "Reset password" con `{{ .Token }}` (`docs/env.md`). Pasar la foto de fondo a `apps/web/public/img/auth-bg.webp`.
 4. **Elegir la región de la función de Vercel** igual a la de `cuidarte-prod` (Hobby permite una sola; el default es Washington `iad1`). Poner `"regions"` en `apps/api/vercel.json`.
 5. Correr las spikes S1–S3 (`docs/spikes.md`) y anotar los resultados. Si S2c (SMTP) falla, frenar y decidir.
 6. Cargar DNS (`docs/dns.md`) y el admin Jorge (`supabase/seed/admin_jorge.sql`).
@@ -33,7 +33,7 @@ Actualizado el 2026-10-22. Nada está commiteado: los cambios están en el árbo
 ## Decisiones que tomé y conviene que confirmes (`docs/decisions.md`)
 
 - Cifrado de medicación en la aplicación (AES-256-GCM), no `pgcrypto`.
-- Ingreso por **código de 6 dígitos por mail** (sin contraseñas), en vez de mail + contraseña o enlace mágico.
+- Ingreso con **mail + contraseña** y autorregistro de cuidadores (F5b, reemplaza al código por mail). Las cuentas del admin definen su contraseña con un código por mail.
 - Modelo de `mail_log` con índice único parcial solo para cumpleaños, y `year`/`status`.
 - Restricción de exclusión (`btree_gist`) además de la validación de turnos.
 - TypeScript 6.0 (no 7) por compatibilidad de `typescript-eslint`.
@@ -54,7 +54,7 @@ Actualizado el 2026-10-22. Nada está commiteado: los cambios están en el árbo
 - La spec/prototipo tenían campos de perfil que no están en el modelo de datos (género, nacionalidad, país, barrios, alertas, ubicación, número SAME propio): se omitieron del front. Si se quieren, hay que agregarlos a la spec y al modelo.
 - El roadmap cita la spec en `claude/cuidarte-spec-v2.md`; el archivo real es `tasks/spec-v2.md`.
 - Panel y Correos del admin muestran una tarjeta estática «Casilla de correo en DonWeb: Pendiente» y un estado fijo «Programado» para cumpleaños.
-- El código de ingreso está fijo en 6 dígitos en el front; si Supabase se configura con otra longitud, hay que cambiarlo.
+- El código de recuperación está fijo en 6 dígitos en el front; si Supabase se configura con otra longitud, hay que cambiarlo.
 - Sin trampa de foco en los modales (el prototipo tampoco la tenía).
 - Rotación de `MEDICATIONS_KEY` no implementada.
 

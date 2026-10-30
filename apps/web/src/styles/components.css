@@ -387,6 +387,7 @@ button.card:hover {
 textarea,
 input[type="text"],
 input[type="email"],
+input[type="password"],
 input[type="time"],
 input[type="date"],
 select {

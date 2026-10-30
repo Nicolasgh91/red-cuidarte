@@ -34,9 +34,10 @@ export function renderWithApp(
             value={{
               state: { status: "ready" },
               api,
-              sendCode: noop,
-              verifyCode: noop,
-              changeEmail: () => undefined,
+              signIn: noop,
+              signUp: noop,
+              sendRecoveryCode: noop,
+              resetPassword: noop,
               checkDevice: noop,
               enterDemo: () => undefined,
               signOut: noop,

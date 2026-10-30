@@ -30,6 +30,8 @@ pnpm lint && pnpm typecheck && pnpm test
 
 Los tests de la API crean y limpian su propia base (`cuidarte_test`) en el Postgres local; en CI usan un servicio de Postgres.
 
+Para probar solo la web, sin API ni base: `pnpm --filter web dev:mock` (http://localhost:5173). La API se simula en el navegador con los datos de [`apps/web/mock/db.json`](apps/web/mock/db.json) (un único JSON; los cambios viven en memoria y se pierden al recargar). Solo corre en desarrollo y no entra en el build. En Contacto, un mensaje que incluya `[mock:502]` simula el error de envío.
+
 Para correr la API en local hace falta `apps/api/.env.local` (ver `apps/api/.env.example` y `docs/env.md`), luego `pnpm --filter api dev`.
 
 ## Reglas del repo

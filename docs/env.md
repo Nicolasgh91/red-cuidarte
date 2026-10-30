@@ -35,8 +35,9 @@ Para desarrollo local, `DATABASE_URL` puede apuntar al Postgres de `docker-compo
 
 ## Configuración de Supabase Auth (👤, en el panel)
 
-- **Ingreso por código de mail:** Authentication › Providers › Email: activar, **desactivar "Confirm email"** no hace falta (los usuarios los crea la API ya confirmados) y **desactivar registros abiertos** (Allow new users to sign up = off).
-- **Plantilla del mail "Magic Link"/OTP:** debe incluir `{{ .Token }}` (el código de 6 dígitos).
+- **Ingreso con contraseña:** Authentication › Providers › Email: activado. **Allow new users to sign up = off**: las cuentas las crea la API (alta del admin y `POST /signup`) ya confirmadas, así que "Confirm email" no influye.
+- **Contraseñas:** Authentication › Policies (o Providers › Email) › mínimo **8 caracteres**, igual que valida la API y la web.
+- **Plantilla "Reset password":** debe incluir `{{ .Token }}` (el código de 6 dígitos con el que se define o cambia la contraseña, también en el primer ingreso de las cuentas creadas por el admin). Sin enlaces: la web y la app no procesan URLs de recuperación.
 - **SMTP propio:** Authentication › SMTP Settings con la casilla de DonWeb. El SMTP por defecto de Supabase tiene un tope de envíos muy bajo y no sirve para producción.
 
 ## GitHub Secrets (Actions)

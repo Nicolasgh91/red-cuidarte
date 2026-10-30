@@ -63,6 +63,17 @@
   }
 }
 @media (max-width: 620px) {
+  .auth-card {
+    padding: 24px 18px 22px;
+    border-radius: 22px;
+  }
+  .auth-card-deco {
+    width: 72px;
+    height: 72px;
+  }
+  .landing-panel {
+    border-radius: 22px;
+  }
   .tiles,
   .cards2,
   .two,

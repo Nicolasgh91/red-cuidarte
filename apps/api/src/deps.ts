@@ -8,8 +8,11 @@ export interface TokenVerifier {
 }
 
 export interface AuthAdmin {
-  /** Crea el usuario en Supabase Auth (sin contraseña; ingresa con código por mail). Devuelve su id. */
-  createUser(email: string): Promise<string>;
+  /**
+   * Crea el usuario en Supabase Auth, ya confirmado. Sin contraseña (alta del admin) la define
+   * la persona en su primer ingreso con un código por mail. Devuelve su id.
+   */
+  createUser(email: string, password?: string): Promise<string>;
   deleteUser(id: string): Promise<void>;
 }
 

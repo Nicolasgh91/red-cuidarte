@@ -6,8 +6,11 @@ export interface AuthServices {
   getSession(): Promise<{ userId: string } | null>;
   /** Avisa si la sesión se pierde (vencida, cerrada en otra pestaña). Devuelve cómo dejar de escuchar. */
   onSignedOut(cb: () => void): () => void;
-  sendCode(email: string): Promise<void>;
-  verifyCode(email: string, code: string): Promise<{ userId: string }>;
+  signIn(email: string, password: string): Promise<{ userId: string }>;
+  /** Manda el código de 6 dígitos para definir o cambiar la contraseña. */
+  sendRecoveryCode(email: string): Promise<void>;
+  /** Valida el código, abre la sesión y guarda la contraseña nueva. */
+  resetPassword(email: string, code: string, password: string): Promise<{ userId: string }>;
   signOut(): Promise<void>;
   getAccessToken(): Promise<string | null>;
 }
@@ -15,8 +18,9 @@ export interface AuthServices {
 /** Error con mensaje listo para mostrar. */
 export class AuthFlowError extends Error {}
 
-export const NOT_REGISTERED_MESSAGE =
-  "Tu cuenta todavía no está dada de alta. Pedile al administrador que la cargue.";
+const TOO_MANY_MESSAGE = "Hubo varios intentos seguidos. Esperá un minuto y probá de nuevo.";
+const tooMany = (error: { status?: number; message: string }) =>
+  error.status === 429 || /rate limit|too many|seconds/i.test(error.message);
 
 let client: SupabaseClient | null = null;
 function supabase(): SupabaseClient {
@@ -29,7 +33,7 @@ function supabase(): SupabaseClient {
     );
   }
   client = createClient(url, key, {
-    // Sin enlaces mágicos: el ingreso es por código, así funciona igual en PWA y en Capacitor.
+    // Sin enlaces: la recuperación es por código, así funciona igual en PWA y en Capacitor.
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
   });
   return client;
@@ -46,24 +50,44 @@ export const supabaseServices: AuthServices = {
     });
     return () => data.subscription.unsubscribe();
   },
-  async sendCode(email) {
-    const { error } = await supabase().auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    });
-    if (!error) return;
-    if (/signups? not allowed|not found|user.*not/i.test(error.message))
-      throw new AuthFlowError(NOT_REGISTERED_MESSAGE);
-    if (error.status === 429 || /rate limit|too many|seconds/i.test(error.message))
+  async signIn(email, password) {
+    const { data, error } = await supabase().auth.signInWithPassword({ email, password });
+    if (error || !data.session) {
+      if (error && tooMany(error)) throw new AuthFlowError(TOO_MANY_MESSAGE);
+      if (error?.code === "email_not_confirmed")
+        throw new AuthFlowError(
+          "Tu mail todavía no está confirmado. Pedile ayuda al administrador.",
+        );
       throw new AuthFlowError(
-        "Pediste varios códigos seguidos. Esperá un minuto y probá de nuevo.",
+        error?.status === 400 || error?.code === "invalid_credentials"
+          ? "Mail o contraseña incorrectos. Si es tu primera vez, definí tu contraseña con «¿Primera vez?»."
+          : "No pudimos iniciar sesión. Probá de nuevo en un rato.",
       );
+    }
+    return { userId: data.session.user.id };
+  },
+  async sendRecoveryCode(email) {
+    const { error } = await supabase().auth.resetPasswordForEmail(email);
+    if (!error) return;
+    if (tooMany(error)) throw new AuthFlowError(TOO_MANY_MESSAGE);
     throw new AuthFlowError("No pudimos mandar el código. Probá de nuevo en un rato.");
   },
-  async verifyCode(email, code) {
-    const { data, error } = await supabase().auth.verifyOtp({ email, token: code, type: "email" });
+  async resetPassword(email, code, password) {
+    const { data, error } = await supabase().auth.verifyOtp({
+      email,
+      token: code,
+      type: "recovery",
+    });
     if (error || !data.session) {
       throw new AuthFlowError("El código no es correcto o venció. Pedí uno nuevo.");
+    }
+    const updated = await supabase().auth.updateUser({ password });
+    if (updated.error) {
+      throw new AuthFlowError(
+        updated.error.code === "weak_password"
+          ? "Esa contraseña es muy débil. Probá con una más larga."
+          : "No pudimos guardar la contraseña. Probá de nuevo.",
+      );
     }
     return { userId: data.session.user.id };
   },

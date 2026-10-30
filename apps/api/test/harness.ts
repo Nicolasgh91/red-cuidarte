@@ -36,6 +36,8 @@ export interface Harness {
   sent: { to: string; subject: string; text: string; replyTo?: string }[];
   llmCalls: { messages: unknown[] }[];
   authCreated: string[];
+  /** Contraseña con la que se creó cada usuario de Auth (undefined: alta sin contraseña). */
+  authPasswords: (string | undefined)[];
   authDeleted: string[];
   setNow(d: Date): void;
   setLlm(
@@ -95,10 +97,12 @@ export async function createHarness(): Promise<Harness> {
     },
   };
   const authCreated: string[] = [];
+  const authPasswords: (string | undefined)[] = [];
   const authDeleted: string[] = [];
   const authAdmin: AuthAdmin = {
-    async createUser(email) {
+    async createUser(email, password) {
       authCreated.push(email);
+      authPasswords.push(password);
       return randomUUID();
     },
     async deleteUser(id) {
@@ -141,14 +145,20 @@ export async function createHarness(): Promise<Harness> {
     sent,
     llmCalls,
     authCreated,
+    authPasswords,
     authDeleted,
     setNow: (d) => void (now = d),
     setLlm: (fn) => void (llmFn = fn),
     failMail: (on) => void (mailFails = on),
     token,
     async reset() {
-      await sql`truncate users, mail_log cascade`;
-      sent.length = authCreated.length = authDeleted.length = llmCalls.length = 0;
+      await sql`truncate users, mail_log, signup_attempts cascade`;
+      sent.length =
+        authCreated.length =
+        authPasswords.length =
+        authDeleted.length =
+        llmCalls.length =
+          0;
       mailFails = false;
       now = new Date("2026-10-21T15:00:00Z");
       llmFn = () => ({ content: "Hola.", tool_calls: [] });

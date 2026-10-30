@@ -10,7 +10,19 @@ AES-256-GCM en la API, con la clave en la variable de entorno `MEDICATIONS_KEY` 
 - **Costo:** la base no puede buscar ni ordenar por nombre de medicamento (no se necesita). Perder la clave = perder la medicación; por eso `docs/env.md` pide guardarla en un gestor.
 - **Rotación:** no implementada (fuera de alcance). Habría que re-cifrar todas las filas con una clave nueva.
 
-## F5 · Ingreso: código de 6 dígitos por mail (Supabase Auth OTP), sin contraseñas
+## F5b · Ingreso con mail + contraseña y autorregistro de cuidadores (reemplaza a F5)
+
+Se pidió una landing pública, ingreso con mail y contraseña y una página para que cada cuidador/a cree su propia cuenta (referencia visual: la pantalla de ingreso del prototipo con foto de atardecer).
+
+- **Ingreso:** `signInWithPassword` de Supabase. Después sigue igual que antes: passkey del dispositivo (F4).
+- **Registro:** `POST /signup` en la API, público. Crea el usuario de Auth **con contraseña y ya confirmado** (service role) y la ficha de cuidador/a, sin pacientes; el admin los asigna después. Usa el mismo servicio que el alta del admin (`services/caregivers.ts`). Luego la web inicia sesión sola.
+- **Registro abierto de Supabase sigue apagado:** las altas pasan siempre por la API, que crea también la fila en `users`. Así no hay usuarios de Auth sin rol.
+- **Límite:** 5 registros por IP por hora (tabla `signup_attempts`). No hay verificación del mail: cualquiera puede crear una cuenta de cuidador/a con un mail ajeno, pero no ve nada hasta que el admin le asigna pacientes. Si se abusa, el siguiente paso es confirmar el mail con un código antes de crear la ficha.
+- **Primera vez y olvido de contraseña:** las cuentas que da de alta el admin (y las personas cuidadas con mail) se crean sin contraseña. Entran por «¿Primera vez u olvidaste tu contraseña?»: `resetPasswordForEmail` manda un código de 6 dígitos, `verifyOtp({ type: "recovery" })` abre la sesión y `updateUser` guarda la contraseña. Sigue dependiendo del SMTP de DonWeb, como F5.
+- **Rutas sin sesión:** `/` (landing; la app Android abre directo en `/ingresar`), `/ingresar`, `/registro`, `/recuperar`, `/terminos` y `/privacidad`. Cualquier otra ruta lleva a `/ingresar`.
+- **Modo demo:** sin cambios; `/ingresar` muestra el selector de usuarios y no hay registro.
+
+## F5 · Ingreso: código de 6 dígitos por mail (Supabase Auth OTP), sin contraseñas — reemplazada por F5b
 
 El roadmap dejaba "mail + contraseña o enlace mágico". Se elige **código por mail**:
 

@@ -53,7 +53,7 @@ flowchart LR
   end
 
   subgraph Supabase
-    AUTH["Supabase Auth<br/>(código por mail, JWKS)"]
+    AUTH["Supabase Auth<br/>(contraseña, código de recuperación, JWKS)"]
     PG[("Postgres 17<br/>vía pooler")]
   end
 
@@ -64,13 +64,13 @@ flowchart LR
   PWA -- "/api/* (mismo origen)" --> WEB
   WEB -- "rewrite" --> API
   APK -- "HTTPS" --> API
-  PWA -- "OTP (supabase-js)" --> AUTH
-  APK -- "OTP (supabase-js)" --> AUTH
+  PWA -- "contraseña (supabase-js)" --> AUTH
+  APK -- "contraseña (supabase-js)" --> AUTH
   API -- "verifica JWT (JWKS)<br/>admin users" --> AUTH
   API -- "SQL (postgres.js)" --> PG
   API -- "chat + tools" --> GROQ
   API -- "nodemailer" --> SMTP
-  AUTH -- "mails de código" --> SMTP
+  AUTH -- "códigos de recuperación" --> SMTP
   CRON -- "GET /internal/jobs/daily" --> API
 ```
 
@@ -129,7 +129,7 @@ flowchart LR
   CORS --> NS["Cache-Control:<br/>private, no-store"]
   NS --> D["inyecta deps<br/>(+ conexión del pool)"]
   D --> A{"prefijo"}
-  A -- "/health, /demo" --> H[handler]
+  A -- "/health, /demo, /signup" --> H[handler]
   A -- "/internal" --> CS["Bearer CRON_SECRET"] --> H
   A -- "/device" --> AU1["authenticate<br/>(sin dispositivo)"] --> H
   A -- "resto" --> AU2["authenticate<br/>(con X-Device-Token)"] --> RR["requireRole"] --> V["validate (zod)"] --> H
@@ -143,6 +143,7 @@ Montaje de rutas (sin prefijo `/api`: ese prefijo lo agrega y saca el rewrite de
 | `GET /health`                                                 | ninguna                            | –                     | `app.ts`             |
 | `/internal`                                                   | `Bearer CRON_SECRET` (timing-safe) | –                     | `routes/internal.ts` |
 | `/demo`                                                       | ninguna, solo con `DEMO_MODE`      | –                     | `routes/demo.ts`     |
+| `POST /signup`                                                | ninguna, límite por IP; no en demo | –                     | `routes/signup.ts`   |
 | `/device`                                                     | JWT, sin token de dispositivo      | cualquiera registrado | `routes/device.ts`   |
 | `/me`                                                         | JWT + dispositivo                  | cualquiera            | `routes/me.ts`       |
 | `/shifts`, `/tasks`, `/wellbeing`, `/reminders`, `/assistant` | JWT + dispositivo                  | `caregiver`           | `routes/<nombre>.ts` |
@@ -266,7 +267,7 @@ Las preferencias (agua, estirar, relajar) se guardan en la API (`/reminders`); l
 
 ## 5. Autenticación y dispositivo
 
-Dos factores: **código de 6 dígitos por mail** (Supabase Auth, sin contraseñas) y **passkey** que ata la cuenta a un único dispositivo. La API emite entonces un **token de dispositivo** (HS256, 30 días, `sub` = usuario, `cid` = credencial) que se valida en cada pedido contra la credencial vigente en `devices`. Las razones están en [`docs/decisions.md`](decisions.md) (F4 y F5).
+Dos factores: **mail y contraseña** (Supabase Auth) y **passkey** que ata la cuenta a un único dispositivo. La API emite entonces un **token de dispositivo** (HS256, 30 días, `sub` = usuario, `cid` = credencial) que se valida en cada pedido contra la credencial vigente en `devices`. Las razones están en [`docs/decisions.md`](decisions.md) (F4 y F5b). Los cuidadores pueden crear su cuenta en `/registro` (`POST /signup`); las cuentas sin contraseña (alta del admin) la definen con un código por mail en `/recuperar`.
 
 ### 5.1 Primer ingreso
 
@@ -279,11 +280,8 @@ sequenceDiagram
   participant API
   participant DB as Postgres
 
-  U->>W: mail
-  W->>SA: signInWithOtp(shouldCreateUser: false)
-  SA-->>U: código de 6 dígitos (SMTP)
-  U->>W: código
-  W->>SA: verifyOtp
+  U->>W: mail + contraseña
+  W->>SA: signInWithPassword
   SA-->>W: sesión (JWT)
   W->>API: GET /device/status (Bearer JWT)
   API->>DB: users.role, devices
@@ -300,18 +298,18 @@ sequenceDiagram
 
 ### 5.2 Casos que hay que conocer
 
-| Situación                              | Qué pasa                                                                                                                            |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Vuelve con sesión y token guardado     | Entra directo (`ready`).                                                                                                            |
-| Token de dispositivo vencido o ausente | La API responde 403 `device_login_required`; la web hace `login/options` + `login/verify` con la passkey y reintenta el pedido.     |
-| La cuenta ya tiene otro dispositivo    | 403 `device_blocked` y fila `blocked` en `device_attempts`. Un admin puede **liberar** el viejo o **autorizar** el nuevo (una vez). |
-| El admin liberó el dispositivo         | El token viejo deja de valer al instante (su `cid` ya no coincide); el próximo ingreso registra uno nuevo.                          |
-| El mail no está dado de alta           | Supabase no crea usuarios (registro abierto apagado) → pantalla "no registrado". Los usuarios los crea la API desde el panel admin. |
+| Situación                              | Qué pasa                                                                                                                                |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Vuelve con sesión y token guardado     | Entra directo (`ready`).                                                                                                                |
+| Token de dispositivo vencido o ausente | La API responde 403 `device_login_required`; la web hace `login/options` + `login/verify` con la passkey y reintenta el pedido.         |
+| La cuenta ya tiene otro dispositivo    | 403 `device_blocked` y fila `blocked` en `device_attempts`. Un admin puede **liberar** el viejo o **autorizar** el nuevo (una vez).     |
+| El admin liberó el dispositivo         | El token viejo deja de valer al instante (su `cid` ya no coincide); el próximo ingreso registra uno nuevo.                              |
+| El mail no tiene cuenta                | Supabase responde credenciales inválidas (su registro abierto está apagado). Las cuentas las crea la API: alta del admin o `/registro`. |
 
 ### 5.3 Piezas en el código
 
 - **API:** [`auth/verifier.ts`](../apps/api/src/auth/verifier.ts) (JWT contra JWKS, `aud: authenticated`), [`auth/middleware.ts`](../apps/api/src/auth/middleware.ts) (`authenticate`, `requireRole`), [`auth/deviceToken.ts`](../apps/api/src/auth/deviceToken.ts), [`routes/device.ts`](../apps/api/src/routes/device.ts) (WebAuthn; los desafíos van a `webauthn_challenges` porque las funciones no guardan estado).
-- **Web:** [`auth/machine.ts`](../apps/web/src/auth/machine.ts) es un reducer puro con los estados `loading → signed-out → otp → device-check → ready | blocked | not-registered`. [`auth/AuthProvider.tsx`](../apps/web/src/auth/AuthProvider.tsx) conecta la máquina con los efectos; [`auth/controller.ts`](../apps/web/src/auth/controller.ts) evita chequeos simultáneos y comparte un único re-ingreso entre pedidos concurrentes; [`auth/deviceFlow.ts`](../apps/web/src/auth/deviceFlow.ts) decide registrar o ingresar; [`auth/deviceStore.ts`](../apps/web/src/auth/deviceStore.ts) guarda en `localStorage` el token y la credencial (ligada al id de usuario).
+- **Web:** [`auth/machine.ts`](../apps/web/src/auth/machine.ts) es un reducer puro con los estados `loading → signed-out → device-check → ready | blocked | not-registered`; sin sesión, [`auth/public.tsx`](../apps/web/src/auth/public.tsx) muestra la landing, el ingreso, el registro y la recuperación. [`auth/AuthProvider.tsx`](../apps/web/src/auth/AuthProvider.tsx) conecta la máquina con los efectos; [`auth/controller.ts`](../apps/web/src/auth/controller.ts) evita chequeos simultáneos y comparte un único re-ingreso entre pedidos concurrentes; [`auth/deviceFlow.ts`](../apps/web/src/auth/deviceFlow.ts) decide registrar o ingresar; [`auth/deviceStore.ts`](../apps/web/src/auth/deviceStore.ts) guarda en `localStorage` el token y la credencial (ligada al id de usuario).
 
 ---
 

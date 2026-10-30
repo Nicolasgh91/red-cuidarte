@@ -5,6 +5,7 @@ import { conflict, notFound } from "../errors.js";
 import { email, newCaregiver, newMedication, newPatient, uuid } from "../lib/schemas.js";
 import { addDays, dayNum, nowAR } from "../lib/time.js";
 import { validate } from "../lib/validate.js";
+import { createCaregiver } from "../services/caregivers.js";
 import { addMedication, listMedications } from "../services/medications.js";
 import { sendLogged } from "../services/mail.js";
 
@@ -76,29 +77,7 @@ export const admin = new Hono<AppEnv>()
     return c.json({ caregivers: rows.map((r) => ({ ...r })) });
   })
   .post("/caregivers", validate("json", newCaregiver), async (c) => {
-    const { sql, authAdmin } = c.get("deps");
-    const b = c.req.valid("json");
-    if ((await sql`select 1 from users where email = ${b.email}`).length)
-      throw conflict("Ya hay una cuenta con ese mail.", "email_taken");
-    if (b.patient_ids.length) {
-      const found = await sql`select user_id from patients where user_id in ${sql(b.patient_ids)}`;
-      if (found.length !== new Set(b.patient_ids).size)
-        throw conflict("Alguno de los pacientes elegidos no existe.", "unknown_patient");
-    }
-    const id = await authAdmin.createUser(b.email);
-    try {
-      await sql.begin(async (tx) => {
-        await tx`insert into users (id, role, email) values (${id}, 'caregiver', ${b.email})`;
-        await tx`insert into caregivers (user_id, first_name, last_names, phone, email, birth_date)
-                 values (${id}, ${b.first_name}, ${b.last_names}, ${b.phone}, ${b.email}, ${b.birth_date})`;
-        for (const pid of new Set(b.patient_ids)) {
-          await tx`insert into caregiver_patients (caregiver_id, patient_id) values (${id}, ${pid})`;
-        }
-      });
-    } catch (e) {
-      await authAdmin.deleteUser(id).catch(() => undefined);
-      throw e;
-    }
+    const id = await createCaregiver(c.get("deps"), c.req.valid("json"));
     return c.json({ id }, 201);
   })
   .put(
