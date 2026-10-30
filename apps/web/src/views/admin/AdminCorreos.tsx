@@ -11,13 +11,17 @@ import { fmtDM, nextBirthday } from "../../lib/dates";
 import { MSG, okMail } from "../../lib/validators";
 
 const STEPS = [
-  "Crear la casilla de envío en el panel de DonWeb (por ejemplo avisos@ con el dominio de la app).",
+  "Crear la casilla de envío en el panel de DonWeb (por ejemplo info@ con el dominio de la app).",
   "Cargar los datos SMTP que da DonWeb (servidor, puerto, usuario y contraseña) como variables de entorno del backend.",
   "Configurar SPF, DKIM y DMARC en el DNS del dominio para que los mails no caigan en spam.",
   "Mandar un mail de prueba y revisar que llegue a la bandeja de entrada.",
 ];
 
-const KIND: Record<string, string> = { birthday: "Cumpleaños", test: "Prueba" };
+const KIND: Record<string, string> = {
+  birthday: "Cumpleaños",
+  test: "Prueba",
+  contact: "Contacto",
+};
 const STATUS: Record<string, { cls: string; label: string }> = {
   sent: { cls: "ok", label: "Enviado" },
   failed: { cls: "bad", label: "Falló" },

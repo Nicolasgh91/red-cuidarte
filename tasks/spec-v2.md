@@ -15,7 +15,7 @@ Acceso a datos	postgres (postgres.js), SQL escrito a mano, validación con Zod
 Migraciones	Supabase CLI (supabase/migrations), aplicadas a producción solo desde CI
 WebAuthn	@simplewebauthn/server
 LLM del asistente	Groq (free tier)
-Mails	Nodemailer con el SMTP de la casilla avisos@redasistir.online en DonWeb
+Mails	Nodemailer con el SMTP de la casilla info@redasistir.online en DonWeb
 Tareas programadas	Vercel Cron (Hobby: una vez por día, precisión por hora) → endpoint interno protegido
 Despliegue	Integración Git de Vercel (web y api). GitHub Actions: CI, migraciones y backup semanal
 Recordatorios	Notificaciones locales del dispositivo (Capacitor Local Notifications), sin servidor
@@ -53,10 +53,12 @@ reminder_settings(caregiver_id PK, water JSONB, stretch JSONB, relax JSONB)
 devices(user_id PK/FK, credential_id, public_key, sign_count, label, last_ip, last_seen_at, registered_at)
 device_attempts(id, user_id, label, ip, at, status ENUM('blocked','authorized'))
 webauthn_challenges(user_id, challenge, purpose ENUM('register','login'), expires_at)
-mail_log(id, to_email, subject, kind ENUM('birthday','test'), sent_at, status, error, UNIQUE(to_email, kind, year))
+mail_log(id, to_email, subject, kind ENUM('birthday','test','contact'), year, sent_at, status, error, UNIQUE(to_email, kind, year) solo WHERE kind = 'birthday')  -- índice parcial: los mails 'test' y 'contact' se repiten
+contact_messages(id UUID PK, user_id FK users, subject TEXT (≤100), message TEXT (1–2000), created_at TIMESTAMPTZ, status ENUM('sent','failed'), error TEXT NULL, índice (user_id, created_at))
 assistant_usage(caregiver_id, date, messages, PK(caregiver_id, date))
 Requerimientos
-Casilla DonWeb: avisos@redasistir.online; credenciales SMTP en variables de entorno de Vercel; SPF, DKIM y DMARC en el DNS; mail de prueba.
+Casilla DonWeb: info@redasistir.online; credenciales SMTP en variables de entorno de Vercel; SPF, DKIM y DMARC en el DNS; mail de prueba. El remitente (SMTP_FROM) es esa misma casilla.
+Contacto: el mail info@redasistir.online se muestra en la app como enlace mailto (Contacto, pantalla de dispositivo bloqueado y login). Formulario de contacto para usuarios autenticados de cualquier rol (Mi perfil, pie de Inicio y menú Mi cuenta; no va en la barra lateral). Campos: asunto (opcional, máx. 100; se guarda sin saltos de línea ni caracteres de control) y mensaje (obligatorio, máx. 2000). Al enviar se guarda en contact_messages y se manda un mail a SMTP_FROM (info@redasistir.online) con Reply-To = mail de la cuenta del remitente y en el cuerpo nombre, rol, id de usuario y mensaje; el envío queda en mail_log (kind 'contact', sin el asunto del usuario). Límite: 3 mensajes por usuario en 24 horas móviles, contados en la base (el backend no tiene estado); el 4.º recibe 429. Si el SMTP falla responde 502 y el mensaje queda guardado con status 'failed'. No se piden datos de salud: el formulario muestra «No incluyas datos de salud ni de medicación en este mensaje.». Fuera de alcance: adjuntos, bandeja de entrada para el admin, captcha y respuestas automáticas.
 Roles: ver tabla.
 Datos de usuarios: ver modelo.
 Un dispositivo por cuenta: ver decisión. Pantallas: admin › Dispositivos (estado, última IP, liberar, autorizar nuevo).

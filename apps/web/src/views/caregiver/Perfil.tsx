@@ -9,6 +9,7 @@ import { Async, BackLink, Field } from "../../components/common";
 import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { ago, birthToIso, isoToBirth } from "../../lib/dates";
+import { CONTACT_EMAIL } from "../../lib/labels";
 import { MSG, okMail, okPhone } from "../../lib/validators";
 
 type Errors = Partial<Record<"first" | "last" | "email" | "phone" | "birth" | "form", string>>;
@@ -171,6 +172,19 @@ function DeviceCard() {
   );
 }
 
+function ContactCard() {
+  return (
+    <section className="group">
+      <h2 className="section">Contacto</h2>
+      <p className="sub" style={{ fontSize: "1rem" }}>
+        ¿Dudas, problemas o ideas? Escribinos a{" "}
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> o usá el{" "}
+        <Link to="/contacto">formulario de contacto</Link>.
+      </p>
+    </section>
+  );
+}
+
 function DeleteAccount() {
   const [confirming, setConfirming] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -237,6 +251,7 @@ export function Perfil() {
       <Async query={meQ}>{(me) => <ProfileForm me={me} />}</Async>
       <hr className="sep" />
       <DeviceCard />
+      <ContactCard />
       <DeleteAccount />
     </div>
   );

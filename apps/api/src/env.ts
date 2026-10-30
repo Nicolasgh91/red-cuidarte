@@ -28,7 +28,7 @@ export const envSchema = z.object({
   SMTP_PORT: z.coerce.number().int().default(465),
   SMTP_USER: z.string().min(1),
   SMTP_PASS: z.string().min(1),
-  SMTP_FROM: z.string().default("Cuidarte+ <avisos@redasistir.online>"),
+  SMTP_FROM: z.string().default("Cuidarte+ <info@redasistir.online>"),
   GROQ_API_KEY: z.string().min(1),
   GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
   /**

@@ -24,6 +24,26 @@ export const caregiverProfile = z.object({
   birth_date: birthDate,
 });
 
+/** Cualquier salto de línea o carácter de control pasa a ser un espacio: el asunto va a una cabecera del mail. */
+const singleLine = (s: string) =>
+  s
+    .replace(/[\p{Cc}\p{Zl}\p{Zp}]+/gu, " ")
+    .replace(/ {2,}/g, " ")
+    .trim();
+
+export const contactMessage = z.object({
+  subject: z
+    .string()
+    .transform(singleLine)
+    .pipe(z.string().max(100, "El asunto puede tener hasta 100 caracteres."))
+    .default(""),
+  message: z
+    .string()
+    .trim()
+    .min(1, "Escribí tu mensaje.")
+    .max(2000, "El mensaje puede tener hasta 2000 caracteres."),
+});
+
 export const newCaregiver = caregiverProfile.extend({ patient_ids: z.array(uuid).default([]) });
 export const newPatient = z.object({
   first_name: name("el nombre"),

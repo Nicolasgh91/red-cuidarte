@@ -14,7 +14,7 @@ export interface AuthAdmin {
 }
 
 export interface Mailer {
-  send(msg: { to: string; subject: string; text: string }): Promise<void>;
+  send(msg: { to: string; subject: string; text: string; replyTo?: string }): Promise<void>;
 }
 
 export interface Deps {

@@ -734,3 +734,27 @@ hr.sep {
   background: var(--soft);
   color: var(--ink);
 }
+
+/* Botón flotante de WhatsApp (debajo de los toasts, encima del contenido y la barra inferior) */
+.wa-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 45;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+.wa-fab:hover {
+  transform: scale(1.05);
+}
+.wa-fab svg {
+  width: 30px;
+  height: 30px;
+}

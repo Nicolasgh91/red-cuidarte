@@ -39,7 +39,7 @@ Web redasistir.online (Vercel) ─┼─HTTPS─► api.redasistir.online (Verce
                                 │                │
                                 └─ Supabase Auth │──► Supabase Postgres, por el pooler (solo la API accede)
                                                  ├──► Groq API (asistente)
-                                                 └──► SMTP avisos@redasistir.online (DonWeb)
+                                                 └──► SMTP info@redasistir.online (DonWeb)
 Vercel Cron (1 vez por día) → GET /internal/jobs/daily (secreto)
 GitHub Actions: CI, migraciones a producción, backup semanal
 ```
@@ -72,7 +72,7 @@ red-cuidarte/
 - [ ] MCP de Supabase en Claude Desktop apuntando a `cuidarte-dev` (configuración abajo).
 - [ ] Groq: cuenta y API key.
 - [ ] Vercel: cuenta Hobby con dos proyectos conectados al repo: `web` (raíz `apps/web`) y `api` (raíz `apps/api`).
-- [ ] DonWeb: casilla `avisos@redasistir.online` y datos SMTP del panel.
+- [ ] DonWeb: casilla `info@redasistir.online` y datos SMTP del panel.
 - [ ] Google Play Console (US$ 25).
 
 Configuración del MCP (en el archivo de configuración de Claude Desktop; el token se crea en Supabase › Account › Access Tokens):
@@ -149,7 +149,7 @@ Agente (pruebas cortas, en ramas `spike/`):
 ### F6 · Dominio y correo (DNS en DonWeb)
 - [ ] Registros para el proyecto `web` de Vercel en `redasistir.online`.
 - [ ] Registro para el proyecto `api` de Vercel en `api.redasistir.online` (Vercel emite el certificado).
-- [ ] SPF, DKIM y DMARC para `avisos@redasistir.online`.
+- [ ] SPF, DKIM y DMARC para `info@redasistir.online`.
 - [ ] Nodemailer con el SMTP de DonWeb; endpoint de admin para mail de prueba.
 
 **Aceptación**: el mail de prueba llega a la bandeja de entrada de Gmail y Outlook (no a spam); los dos dominios responden con HTTPS.

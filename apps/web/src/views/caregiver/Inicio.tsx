@@ -133,6 +133,9 @@ export function Inicio() {
           </small>
         </div>
       </div>
+      <p className="optional" style={{ margin: 0 }}>
+        ¿Necesitás ayuda con la app? <Link to="/contacto">Contacto</Link>
+      </p>
       <p className="disclaimer">{DISCLAIMER}</p>
     </div>
   );

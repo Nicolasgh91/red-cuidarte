@@ -13,5 +13,10 @@ describe("Privacidad", () => {
     expect(screen.getByRole("heading", { name: "Política de privacidad" })).toBeInTheDocument();
     expect(screen.getByText(/se envían a\s+Groq/)).toBeInTheDocument();
     expect(screen.getByText(/borrar tu cuenta/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "info@redasistir.online" })).toHaveAttribute(
+      "href",
+      "mailto:info@redasistir.online",
+    );
+    expect(screen.getByText(/formulario de Contacto/)).toBeInTheDocument();
   });
 });

@@ -9,18 +9,25 @@ export const birthdayMail = (firstName: string) => ({
     "Red Cuidar · Cuidamos a quien cuida",
 });
 
-/** Registra el envío en mail_log (queda pending → sent/failed). */
+/** Dirección de un remitente/destino con formato "Nombre <dir>" (o la misma cadena si no lo tiene). */
+export const addressOf = (s: string): string => /<([^>]+)>/.exec(s)?.[1] ?? s;
+
+/**
+ * Registra el envío en mail_log (queda pending → sent/failed).
+ * logSubject reemplaza el asunto en el registro (los asuntos que escribe un usuario no se copian).
+ */
 export async function sendLogged(
   deps: Deps,
-  msg: { to: string; subject: string; text: string },
-  kind: "birthday" | "test",
+  msg: { to: string; subject: string; text: string; replyTo?: string },
+  kind: "birthday" | "test" | "contact",
   year: number,
+  opts: { logSubject?: string } = {},
 ): Promise<"sent" | "failed" | "skipped"> {
   const { sql, mailer } = deps;
   // Cumpleaños: único por (mail, tipo, año). Un envío fallido se puede reintentar; uno enviado o en curso no.
   const [row] = await sql<{ id: string }[]>`
     insert into mail_log (to_email, subject, kind, year, status)
-    values (${msg.to}, ${msg.subject}, ${kind}, ${year}, 'pending')
+    values (${addressOf(msg.to)}, ${opts.logSubject ?? msg.subject}, ${kind}, ${year}, 'pending')
     on conflict (to_email, kind, year) where kind = 'birthday'
     do update set status = 'pending', error = null, sent_at = now() where mail_log.status = 'failed'
     returning id`;

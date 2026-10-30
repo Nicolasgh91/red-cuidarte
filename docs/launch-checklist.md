@@ -22,6 +22,7 @@ Todo lo de esta lista es 👤 o depende de cuentas/servicios reales: no se ejecu
 - [ ] Logs de Vercel: se guardan **1 hora** en Hobby → saber mirarlos enseguida (o conectar un drenaje si pasa a Pro).
 - [ ] Rotación de secretos documentada: `MEDICATIONS_KEY` (requiere re-cifrar), `DEVICE_TOKEN_SECRET` (invalida los tokens: todos vuelven a verificar la passkey), `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `SMTP_PASS`.
 - [ ] Backup: correr `backup.yml` a mano y **restaurar** el archivo con `scripts/restore-backup.sh`; guardar `BACKUP_PASSPHRASE` fuera de GitHub.
+- [ ] Casilla `info@redasistir.online` creada, con SPF/DKIM/DMARC válidos; un mensaje del formulario de Contacto llega a esa casilla con `Reply-To` = mail de quien escribe.
 - [ ] El cron diario corrió al menos 3 veces seguidas y dejó filas en `mail_log` cuando correspondía. Recordar: si falla 7 días, Supabase pausa el proyecto.
 - [ ] Vigilar límites: Groq (8.000 tokens/min y 200.000/día de toda la organización), Vercel (invocaciones y CPU activa), Supabase (500 MB), Actions (2.000 min).
 - [ ] Re-verificar todos los números de `docs/free-tier.md`.

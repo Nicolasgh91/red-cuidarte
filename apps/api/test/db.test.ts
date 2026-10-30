@@ -11,7 +11,7 @@ describe("esquema (F2)", () => {
     const rows = await h.sql<
       { tablename: string; rowsecurity: boolean }[]
     >`select tablename, rowsecurity from pg_tables where schemaname = 'public'`;
-    expect(rows.length).toBe(16);
+    expect(rows.length).toBe(17);
     expect(rows.filter((r) => !r.rowsecurity)).toEqual([]);
   });
 
@@ -23,7 +23,14 @@ describe("esquema (F2)", () => {
     const c = await h.caregiver();
     const p = await h.patient();
     await h.shift(c, p, "2026-10-21", "08:00", "14:00");
-    for (const table of ["shifts", "users", "medications", "wellbeing_records", "devices"]) {
+    for (const table of [
+      "shifts",
+      "users",
+      "medications",
+      "wellbeing_records",
+      "devices",
+      "contact_messages",
+    ]) {
       await expect(
         h.sql.begin(async (tx) => {
           await tx.unsafe(`set local role ${role}`);
@@ -61,6 +68,26 @@ describe("esquema (F2)", () => {
     await ins("birthday", 2027);
     await ins("test", 2026);
     await ins("test", 2026);
+  });
+
+  it("mail_log: los mails de contacto se repiten", async () => {
+    const ins = () =>
+      h.sql`insert into mail_log (to_email, subject, kind, year) values ('info@x.org', 's', 'contact', 2026)`;
+    await ins();
+    await ins();
+    expect(await h.sql`select 1 from mail_log where kind = 'contact'`).toHaveLength(2);
+  });
+
+  it("contact_messages: valida largos y se borra con el usuario", async () => {
+    const c = await h.caregiver();
+    const ins = (subject: string, message: string) =>
+      h.sql`insert into contact_messages (user_id, subject, message, status) values (${c}, ${subject}, ${message}, 'sent')`;
+    await ins("a".repeat(100), "b".repeat(2000));
+    await expect(ins("a".repeat(101), "hola")).rejects.toMatchObject({ code: "23514" });
+    await expect(ins("", "")).rejects.toMatchObject({ code: "23514" });
+    await expect(ins("", "b".repeat(2001))).rejects.toMatchObject({ code: "23514" });
+    await h.sql`delete from users where id = ${c}`;
+    expect(await h.sql`select 1 from contact_messages`).toHaveLength(0);
   });
 
   it("borrar un usuario borra todo lo suyo", async () => {

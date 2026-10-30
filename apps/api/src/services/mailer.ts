@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import type { Env } from "../env.js";
 import type { Mailer } from "../deps.js";
 
-/** SMTP de la casilla avisos@ en DonWeb. 465 = TLS directo; 587 = STARTTLS. */
+/** SMTP de la casilla info@ en DonWeb. 465 = TLS directo; 587 = STARTTLS. */
 export function createSmtpMailer(env: Env): Mailer {
   const transport = nodemailer.createTransport({
     host: env.SMTP_HOST,
@@ -15,8 +15,8 @@ export function createSmtpMailer(env: Env): Mailer {
     socketTimeout: 20_000,
   });
   return {
-    async send({ to, subject, text }) {
-      await transport.sendMail({ from: env.SMTP_FROM, to, subject, text });
+    async send({ to, subject, text, replyTo }) {
+      await transport.sendMail({ from: env.SMTP_FROM, to, subject, text, replyTo });
     },
   };
 }

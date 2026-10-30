@@ -9,6 +9,7 @@ import { DEMO_MODE } from "../auth/demo";
 import { AccountMenu } from "./AccountMenu";
 import { DemoBar } from "./DemoBar";
 import { Icon, Logo } from "./icons";
+import { WhatsAppButton } from "./WhatsAppButton";
 
 /** Encabezado + navegación lateral (barra inferior en el celular) + contenido del rol. */
 export function AppShell({ me }: { me: Me }) {
@@ -55,6 +56,7 @@ export function AppShell({ me }: { me: Me }) {
       <main id="main" tabIndex={-1}>
         <RoleRoutes role={role} />
       </main>
+      <WhatsAppButton role={role} />
     </div>
   );
 }

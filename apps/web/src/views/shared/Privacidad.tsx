@@ -29,8 +29,8 @@ export function Privacidad() {
           <div className="prose">
             <h2>Quién es responsable</h2>
             <p>
-              Cuidarte+ es una aplicación de Red Cuidar. Para consultas sobre tus datos escribí a la
-              casilla de contacto que figure en la ficha de la app.
+              Cuidarte+ es una aplicación de Red Cuidar. Para consultas sobre tus datos escribí a{" "}
+              <a href="mailto:info@redasistir.online">info@redasistir.online</a>.
             </p>
             <h2>Qué datos guardamos</h2>
             <p>
@@ -39,7 +39,10 @@ export function Privacidad() {
               Personas cuidadas: nombre, apellido y medicación (nombre, dosis y horarios).
               Administradores: nombre, apellido, mail y celular. Para proteger cada cuenta también
               guardamos una credencial del dispositivo (passkey), su descripción, la última
-              dirección IP de acceso y los intentos de ingreso desde otros dispositivos.
+              dirección IP de acceso y los intentos de ingreso desde otros dispositivos. Si nos
+              escribís desde el formulario de Contacto, guardamos tu mensaje (asunto y texto) junto
+              con tu cuenta y lo enviamos por mail a info@redasistir.online; no incluyas datos de
+              salud ni de medicación en esos mensajes.
             </p>
             <h2>Datos de salud</h2>
             <p>
@@ -68,7 +71,7 @@ export function Privacidad() {
             <p>
               No vendemos datos. Usamos proveedores que los procesan por nuestra cuenta: Supabase
               (base de datos y autenticación), Vercel (alojamiento), el proveedor de correo de la
-              casilla de avisos y Groq (asistente).
+              casilla de contacto y Groq (asistente).
             </p>
             <h2>Ubicación</h2>
             <p>

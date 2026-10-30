@@ -33,7 +33,7 @@ export interface Harness {
   sql: Sql;
   deps: Deps;
   app: ReturnType<typeof createApp>;
-  sent: { to: string; subject: string; text: string }[];
+  sent: { to: string; subject: string; text: string; replyTo?: string }[];
   llmCalls: { messages: unknown[] }[];
   authCreated: string[];
   authDeleted: string[];

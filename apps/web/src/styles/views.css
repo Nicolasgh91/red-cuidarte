@@ -462,3 +462,20 @@ td.n {
   color: var(--ink);
   font-weight: 600;
 }
+
+/* Contacto */
+.contact-done {
+  background: var(--ok-bg);
+  border: 1px solid var(--ok);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  min-width: 0;
+}
+.contact-done p {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}

@@ -58,7 +58,7 @@ flowchart LR
   end
 
   GROQ["Groq<br/>(LLM)"]
-  SMTP["SMTP DonWeb<br/>avisos@redasistir.online"]
+  SMTP["SMTP DonWeb<br/>info@redasistir.online"]
 
   PWA -- "HTML/JS" --> WEB
   PWA -- "/api/* (mismo origen)" --> WEB
@@ -191,6 +191,7 @@ Los handlers leen todo con `c.get("deps")`; nunca importan clientes globales. Pa
 | `services/medications.ts`          | Alta y lectura con cifrado AES-256-GCM ([`lib/crypto.ts`](../apps/api/src/lib/crypto.ts)).                                             |
 | `services/assistant.ts` + `llm.ts` | Asistente con herramientas, ver [§7](#7-asistente).                                                                                    |
 | `services/mail.ts` + `mailer.ts`   | Envío con registro en `mail_log`, plantilla de cumpleaños.                                                                             |
+| `services/contact.ts`              | Formulario de Contacto (`POST /contact`): límite en la base, guarda, manda a `SMTP_FROM` con `Reply-To` y registra en `mail_log`.      |
 | `services/dailyJob.ts`             | Tarea diaria, ver [§8](#8-tareas-programadas-y-mails).                                                                                 |
 | `services/access.ts`               | `assertAssigned` (cuidador ↔ persona cuidada).                                                                                         |
 
@@ -326,6 +327,7 @@ erDiagram
   users ||--o| devices : "1 por cuenta"
   users ||--o{ device_attempts : ""
   users ||--o{ webauthn_challenges : ""
+  users ||--o{ contact_messages : ""
   caregivers ||--o{ caregiver_patients : ""
   patients ||--o{ caregiver_patients : ""
   caregivers ||--o{ shifts : ""
@@ -362,6 +364,15 @@ erDiagram
     bytea public_key
     bigint sign_count
   }
+  contact_messages {
+    uuid id PK
+    uuid user_id FK
+    text subject "máx. 100"
+    text message "1 a 2000"
+    timestamptz created_at
+    contact_status status "sent | failed"
+    text error "nullable"
+  }
 ```
 
 `mail_log` no tiene relaciones (registra mails por dirección). Detalles que importan:
@@ -369,7 +380,8 @@ erDiagram
 - **`users` no tiene FK a `auth.users`:** una persona cuidada sin mail es solo una ficha con UUID propio.
 - **Superposición de turnos:** además del chequeo en el servicio, la restricción `shifts_no_overlap` (`EXCLUDE USING gist` con `btree_gist` en el esquema `extensions`) la garantiza ante pedidos simultáneos.
 - **`task_completions`:** PK `(date, patient_id, task_key)`; `task_key` es el id de la plantilla o `med-<id>-<HH:MM>`.
-- **`mail_log`:** índice único parcial `(to_email, kind, year) WHERE kind = 'birthday'` → un mail de cumpleaños por año; los de prueba se pueden repetir.
+- **`mail_log`:** índice único parcial `(to_email, kind, year) WHERE kind = 'birthday'` → un mail de cumpleaños por año; los de prueba y los de contacto (`kind = 'contact'`) se pueden repetir.
+- **`contact_messages`:** mensajes del formulario de Contacto. El límite de 3 por usuario cada 24 h móviles se cuenta acá (índice `(user_id, created_at)`) y se serializa por usuario con `pg_advisory_xact_lock`; `status` queda `failed` si el SMTP no respondió y el mensaje igual se conserva.
 
 ### Seguridad de datos
 
@@ -430,7 +442,7 @@ sequenceDiagram
 | API         | Vercel, proyecto `red-cuidarte` (raíz `apps/api`), `cle1` | Una sola Function para todas las rutas. Cron diario.                                    |
 | Base + Auth | Supabase: `cuidarte-dev` y `cuidarte-prod`                | Postgres 17. El MCP de Supabase se usa en modo solo lectura.                            |
 | LLM         | Groq                                                      | Plan gratuito.                                                                          |
-| Mail        | SMTP de DonWeb                                            | `avisos@redasistir.online`.                                                             |
+| Mail        | SMTP de DonWeb                                            | `info@redasistir.online`.                                                               |
 | Android     | Capacitor (`apps/web/android`)                            | Todavía sin compilar ni publicar.                                                       |
 
 Pasos y variables por proyecto: [`docs/vercel-setup.md`](vercel-setup.md), [`docs/env.md`](env.md). Checklist de lanzamiento: [`docs/launch-checklist.md`](launch-checklist.md).

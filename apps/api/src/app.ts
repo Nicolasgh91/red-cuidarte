@@ -6,6 +6,7 @@ import type { AppEnv, Deps } from "./deps.js";
 import { HttpError } from "./errors.js";
 import { admin } from "./routes/admin.js";
 import { assistant } from "./routes/assistant.js";
+import { contact } from "./routes/contact.js";
 import { demo } from "./routes/demo.js";
 import { device } from "./routes/device.js";
 import { internal } from "./routes/internal.js";
@@ -64,6 +65,7 @@ export function createApp(deps: Deps) {
   const bound = new Hono<AppEnv>()
     .use("*", authenticate({ requireDevice: true }))
     .route("/me", me)
+    .route("/contact", contact)
     .route("/shifts", new Hono<AppEnv>().use("*", requireRole("caregiver")).route("/", shifts))
     .route("/tasks", new Hono<AppEnv>().use("*", requireRole("caregiver")).route("/", tasks))
     .route(

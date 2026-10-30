@@ -5,6 +5,10 @@
   }
 }
 @media (max-width: 860px) {
+  /* En :root y no en .shell: .toast-wrap se renderiza fuera de .shell (ToastProvider la envuelve). */
+  :root {
+    --bottom-nav-clearance: calc(90px + env(safe-area-inset-bottom, 0px));
+  }
   .shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -40,7 +44,10 @@
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   }
   .toast-wrap {
-    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--bottom-nav-clearance);
+  }
+  .wa-fab {
+    bottom: var(--bottom-nav-clearance);
   }
   .shell.bare main {
     padding-bottom: 48px;

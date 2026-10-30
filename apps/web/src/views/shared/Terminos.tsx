@@ -39,6 +39,13 @@ export function Terminos() {
           Los recordatorios son opcionales. Usamos tu fecha de nacimiento para mandarte un saludo
           por mail en tu cumpleaños.
         </p>
+        <h2>Mensajes de contacto</h2>
+        <p>
+          Si nos escribís desde Contacto, guardamos tu mensaje (asunto y texto) y lo enviamos por
+          mail a info@redasistir.online, con tu nombre, tu rol y el mail de tu cuenta para poder
+          responderte. Podés mandar hasta 3 mensajes por día. No incluyas datos de salud ni de
+          medicación.
+        </p>
         <h2>Asistente</h2>
         <p>
           El asistente responde con los recursos de la app, preguntas frecuentes, tus turnos y la

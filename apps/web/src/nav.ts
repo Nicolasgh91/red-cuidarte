@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { IconName } from "./components/icons";
 import type { Role } from "./api/types";
 import { Acerca } from "./views/shared/Acerca";
+import { Contacto } from "./views/shared/Contacto";
 import { Terminos } from "./views/shared/Terminos";
 import { Admin } from "./views/admin/Admin";
 import { AdminCaregivers } from "./views/admin/AdminCaregivers";
@@ -66,6 +67,7 @@ export const VIEWS: Record<Role, Record<string, ComponentType>> = {
     asistente: Asistente,
     acerca: Acerca,
     terminos: Terminos,
+    contacto: Contacto,
   },
   admin: {
     admin: Admin,
@@ -75,8 +77,9 @@ export const VIEWS: Record<Role, Record<string, ComponentType>> = {
     "admin-correos": AdminCorreos,
     acerca: Acerca,
     terminos: Terminos,
+    contacto: Contacto,
   },
-  patient: { paciente: Hoy, acerca: Acerca, terminos: Terminos },
+  patient: { paciente: Hoy, acerca: Acerca, terminos: Terminos, contacto: Contacto },
 };
 
 /** Sección de la barra de navegación que corresponde a una ruta. */

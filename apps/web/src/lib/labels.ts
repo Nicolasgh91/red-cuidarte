@@ -46,5 +46,8 @@ export const quoteOfDay = (now: Date = new Date()): string =>
 /** Número de emergencias: la spec no define uno por usuario. */
 export const SAME_NUMBER = "107";
 
+/** Casilla de contacto de Red Cuidar (se muestra como enlace mailto). */
+export const CONTACT_EMAIL = "info@redasistir.online";
+
 export const DISCLAIMER =
   "Es una herramienta de orientación y soporte destinada a complementar el cuidado personal. No reemplaza bajo ninguna circunstancia el consejo, diagnóstico o tratamiento médico profesional. Ante una emergencia, contáctese inmediatamente a su servicio de salud local.";

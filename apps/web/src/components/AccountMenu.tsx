@@ -61,6 +61,7 @@ export function AccountMenu({ role, name }: { role: Role; name: string }) {
           </>
         )}
         <Link to="/acerca">Acerca de Red Cuidar</Link>
+        <Link to="/contacto">Contacto</Link>
         <Link to="/terminos">Términos y privacidad</Link>
         <div className="mlabel">Tema</div>
         <div className="segc" role="group" aria-label="Tema">

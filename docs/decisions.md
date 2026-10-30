@@ -40,6 +40,14 @@ El roadmap dejaba "mail + contraseña o enlace mágico". Se elige **código por 
 - El asistente recibe la conversación del cliente en cada pedido (la API no guarda conversaciones, como dice el prototipo: «La conversación no se guarda»).
 - `Deshacer` del asistente borra solo turnos propios con `source = 'assistant'`.
 
+## Contacto
+
+- Una sola casilla, `info@redasistir.online`, para enviar (`SMTP_FROM`, `SMTP_USER`) y para recibir: el formulario manda a `SMTP_FROM`, sin variable aparte. Antes era `avisos@`.
+- `mail_log` ya tenía el índice único parcial solo para cumpleaños; para contacto alcanza con sumar `'contact'` al enum.
+- Límite de 3 mensajes por usuario cada 24 h móviles contado en `contact_messages`; un `pg_advisory_xact_lock` por usuario evita que pedidos simultáneos se lo salteen. Los mensajes `failed` también cuentan.
+- El asunto que escribe la persona no se copia a `mail_log` (el admin lo ve en Correos y podría tener datos de salud): ahí queda «Mensaje de contacto».
+- El asunto se limpia de saltos de línea y caracteres de control antes de guardarse y de armar el mail (evita inyectar cabeceras).
+
 ## Herramientas
 
 - **TypeScript 6.0.x** (no 7): `typescript-eslint` todavía no soporta TS 7 (ver https://github.com/typescript-eslint/typescript-eslint/issues/10940). Revisar cuando lo soporte.

@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from "react";
 import { Icon, Logo } from "../components/icons";
 import { errorMessage } from "../api/errors";
 import { useDemoUsers } from "../api/queries/demo";
-import { ROLES } from "../lib/labels";
+import { CONTACT_EMAIL, ROLES } from "../lib/labels";
 import { okMail, MSG } from "../lib/validators";
 import { useAuth } from "./AuthProvider";
 import { DEMO_MODE, DEMO_ROLES } from "./demo";
@@ -132,7 +132,8 @@ export function LoginScreen({ error }: { error: string | null }) {
         </button>
       </form>
       <p className="foot-note">
-        Solo pueden ingresar las cuentas que dio de alta el administrador.
+        Solo pueden ingresar las cuentas que dio de alta el administrador. ¿Problemas para ingresar?
+        Escribinos a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
     </AuthLayout>
   );
@@ -266,6 +267,9 @@ export function BlockedScreen({ message }: { message: string }) {
       <p className="optional">
         Ya avisamos al administrador. Cuando libere tu cuenta o autorice este dispositivo, tocá
         «Reintentar».
+      </p>
+      <p className="optional">
+        ¿Necesitás ayuda? Escribinos a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
       <div className="btn-row">
         <button type="button" className="primary-btn sm" onClick={() => void checkDevice()}>

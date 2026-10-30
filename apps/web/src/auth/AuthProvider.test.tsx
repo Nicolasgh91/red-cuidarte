@@ -86,6 +86,10 @@ describe("ingreso con código por mail + dispositivo", () => {
     const user = userEvent.setup();
 
     expect(await screen.findByRole("heading", { name: "Ingresá a Cuidarte+" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "info@redasistir.online" })).toHaveAttribute(
+      "href",
+      "mailto:info@redasistir.online",
+    );
     await user.type(screen.getByLabelText("Mail"), "sofia@ejemplo.org");
     await user.click(screen.getByRole("button", { name: /Enviarme el código/ }));
     expect(svc.sendCode).toHaveBeenCalledWith("sofia@ejemplo.org");
@@ -154,6 +158,10 @@ describe("ingreso con código por mail + dispositivo", () => {
       await screen.findByRole("heading", { name: "Este dispositivo está bloqueado" }),
     ).toBeInTheDocument();
     expect(screen.getByText(msg)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "info@redasistir.online" })).toHaveAttribute(
+      "href",
+      "mailto:info@redasistir.online",
+    );
     expect(screen.queryByText("App lista")).not.toBeInTheDocument();
   });
 
