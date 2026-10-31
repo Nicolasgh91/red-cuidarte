@@ -8,11 +8,28 @@ Agregar los dominios en cada proyecto de Vercel (Settings › Domains) y cargar 
 
 | Nombre                     | Tipo                                   | Valor                                                                       | Proyecto                   |
 | -------------------------- | -------------------------------------- | --------------------------------------------------------------------------- | -------------------------- |
-| `redasistir.online` (raíz) | A (o ALIAS/ANAME si DonWeb lo permite) | el que muestre Vercel (hoy `76.76.21.21`)                                   | `web`                      |
+| `redasistir.online` (raíz) | A (o ALIAS/ANAME si DonWeb lo permite) | `76.76.21.21` (ver abajo: no usar `216.198.79.1`)                           | `web`                      |
 | `www`                      | CNAME                                  | el que muestre Vercel                                                       | `web` (redirige a la raíz) |
 | `api`                      | CNAME                                  | el que muestre Vercel (`cname.vercel-dns.com` o el específico del proyecto) | `api`                      |
 
+**Dominio principal: la raíz.** En Vercel (proyecto `web` › Settings › Domains), `redasistir.online` va como principal y `www` con redirección 308 hacia la raíz. No al revés: las passkeys solo se aceptan desde `https://redasistir.online` (`WEBAUTHN_ORIGINS` y `ALLOWED_ORIGINS` en la API), así que con la app en `www` no se puede registrar ni verificar el dispositivo.
+
+**IP de la raíz.** Vercel ahora sugiere `216.198.79.1`, pero el 2026-10-30 esa IP (y en general `216.198.79.x`) colgaba más de la mitad de las conexiones desde la red de Nico, mientras `76.76.21.21` y `64.29.17.1` respondían siempre. Con la raíz apuntando solo a `216.198.79.1`, la app abría desde el caché del service worker pero todos los pedidos fallaban («No pudimos conectarnos»). Usar `76.76.21.21` (o sumar un segundo A con `64.29.17.1`).
+
 Vercel emite los certificados HTTPS solo cuando el DNS resuelve bien. Los archivos `/.well-known/assetlinks.json` (Android) y `apple-app-site-association` (iOS, F9b) se sirven desde el proyecto `web` (ver `docs/assetlinks.md`).
+
+### Si la app dice «No pudimos conectarnos»
+
+Antes de sospechar de la base, ver si el problema es la red. Si `www` o `red-cuidarte.vercel.app` responden y la raíz no, es DNS o red, no la API:
+
+```bash
+curl -sS -o /dev/null -w "%{http_code} %{time_total}s\n" -m 8 https://redasistir.online/api/health   # repetir varias veces
+curl -sS -o /dev/null -w "%{http_code}\n" -m 8 https://red-cuidarte.vercel.app/health                 # API directa
+# Probar cada IP de Vercel por separado:
+curl -sS -o /dev/null -w "%{http_code} %{time_total}s\n" -m 8 --resolve redasistir.online:443:76.76.21.21 https://redasistir.online/api/health
+```
+
+Probar también desde datos móviles, por si el problema es del proveedor de internet.
 
 ## Correo `info@redasistir.online`
 

@@ -1,6 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // Repetidas del tsconfig base: el build de Vercel (Root Directory apps/api) no lo lee.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
     "types": ["node"],
     "noEmit": true,
     "lib": ["ES2023"]

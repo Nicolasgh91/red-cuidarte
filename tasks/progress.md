@@ -23,7 +23,7 @@ Actualizado el 2026-10-22. Nada está commiteado: los cambios están en el árbo
 
 1. Crear `cuidarte-dev` (Supabase), el MCP de Supabase solo a dev, cuenta y API key de Groq, los dos proyectos de Vercel (`web` raíz `apps/web`, `api` raíz `apps/api`), la casilla y el SMTP de DonWeb, Google Play Console.
 2. Cargar variables en Vercel y secretos en GitHub (`docs/env.md`). Crear el Environment `production` en GitHub.
-3. Configurar Supabase Auth: registro abierto apagado, contraseñas de 8+ caracteres, SMTP propio, plantilla "Reset password" con `{{ .Token }}` (`docs/env.md`). Pasar la foto de fondo a `apps/web/public/img/auth-bg.webp`.
+3. Configurar Supabase Auth: registro abierto apagado, contraseñas de 8+ caracteres, SMTP propio, plantilla "Reset password" con `{{ .Token }}` (`docs/env.md`).
 4. **Elegir la región de la función de Vercel** igual a la de `cuidarte-prod` (Hobby permite una sola; el default es Washington `iad1`). Poner `"regions"` en `apps/api/vercel.json`.
 5. Correr las spikes S1–S3 (`docs/spikes.md`) y anotar los resultados. Si S2c (SMTP) falla, frenar y decidir.
 6. Cargar DNS (`docs/dns.md`) y el admin Jorge (`supabase/seed/admin_jorge.sql`).

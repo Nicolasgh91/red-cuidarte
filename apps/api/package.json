@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env.local src/dev.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit --strict false",
     "test": "vitest run"
   },
   "dependencies": {

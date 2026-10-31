@@ -1,14 +1,13 @@
+import type { z } from "zod";
 import type { Deps } from "../deps.js";
 import { conflict } from "../errors.js";
+import type { caregiverProfile } from "../lib/schemas.js";
 
-export interface NewCaregiver {
-  first_name: string;
-  last_names: string;
-  phone: string;
-  email: string;
-  birth_date: string;
-  patient_ids?: string[];
-}
+/**
+ * Sale del mismo esquema que validan las rutas: así el tipo coincide aunque se compile sin
+ * `strict` (el build de Vercel no lee el tsconfig base y Zod infiere distinto).
+ */
+export type NewCaregiver = z.output<typeof caregiverProfile> & { patient_ids?: string[] };
 
 /**
  * Alta de un cuidador/a: usuario de Supabase Auth, fila en users, ficha y asignaciones.

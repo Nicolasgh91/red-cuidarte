@@ -42,11 +42,19 @@
   inset: 0;
   z-index: -1;
   background-color: #eebd9b;
+  --scene-photo: url("../assets/auth-bg.webp");
   background-image:
-    linear-gradient(var(--scene-veil), var(--scene-veil)), url("/img/auth-bg.webp"),
+    linear-gradient(var(--scene-veil), var(--scene-veil)), var(--scene-photo),
     linear-gradient(180deg, #f7dcc6 0%, #f3bf9c 40%, #e6a386 65%, #b9877a 100%);
   background-size: cover;
-  background-position: center 30%;
+  background-position: center;
+}
+/* En celulares: la versión chica, corrida hacia la rama con flores. */
+@media (max-width: 620px) {
+  .auth-scene::before {
+    --scene-photo: url("../assets/auth-bg-sm.webp");
+    background-position: 22% center;
+  }
 }
 .auth-main {
   max-width: 460px;
