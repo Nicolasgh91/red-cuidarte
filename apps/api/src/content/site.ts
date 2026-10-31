@@ -1,8 +1,8 @@
 // Contenido editable de la web: tipos y textos originales. El admin puede reemplazar cada clave
 // (se guarda en la tabla site_content); sin reemplazo, vale lo que está acá. Lo importa también la
 // web, así que no debe depender de nada de la API (ni de zod).
-import { ARTICLES, CATS, FAQ } from "./index";
-import type { Article, ArticleBlock } from "./index";
+import { ARTICLES, CATS, FAQ } from "./index.js";
+import type { Article, ArticleBlock } from "./index.js";
 
 export type Block = ArticleBlock;
 
