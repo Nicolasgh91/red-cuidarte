@@ -6,6 +6,7 @@ import { Icon } from "../../components/icons";
 import type { IconName } from "../../components/icons";
 import { UrgentButton, useLayer } from "../../components/Layer";
 import { absEnd, absStart, addDays, hrsLabel, iso, nowAbs, relDay } from "../../lib/dates";
+import { useContent } from "../../api/queries/content";
 import { DISCLAIMER, quoteOfDay } from "../../lib/labels";
 import type { ReactNode } from "react";
 
@@ -35,6 +36,7 @@ function NavCard({
 }
 
 export function Inicio() {
+  const { quotes } = useContent();
   const { openPlayer } = useLayer();
   const me = useMe();
   const patients = useMyPatients();
@@ -116,6 +118,9 @@ export function Inicio() {
           <NavCard to="/recursos" icon="book" title="Cuidarte mientras cuidás">
             <p className="card-text">Estrés, descanso, autocuidado y técnicas para el día a día.</p>
           </NavCard>
+          <NavCard to="/pacientes" icon="heart" title="Personas cuidadas">
+            <p className="card-text">Quiénes acompañás, y sumá a alguien nuevo.</p>
+          </NavCard>
           <NavCard to="/asistente" icon="sparkle" title="Asistente">
             <p className="card-text">Preguntale lo que necesites o contale tus turnos.</p>
           </NavCard>
@@ -127,7 +132,7 @@ export function Inicio() {
           <path d="M0 44V36c22-10 40-12 58-4s32 2 50-8v20z" fill="var(--wave-b)" />
         </svg>
         <div>
-          <p>{quoteOfDay()}</p>
+          <p>{quoteOfDay(new Date(), quotes)}</p>
           <small>
             Frase del día · <Link to="/acerca">Red Cuidar</Link>
           </small>

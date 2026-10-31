@@ -1,11 +1,57 @@
-import { usePatientToday } from "../../api/queries/patient";
+import { errorMessage } from "../../api/errors";
+import { useContent } from "../../api/queries/content";
+import { useLinkCode, usePatientToday, useRenewLinkCode } from "../../api/queries/patient";
 import { Async } from "../../components/common";
+import { useToast } from "../../components/Toasts";
 import { Icon } from "../../components/icons";
 import { UrgentButton } from "../../components/Layer";
 import { fmtLong, fromIso, hrsLabel, relDay } from "../../lib/dates";
 import { quoteOfDay } from "../../lib/labels";
 
+/** Código de un solo uso para que un cuidador/a se vincule con esta persona. */
+function LinkCode() {
+  const q = useLinkCode();
+  const renew = useRenewLinkCode();
+  const { toast } = useToast();
+  const code = q.data?.code;
+  return (
+    <section className="group" aria-labelledby="link-title">
+      <h2 className="section" id="link-title">
+        Vincular a quien te cuida
+      </h2>
+      <div className="card pcard">
+        <p style={{ margin: 0 }}>
+          Compartí este código con tu cuidador/a para que pueda acompañarte en la app. Vale 48 horas
+          y se usa una sola vez.
+        </p>
+        {code ? (
+          <p
+            className="tnum"
+            style={{ fontSize: "1.8rem", letterSpacing: "0.12em", margin: "12px 0" }}
+            aria-label={`Código ${code.split("").join(" ")}`}
+          >
+            {code.slice(0, 4)}-{code.slice(4)}
+          </p>
+        ) : (
+          <p className="optional" role="status">
+            {q.isError ? errorMessage(q.error) : "Generando el código…"}
+          </p>
+        )}
+        <button
+          className="ghost"
+          type="button"
+          disabled={renew.isPending}
+          onClick={() => renew.mutate(undefined, { onError: (e) => toast(errorMessage(e)) })}
+        >
+          Generar un código nuevo
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function Hoy() {
+  const { quotes } = useContent();
   const q = usePatientToday();
   return (
     <Async query={q}>
@@ -73,9 +119,10 @@ export function Hoy() {
                 Si algo no coincide con lo que te indicó tu médico, avisale a quien te cuida.
               </p>
             </section>
+            <LinkCode />
             <div className="quote">
               <div>
-                <p>{quoteOfDay()}</p>
+                <p>{quoteOfDay(new Date(), quotes)}</p>
                 <small>Frase del día · Red Cuidar</small>
               </div>
             </div>

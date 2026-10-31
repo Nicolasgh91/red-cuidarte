@@ -38,7 +38,7 @@ describe("AppShell", () => {
       },
     );
     const nav = screen.getByRole("navigation", { name: "Secciones" });
-    expect(nav).toHaveTextContent("InicioTurnosTareasAsistenteBienestarPausaRecursos");
+    expect(nav).toHaveTextContent("InicioPacientesTurnosTareasAsistenteBienestarPausaRecursos");
     expect(screen.getByRole("link", { name: "Inicio" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -51,12 +51,12 @@ describe("AppShell", () => {
       },
     );
     expect(screen.getByRole("navigation", { name: "Secciones" })).toHaveTextContent(
-      "PanelCuidadoresPacientesDispositivosCorreos",
+      "PanelCuidadoresPacientesDispositivosCorreosContenido",
     );
     admin.unmount();
   });
 
-  it("el menú de cuenta no tiene selector de rol de demo y sí cerrar sesión y tema", async () => {
+  it("el menú de cuenta tiene cerrar sesión y tema", async () => {
     const user = userEvent.setup();
     renderWithApp(
       <AppShell me={me("caregiver", { first_name: "Sofía", last_names: "Ejemplo" })} />,

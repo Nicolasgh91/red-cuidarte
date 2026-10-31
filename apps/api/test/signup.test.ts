@@ -11,11 +11,21 @@ beforeEach(async () => {
 afterAll(() => h.close());
 
 const body = (over: object = {}) => ({
+  role: "caregiver",
   first_name: "Marta",
   last_names: "Ejemplo",
   phone: "342 155 222222",
   email: "Marta@Ejemplo.org",
   birth_date: "1975-10-22",
+  password: "una-clave-larga",
+  ...over,
+});
+
+const patientBody = (over: object = {}) => ({
+  role: "patient",
+  first_name: "Pedro",
+  last_name: "Ejemplo",
+  email: "Pedro@Ejemplo.org",
   password: "una-clave-larga",
   ...over,
 });
@@ -84,8 +94,37 @@ describe("autorregistro", () => {
     expect((await signup(body({ email: "otra-ip@ejemplo.org" }), "200.2.2.2")).status).toBe(201);
   });
 
-  it("no existe en modo demo", async () => {
-    h.deps.env = { ...TEST_ENV, DEMO_MODE: true };
-    expect((await signup(body())).status).toBe(404);
+  it("crea la cuenta de paciente con contraseña y sin cuidadores", async () => {
+    const r = await signup(patientBody());
+    expect(r.status).toBe(201);
+    const { id } = (await r.json()) as { id: string };
+    expect(h.authCreated).toEqual(["pedro@ejemplo.org"]);
+    expect(h.authPasswords).toEqual(["una-clave-larga"]);
+    expect(
+      await h.sql`select 1 from users where id = ${id} and role = 'patient' and email = 'pedro@ejemplo.org'`,
+    ).toHaveLength(1);
+    expect(
+      await h.sql`select 1 from patients where user_id = ${id} and first_name = 'Pedro' and last_name = 'Ejemplo'`,
+    ).toHaveLength(1);
+    expect(await h.sql`select 1 from caregiver_patients where patient_id = ${id}`).toHaveLength(0);
+  });
+
+  it("el paciente necesita mail y contraseña válidos y no puede repetir mail", async () => {
+    expect((await signup(patientBody({ email: undefined }))).status).toBe(400);
+    expect((await signup(patientBody({ password: "corta" }))).status).toBe(400);
+    await h.caregiver({ email: "pedro@ejemplo.org" });
+    const dup = await signup(patientBody());
+    expect(dup.status).toBe(409);
+    expect(await code(dup)).toBe("email_taken");
+  });
+
+  it("solo se puede elegir cuidador/a o paciente", async () => {
+    for (const role of ["admin", undefined, "otro"]) {
+      const r = await signup(body({ role }));
+      expect(r.status).toBe(400);
+      expect(await code(r)).toBe("invalid_input");
+    }
+    expect(h.authCreated).toEqual([]);
+    expect(await h.sql`select 1 from users where role = 'admin'`).toHaveLength(0);
   });
 });

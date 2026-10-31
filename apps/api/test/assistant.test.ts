@@ -80,6 +80,28 @@ describe("asistente (F8)", () => {
     expect(JSON.stringify(h.llmCalls)).not.toContain("NOTA-PRIVADA-123");
   });
 
+  it("el contexto usa los recursos y las preguntas frecuentes que editó el admin", async () => {
+    const { c } = await setup();
+    await h.sql`insert into site_content (key, value) values
+      ('faq', ${h.sql.json([["¿Pregunta nueva?", "Respuesta nueva del admin."]])}),
+      ('articles', ${h.sql.json([
+        {
+          id: "nuevo",
+          cat: "Descanso",
+          icon: "moon",
+          title: "Recurso editado",
+          desc: "d",
+          body: [["p", "Texto editado por el admin."]],
+        },
+      ])})`;
+    await chat(c);
+    const system = (h.llmCalls[0]!.messages[0] as { content: string }).content;
+    expect(system).toContain("¿Pregunta nueva?");
+    expect(system).toContain("Texto editado por el admin.");
+    expect(system).not.toContain("¿Cómo cargo mis turnos?");
+    expect(system).not.toContain("Manejo del estrés del cuidador");
+  });
+
   it("valida con las mismas reglas que el alta manual: superposición, paciente no asignado y formato", async () => {
     const { c, elena } = await setup();
     await h.shift(c, elena, "2026-10-26", "10:00", "12:00");

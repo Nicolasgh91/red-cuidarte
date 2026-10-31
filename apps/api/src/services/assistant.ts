@@ -1,9 +1,10 @@
 import type { Deps } from "../deps.js";
-import { ARTICLES, FAQ } from "../content/index.js";
+import type { Article } from "../content/index.js";
 import { HttpError } from "../errors.js";
 import { addDays, isHHMM, isIsoDate, longDate, nowAR } from "../lib/time.js";
 import type { ChatMessage, ToolCall, ToolDef } from "./llm.js";
 import { LlmError, LlmRateLimitError } from "./llm.js";
+import { loadContent } from "./content.js";
 import { listMedications } from "./medications.js";
 import { createShifts, listShifts, type Shift } from "./shifts.js";
 
@@ -74,6 +75,9 @@ export function buildSystemPrompt(opts: {
   caregiverName: string;
   patients: Patient[];
   medsByPatient: Map<string, { name: string; dose: string; times: string[] }[]>;
+  /** Recursos y preguntas frecuentes vigentes (los que edita el admin). */
+  articles: readonly Article[];
+  faq: readonly (readonly [string, string])[];
 }): string {
   const t = nowAR(opts.now);
   const hh = `${String(Math.floor(t.minutes / 60)).padStart(2, "0")}:${String(t.minutes % 60).padStart(2, "0")}`;
@@ -83,15 +87,17 @@ export function buildSystemPrompt(opts: {
       return `${fullName(p)}: ${list.length ? list.map((m) => `${m.name} ${m.dose} a las ${m.times.join(" y ")}`).join("; ") : "sin medicación cargada"}`;
     })
     .join("\n");
-  const resources = ARTICLES.map(
-    (a) =>
-      `## ${a.title}\n` +
-      a.body.map((b) => (b[0] === "ul" ? b[1].map((x) => "- " + x).join("\n") : b[1])).join("\n"),
-  ).join("\n\n");
+  const resources = opts.articles
+    .map(
+      (a) =>
+        `## ${a.title}\n` +
+        a.body.map((b) => (b[0] === "ul" ? b[1].map((x) => "- " + x).join("\n") : b[1])).join("\n"),
+    )
+    .join("\n\n");
   return `Sos el asistente de Cuidarte+, una app de Red Cuidar para personas que cuidan a adultos mayores. Hablás en español rioplatense (vos), con calidez y frases cortas. Respondé en 2 a 6 oraciones, o en una lista corta si ayuda. Sin títulos.
 Hoy es ${longDate(t.date)} de ${t.year} (${t.date}). Hora actual: ${hh}. Las semanas empiezan el lunes.
 Usuaria/o: ${opts.caregiverName || "sin nombre"}. Pacientes asignados: ${opts.patients.map(fullName).join(", ") || "ninguno"}.
-Medicación cargada por el administrador:
+Medicación cargada en la ficha de cada paciente:
 ${meds || "ninguna"}
 
 Reglas:
@@ -103,7 +109,7 @@ Reglas:
 - Para responder sobre turnos ya cargados, usá listar_turnos.
 
 PREGUNTAS FRECUENTES
-${FAQ.map((f) => `P: ${f[0]}\nR: ${f[1]}`).join("\n")}
+${opts.faq.map((f) => `P: ${f[0]}\nR: ${f[1]}`).join("\n")}
 
 RECURSOS
 ${resources}`;
@@ -152,6 +158,7 @@ export async function runAssistant(
       patients.map((p) => [p.id, meds.filter((m) => m.patient_id === p.id)]),
     );
 
+    const { articles, faq } = (await loadContent(sql)).content;
     const messages: ChatMessage[] = [
       {
         role: "system",
@@ -160,6 +167,8 @@ export async function runAssistant(
           caregiverName: cg ? `${cg.first_name} ${cg.last_names}`.trim() : "",
           patients,
           medsByPatient,
+          articles,
+          faq,
         }),
       },
       ...history,

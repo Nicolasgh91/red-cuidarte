@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import type { FormEvent } from "react";
 import { errorMessage } from "../../api/errors";
 import {
@@ -161,14 +162,15 @@ export function Tareas() {
             </>
           ) : (
             <EmptyCard>
-              Todavía no tenés pacientes asignados. Pedile al administrador que te los asigne.
+              Todavía no tenés pacientes. <Link to="/pacientes">Agregá uno</Link> o vinculá a
+              alguien que ya tiene cuenta con su código.
             </EmptyCard>
           )
         }
       </Async>
       <p className="foot-note">
-        Las tareas de medicación salen de la ficha de cada paciente que carga el administrador. Las
-        demás las podés agregar o quitar vos.
+        Las tareas de medicación salen de la ficha de cada paciente, que cargás en Personas
+        cuidadas. Las demás las podés agregar o quitar vos.
       </p>
     </div>
   );

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
@@ -27,9 +28,11 @@ import { RoleRoutes } from "./RoleRoutes";
 
 function at(role: Role, path: string) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <RoleRoutes role={role} />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[path]}>
+        <RoleRoutes role={role} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

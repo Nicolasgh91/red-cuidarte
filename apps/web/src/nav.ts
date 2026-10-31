@@ -6,12 +6,14 @@ import { Contacto } from "./views/shared/Contacto";
 import { Terminos } from "./views/shared/Terminos";
 import { Admin } from "./views/admin/Admin";
 import { AdminCaregivers } from "./views/admin/AdminCaregivers";
+import { AdminContenido } from "./views/admin/AdminContenido";
 import { AdminCorreos } from "./views/admin/AdminCorreos";
 import { AdminDispositivos } from "./views/admin/AdminDispositivos";
 import { AdminPacientes } from "./views/admin/AdminPacientes";
 import { Asistente } from "./views/caregiver/Asistente";
 import { Bienestar } from "./views/caregiver/Bienestar";
 import { Inicio } from "./views/caregiver/Inicio";
+import { Pacientes } from "./views/caregiver/Pacientes";
 import { Pausa } from "./views/caregiver/Pausa";
 import { Perfil } from "./views/caregiver/Perfil";
 import { Recordatorios } from "./views/caregiver/Recordatorios";
@@ -31,6 +33,7 @@ export interface NavItem {
 export const NAV: Record<Role, NavItem[]> = {
   caregiver: [
     { path: "inicio", label: "Inicio", icon: "home", mobile: true },
+    { path: "pacientes", label: "Pacientes", icon: "heart" },
     { path: "turnos", label: "Turnos", icon: "calendar", mobile: true },
     { path: "tareas", label: "Tareas", icon: "list", mobile: true },
     { path: "asistente", label: "Asistente", icon: "sparkle", mobile: true },
@@ -44,6 +47,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: "admin-pacientes", label: "Pacientes", icon: "heart", mobile: true },
     { path: "admin-dispositivos", label: "Dispositivos", icon: "phone", mobile: true },
     { path: "admin-correos", label: "Correos", icon: "mail", mobile: true },
+    { path: "admin-contenido", label: "Contenido", icon: "book", mobile: true },
   ],
   patient: [{ path: "paciente", label: "Hoy", icon: "home", mobile: true }],
 };
@@ -62,6 +66,7 @@ export const VIEWS: Record<Role, Record<string, ComponentType>> = {
     bienestar: Bienestar,
     perfil: Perfil,
     recordatorios: Recordatorios,
+    pacientes: Pacientes,
     turnos: Turnos,
     tareas: Tareas,
     asistente: Asistente,
@@ -75,6 +80,7 @@ export const VIEWS: Record<Role, Record<string, ComponentType>> = {
     "admin-pacientes": AdminPacientes,
     "admin-dispositivos": AdminDispositivos,
     "admin-correos": AdminCorreos,
+    "admin-contenido": AdminContenido,
     acerca: Acerca,
     terminos: Terminos,
     contacto: Contacto,

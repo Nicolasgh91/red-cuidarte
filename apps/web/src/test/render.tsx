@@ -39,7 +39,6 @@ export function renderWithApp(
               sendRecoveryCode: noop,
               resetPassword: noop,
               checkDevice: noop,
-              enterDemo: () => undefined,
               signOut: noop,
             }}
           >

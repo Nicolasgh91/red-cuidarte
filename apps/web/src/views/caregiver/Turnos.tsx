@@ -84,7 +84,7 @@ export function AddShiftForm({
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!patientId) return setErr("Primero necesitás un paciente asignado.");
+    if (!patientId) return setErr("Primero necesitás un paciente. Agregalo en Personas cuidadas.");
     if (!date || !start || !end) return setErr("Completá fecha, desde y hasta.");
     if (start === end) return setErr("El turno no puede empezar y terminar a la misma hora.");
     setErr(null);

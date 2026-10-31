@@ -2,11 +2,13 @@ import { Navigate, useParams } from "react-router";
 import { BackLink } from "../../components/common";
 import { Icon } from "../../components/icons";
 import type { IconName } from "../../components/icons";
-import { ARTICLES } from "../../content";
+import { useContent } from "../../api/queries/content";
+import { Blocks } from "../../components/Blocks";
 
 export function Articulo() {
   const { id } = useParams();
-  const a = ARTICLES.find((x) => x.id === id);
+  const { articles } = useContent();
+  const a = articles.find((x) => x.id === id);
   if (!a) return <Navigate to="/recursos" replace />;
   return (
     <div className="page narrow">
@@ -19,19 +21,7 @@ export function Articulo() {
         <p className="sub">{a.desc}</p>
       </div>
       <article className="article">
-        {a.body.map((b, i) =>
-          b[0] === "p" ? (
-            <p key={i}>{b[1]}</p>
-          ) : b[0] === "h" ? (
-            <h3 key={i}>{b[1]}</h3>
-          ) : (
-            <ul key={i}>
-              {b[1].map((li, j) => (
-                <li key={j}>{li}</li>
-              ))}
-            </ul>
-          ),
-        )}
+        <Blocks blocks={a.body} heading="h3" />
       </article>
       <p className="note">Cuidarte+ acompaña, pero no reemplaza la atención profesional.</p>
     </div>

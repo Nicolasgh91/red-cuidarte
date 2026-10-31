@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router";
+import { useContent } from "../../api/queries/content";
+import { Blocks } from "../../components/Blocks";
 import { Logo } from "../../components/icons";
 import { DISCLAIMER } from "../../lib/labels";
 
@@ -8,9 +10,10 @@ import { DISCLAIMER } from "../../lib/labels";
  * BORRADOR: debe revisarlo un profesional legal (Ley 25.326) antes de publicar la app (roadmap F10).
  */
 export function Privacidad() {
+  const { privacidad } = useContent();
   useEffect(() => {
-    document.title = "Política de privacidad · Cuidarte+";
-  }, []);
+    document.title = `${privacidad.title} · Cuidarte+`;
+  }, [privacidad.title]);
   return (
     <div className="shell bare">
       <header className="top">
@@ -21,80 +24,10 @@ export function Privacidad() {
       </header>
       <main id="main" tabIndex={-1}>
         <div className="page narrow" style={{ maxWidth: 668 }}>
-          <h1>Política de privacidad</h1>
-          <p className="note">
-            Texto provisorio. La política definitiva debe ser revisada por un profesional legal
-            antes del lanzamiento.
-          </p>
+          <h1>{privacidad.title}</h1>
+          {privacidad.note && <p className="note">{privacidad.note}</p>}
           <div className="prose">
-            <h2>Quién es responsable</h2>
-            <p>
-              Cuidarte+ es una aplicación de Red Cuidar. Para consultas sobre tus datos escribí a{" "}
-              <a href="mailto:info@redasistir.online">info@redasistir.online</a>.
-            </p>
-            <h2>Qué datos guardamos</h2>
-            <p>
-              Cuidadores: nombre, apellidos, mail, celular y fecha de nacimiento; sus turnos, las
-              tareas que tildan, su configuración de recordatorios y los registros de bienestar.
-              Personas cuidadas: nombre, apellido y medicación (nombre, dosis y horarios).
-              Administradores: nombre, apellido, mail y celular. Para proteger cada cuenta también
-              guardamos una credencial del dispositivo (passkey), su descripción, la última
-              dirección IP de acceso y los intentos de ingreso desde otros dispositivos. Si nos
-              escribís desde el formulario de Contacto, guardamos tu mensaje (asunto y texto) junto
-              con tu cuenta y lo enviamos por mail a info@redasistir.online; no incluyas datos de
-              salud ni de medicación en esos mensajes.
-            </p>
-            <h2>Datos de salud</h2>
-            <p>
-              La medicación y los registros de bienestar son datos de salud, considerados sensibles
-              por la Ley 25.326. La medicación solo la ven los administradores y los cuidadores
-              asignados a esa persona, y se carga con el consentimiento de la persona cuidada o de
-              quien la represente; se guarda cifrada. Los registros de bienestar los ve únicamente
-              el cuidador que los hizo: ni los administradores ni el asistente acceden a ellos.
-            </p>
-            <h2>Para qué los usamos</h2>
-            <p>
-              Para que la app funcione: mostrar turnos y tareas, armar el checklist de medicación,
-              enviarte recordatorios que vos configurás, saludarte por mail en tu cumpleaños y
-              permitir que cada cuenta se use desde un solo dispositivo.
-            </p>
-            <h2>Asistente</h2>
-            <p>
-              Cuando le escribís al asistente, tu mensaje y la conversación en curso se envían a
-              Groq, el proveedor del modelo de lenguaje, junto con información de la app para poder
-              responder: preguntas frecuentes, recursos, tus pacientes asignados, su medicación y
-              tus turnos. No enviamos tu registro de bienestar. Cuidarte+ no guarda las
-              conversaciones. No des diagnósticos ni cambies medicación según lo que diga el
-              asistente: consultá a un profesional.
-            </p>
-            <h2>Con quién se comparten</h2>
-            <p>
-              No vendemos datos. Usamos proveedores que los procesan por nuestra cuenta: Supabase
-              (base de datos y autenticación), Vercel (alojamiento), el proveedor de correo de la
-              casilla de contacto y Groq (asistente).
-            </p>
-            <h2>Ubicación</h2>
-            <p>
-              La app no recopila ni guarda tu ubicación. El botón de urgencia abre el marcador del
-              teléfono con el número de emergencias.
-            </p>
-            <h2>Recordatorios</h2>
-            <p>
-              En la app de Android los recordatorios son notificaciones locales programadas en tu
-              dispositivo; la app te pide permiso para mostrarlas.
-            </p>
-            <h2>Cuánto tiempo y tus derechos</h2>
-            <p>
-              Podés ver y corregir tus datos en Mi perfil y borrar tu cuenta con todos tus datos
-              desde Mi perfil › Borrar mi cuenta. Los administradores pueden pedir la baja de las
-              personas cuidadas que cargaron. Para ejercer tus derechos de acceso, rectificación y
-              supresión también podés escribirnos.
-            </p>
-            <p>
-              La Agencia de Acceso a la Información Pública, órgano de control de la Ley 25.326,
-              recibe las denuncias y reclamos por incumplimiento de las normas de protección de
-              datos personales.
-            </p>
+            <Blocks blocks={privacidad.blocks} />
           </div>
           <p className="disclaimer">{DISCLAIMER}</p>
         </div>

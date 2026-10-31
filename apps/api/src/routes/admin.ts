@@ -1,15 +1,20 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../deps.js";
-import { conflict, notFound } from "../errors.js";
+import { badRequest, conflict, notFound } from "../errors.js";
 import { email, newCaregiver, newMedication, newPatient, uuid } from "../lib/schemas.js";
 import { addDays, dayNum, nowAR } from "../lib/time.js";
 import { validate } from "../lib/validate.js";
+import { contentSchemas } from "../content/schemas.js";
+import { CONTENT_KEYS } from "../content/site.js";
 import { createCaregiver } from "../services/caregivers.js";
+import { loadContent } from "../services/content.js";
+import { createPatient } from "../services/patients.js";
 import { addMedication, listMedications } from "../services/medications.js";
 import { sendLogged } from "../services/mail.js";
 
 const idParam = z.object({ id: uuid });
+const keyParam = z.object({ key: z.enum(CONTENT_KEYS) });
 
 export const admin = new Hono<AppEnv>()
   .get("/summary", async (c) => {
@@ -130,22 +135,7 @@ export const admin = new Hono<AppEnv>()
     });
   })
   .post("/patients", validate("json", newPatient), async (c) => {
-    const { sql, authAdmin } = c.get("deps");
-    const b = c.req.valid("json");
-    if (b.email && (await sql`select 1 from users where email = ${b.email}`).length)
-      throw conflict("Ya hay una cuenta con ese mail.", "email_taken");
-    // Sin mail no hay usuario de Auth: es solo una ficha (id propio, sin ingreso).
-    const id = b.email ? await authAdmin.createUser(b.email) : crypto.randomUUID();
-    try {
-      await sql.begin(async (tx) => {
-        await tx`insert into users (id, role, email) values (${id}, 'patient', ${b.email ?? null})`;
-        await tx`insert into patients (user_id, first_name, last_name) values (${id}, ${b.first_name}, ${b.last_name})`;
-      });
-    } catch (e) {
-      if (b.email) await authAdmin.deleteUser(id).catch(() => undefined);
-      throw e;
-    }
-    return c.json({ id }, 201);
+    return c.json({ id: await createPatient(c.get("deps"), c.req.valid("json")) }, 201);
   })
   .post(
     "/patients/:id/medications",
@@ -243,4 +233,24 @@ export const admin = new Hono<AppEnv>()
     >`
       select id, to_email, subject, kind, sent_at, status, error from mail_log order by sent_at desc limit 100`;
     return c.json({ log: rows.map((r) => ({ ...r, sent_at: r.sent_at.toISOString() })) });
+  })
+  .get("/content", async (c) => c.json(await loadContent(c.get("deps").sql)))
+  .put("/content/:key", validate("param", keyParam), async (c) => {
+    // Cada clave reemplaza al texto original completo; se valida con su esquema.
+    const { sql } = c.get("deps");
+    const { key } = c.req.valid("param");
+    const body: unknown = await c.req.json().catch(() => undefined);
+    const parsed = contentSchemas[key].safeParse(body);
+    if (!parsed.success) {
+      throw badRequest(parsed.error.issues[0]?.message ?? "Revisá los datos.", "invalid_input");
+    }
+    await sql`
+      insert into site_content (key, value, updated_by) values (${key}, ${sql.json(parsed.data as unknown as Parameters<typeof sql.json>[0])}, ${c.get("user").id})
+      on conflict (key) do update set value = excluded.value, updated_at = now(), updated_by = excluded.updated_by`;
+    return c.json({ ok: true as const });
+  })
+  .delete("/content/:key", validate("param", keyParam), async (c) => {
+    // Volver al texto original.
+    await c.get("deps").sql`delete from site_content where key = ${c.req.valid("param").key}`;
+    return c.json({ ok: true as const });
   });

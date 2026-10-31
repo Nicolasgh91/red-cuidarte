@@ -14,7 +14,7 @@ Guía para quien se suma al proyecto: qué piezas hay, cómo se conectan y dónd
 8. [Tareas programadas y mails](#8-tareas-programadas-y-mails)
 9. [Despliegue e infraestructura](#9-despliegue-e-infraestructura)
 10. [Tests](#10-tests)
-11. [Modo demo](#11-modo-demo)
+11. [Roles y altas de cuentas](#11-roles-y-altas-de-cuentas)
 12. [Dónde tocar para…](#12-dónde-tocar-para)
 13. [Pendientes e inconsistencias conocidas](#13-pendientes-e-inconsistencias-conocidas)
 
@@ -129,7 +129,7 @@ flowchart LR
   CORS --> NS["Cache-Control:<br/>private, no-store"]
   NS --> D["inyecta deps<br/>(+ conexión del pool)"]
   D --> A{"prefijo"}
-  A -- "/health, /demo, /signup" --> H[handler]
+  A -- "/health, /signup" --> H[handler]
   A -- "/internal" --> CS["Bearer CRON_SECRET"] --> H
   A -- "/device" --> AU1["authenticate<br/>(sin dispositivo)"] --> H
   A -- "resto" --> AU2["authenticate<br/>(con X-Device-Token)"] --> RR["requireRole"] --> V["validate (zod)"] --> H
@@ -138,17 +138,17 @@ flowchart LR
 
 Montaje de rutas (sin prefijo `/api`: ese prefijo lo agrega y saca el rewrite de la web):
 
-| Prefijo                                                       | Autenticación                      | Rol                   | Archivo              |
-| ------------------------------------------------------------- | ---------------------------------- | --------------------- | -------------------- |
-| `GET /health`                                                 | ninguna                            | –                     | `app.ts`             |
-| `/internal`                                                   | `Bearer CRON_SECRET` (timing-safe) | –                     | `routes/internal.ts` |
-| `/demo`                                                       | ninguna, solo con `DEMO_MODE`      | –                     | `routes/demo.ts`     |
-| `POST /signup`                                                | ninguna, límite por IP; no en demo | –                     | `routes/signup.ts`   |
-| `/device`                                                     | JWT, sin token de dispositivo      | cualquiera registrado | `routes/device.ts`   |
-| `/me`                                                         | JWT + dispositivo                  | cualquiera            | `routes/me.ts`       |
-| `/shifts`, `/tasks`, `/wellbeing`, `/reminders`, `/assistant` | JWT + dispositivo                  | `caregiver`           | `routes/<nombre>.ts` |
-| `/patient`                                                    | JWT + dispositivo                  | `patient`             | `routes/patient.ts`  |
-| `/admin`                                                      | JWT + dispositivo                  | `admin`               | `routes/admin.ts`    |
+| Prefijo                                                       | Autenticación                      | Rol                                                            | Archivo              |
+| ------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------- | -------------------- |
+| `GET /health`                                                 | ninguna                            | –                                                              | `app.ts`             |
+| `/internal`                                                   | `Bearer CRON_SECRET` (timing-safe) | –                                                              | `routes/internal.ts` |
+| `POST /signup`                                                | ninguna, límite por IP             | –                                                              | `routes/signup.ts`   |
+| `GET /content`                                                | ninguna (público, cache 30 s)      | –                                                              | `routes/content.ts`  |
+| `/device`                                                     | JWT, sin token de dispositivo      | cualquiera registrado                                          | `routes/device.ts`   |
+| `/me`                                                         | JWT + dispositivo                  | cualquiera (`/me/patients*` y `/me/medications*`: `caregiver`) | `routes/me.ts`       |
+| `/shifts`, `/tasks`, `/wellbeing`, `/reminders`, `/assistant` | JWT + dispositivo                  | `caregiver`                                                    | `routes/<nombre>.ts` |
+| `/patient`                                                    | JWT + dispositivo                  | `patient`                                                      | `routes/patient.ts`  |
+| `/admin` (incluye `/admin/content`)                           | JWT + dispositivo                  | `admin`                                                        | `routes/admin.ts`    |
 
 El control por rol es por prefijo (en `app.ts`); el control por **asignación** (¿este cuidador cuida a esta persona?) lo hace cada servicio con `assertAssigned` de [`services/access.ts`](../apps/api/src/services/access.ts) o filtrando por `caregiver_id = user.id` en el SQL.
 
@@ -156,15 +156,15 @@ El control por rol es por prefijo (en `app.ts`); el control por **asignación** 
 
 [`src/deps.ts`](../apps/api/src/deps.ts) define la interfaz `Deps`; [`src/createDeps.ts`](../apps/api/src/createDeps.ts) arma las reales a partir de `process.env`:
 
-| Dependencia             | Real                                                      | En tests (`test/harness.ts`)              | En demo              |
-| ----------------------- | --------------------------------------------------------- | ----------------------------------------- | -------------------- |
-| `env`                   | `loadEnv()` (zod, [`src/env.ts`](../apps/api/src/env.ts)) | objeto literal                            | –                    |
-| `sql` / `sqlPerRequest` | `createSql(DATABASE_URL)` per request.                    | conexión a `cuidarte_test`                | –                    |
-| `verifier`              | JWKS remoto de Supabase                                   | JWKS local con clave ES256 generada       | acepta `demo:<uuid>` |
-| `authAdmin`             | Admin API de Supabase (service role)                      | registra altas/bajas en memoria           | UUID al azar         |
-| `mailer`                | SMTP (nodemailer)                                         | guarda en `sent[]`, puede fallar a pedido | solo loguea          |
-| `llm`                   | Groq                                                      | respuestas guionadas con `setLlm()`       | –                    |
-| `now`                   | `new Date()`                                              | reloj fijo (`setNow()`)                   | –                    |
+| Dependencia             | Real                                                      | En tests (`test/harness.ts`)              |
+| ----------------------- | --------------------------------------------------------- | ----------------------------------------- |
+| `env`                   | `loadEnv()` (zod, [`src/env.ts`](../apps/api/src/env.ts)) | objeto literal                            |
+| `sql` / `sqlPerRequest` | `createSql(DATABASE_URL)` per request.                    | conexión a `cuidarte_test`                |
+| `verifier`              | JWKS remoto de Supabase                                   | JWKS local con clave ES256 generada       |
+| `authAdmin`             | Admin API de Supabase (service role)                      | registra altas/bajas en memoria           |
+| `mailer`                | SMTP (nodemailer)                                         | guarda en `sent[]`, puede fallar a pedido |
+| `llm`                   | Groq                                                      | respuestas guionadas con `setLlm()`       |
+| `now`                   | `new Date()`                                              | reloj fijo (`setNow()`)                   |
 
 Los handlers leen todo con `c.get("deps")`; nunca importan clientes globales. Para agregar un servicio externo, sumalo a `Deps`, a `createDeps` y al harness.
 
@@ -216,7 +216,7 @@ main.tsx          aplica tema · QueryClient · registra sw.js (solo web, solo p
                   └─ LayerProvider          (modales: pausa guiada, urgencia)
                      └─ RoleApp             (GET /me)
                         └─ [RemindersRuntime, solo caregiver]
-                           └─ AppShell      (header, nav por rol, DemoBar)
+                           └─ AppShell      (header, nav por rol)
                               └─ RoleRoutes (rutas del rol)
 ```
 
@@ -224,12 +224,12 @@ main.tsx          aplica tema · QueryClient · registra sw.js (solo web, solo p
 
 [`src/nav.ts`](../apps/web/src/nav.ts) es la tabla central: `NAV` (menú), `HOME` (pantalla inicial) y `VIEWS` (ruta → componente) por rol. [`RoleRoutes.tsx`](../apps/web/src/RoleRoutes.tsx) genera las rutas a partir de `VIEWS[role]` y manda cualquier otra ruta al inicio del rol.
 
-| Rol         | Inicio      | Pantallas (`src/views/…`)                                                                                           |
-| ----------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
-| `caregiver` | `/inicio`   | `Inicio`, `Turnos`, `Tareas`, `Asistente`, `Bienestar`, `Pausa`, `Recursos` + `Articulo`, `Perfil`, `Recordatorios` |
-| `admin`     | `/admin`    | `Admin`, `AdminCaregivers`, `AdminPacientes`, `AdminDispositivos`, `AdminCorreos`                                   |
-| `patient`   | `/paciente` | `Hoy`                                                                                                               |
-| todos       | –           | `Acerca`, `Terminos` (y `/privacidad` sin sesión)                                                                   |
+| Rol         | Inicio      | Pantallas (`src/views/…`)                                                                                                        |
+| ----------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `caregiver` | `/inicio`   | `Inicio`, `Pacientes`, `Turnos`, `Tareas`, `Asistente`, `Bienestar`, `Pausa`, `Recursos` + `Articulo`, `Perfil`, `Recordatorios` |
+| `admin`     | `/admin`    | `Admin`, `AdminCaregivers`, `AdminPacientes`, `AdminDispositivos`, `AdminCorreos`, `AdminContenido`                              |
+| `patient`   | `/paciente` | `Hoy`                                                                                                                            |
+| todos       | –           | `Acerca`, `Terminos` (y `/privacidad` sin sesión)                                                                                |
 
 > El filtrado por rol en la web es solo de experiencia de uso. **La autorización real la hace la API.**
 
@@ -237,7 +237,7 @@ main.tsx          aplica tema · QueryClient · registra sw.js (solo web, solo p
 
 - [`src/api/client.ts`](../apps/web/src/api/client.ts): `hc<AppType>(API_URL)`. `AppType` viene del paquete `api` del workspace (`exports: ./src/app.ts`), así que cambiar una ruta en la API rompe el typecheck de la web si no coincide.
 - `API_URL` sale de `VITE_API_URL`. En producción es `/api`, que el rewrite de [`apps/web/vercel.json`](../apps/web/vercel.json) manda a la API: mismo origen, sin CORS ni preflight.
-- Cada pedido lleva `Authorization: Bearer <JWT de Supabase>` (o `demo:<id>`), `X-Device-Token` y un timeout de 20 s.
+- Cada pedido lleva `Authorization: Bearer <JWT de Supabase>`, `X-Device-Token` y un timeout de 20 s.
 - Interceptor de errores de autenticación (excepto en `/device/*`):
   - 401 → la sesión venció, se cierra.
   - 403 `device_login_required` → re-ingreso con passkey transparente y se reintenta el pedido una vez.
@@ -267,7 +267,7 @@ Las preferencias (agua, estirar, relajar) se guardan en la API (`/reminders`); l
 
 ## 5. Autenticación y dispositivo
 
-Dos factores: **mail y contraseña** (Supabase Auth) y **passkey** que ata la cuenta a un único dispositivo. La API emite entonces un **token de dispositivo** (HS256, 30 días, `sub` = usuario, `cid` = credencial) que se valida en cada pedido contra la credencial vigente en `devices`. Las razones están en [`docs/decisions.md`](decisions.md) (F4 y F5b). Los cuidadores pueden crear su cuenta en `/registro` (`POST /signup`); las cuentas sin contraseña (alta del admin) la definen con un código por mail en `/recuperar`.
+Dos factores: **mail y contraseña** (Supabase Auth) y **passkey** que ata la cuenta a un único dispositivo. La API emite entonces un **token de dispositivo** (HS256, 30 días, `sub` = usuario, `cid` = credencial) que se valida en cada pedido contra la credencial vigente en `devices`. Las razones están en [`docs/decisions.md`](decisions.md) (F4 y F5b). Los cuidadores y pacientes pueden crear su cuenta en `/registro` (`POST /signup`); las cuentas sin contraseña (alta del admin) la definen con un código por mail en `/recuperar`.
 
 ### 5.1 Primer ingreso
 
@@ -473,15 +473,21 @@ Correr todo: `docker compose up -d db && pnpm test`. CI hace lo mismo con un Pos
 
 ---
 
-## 11. Modo demo
+## 11. Roles y altas de cuentas
 
-Para presentaciones: `DEMO_MODE=true` en la API y `VITE_DEMO_MODE=true` en la web.
+- **Cuidador/a y paciente** se registran solos en `/registro` (`POST /signup` con `role`, límite por IP). Un cuidador queda sin pacientes y un paciente sin cuidadores hasta que el admin los asigna.
+- **Un cuidador/a también puede dar de alta a sus pacientes** desde la app (`Pacientes`, `POST /me/patients`): se crea la ficha, con mail opcional, y queda asignada a quien la creó. Carga y quita la medicación de sus pacientes (`POST /me/patients/:id/medications`, `DELETE /me/medications/:id`); el admin también puede hacerlo.
+- **Vincular a un paciente que ya tiene cuenta:** el paciente ve en «Tu día» un código de 8 caracteres (`GET /patient/link-code`, vale 48 h y se usa una sola vez; `POST` genera otro) y el cuidador lo escribe en `Pacientes` (`POST /me/patients/link`). Máximo 10 intentos por hora y cuidador (`link_attempts`). Así nadie se asigna a una persona sin que ella lo sepa. Código y vencimiento: columnas de `patients`; lógica en [`services/linkCode.ts`](../apps/api/src/services/linkCode.ts).
+- **Admin** no se puede registrar: se carga en la base de datos (plantilla: [`supabase/seed/admin_jorge.sql`](../supabase/seed/admin_jorge.sql)). Además de sus funciones de gestión (cuidadores, pacientes, dispositivos, correos), edita el **contenido de la web** (ver 11.1).
+- No hay modo demo ni usuarios de ejemplo: toda cuenta es real.
 
-- `GET /demo/users` lista los usuarios; la web muestra un selector y manda `Bearer demo:<id>`. No hay código por mail ni passkey.
-- La API reemplaza `authAdmin` y `mailer` por versiones falsas, **pero escribe en la base real**.
-- Datos de ejemplo: [`supabase/seed/demo_users.sql`](../supabase/seed/demo_users.sql) (sin medicación, porque requiere `MEDICATIONS_KEY`).
+### 11.1 Contenido editable
 
-Nunca activar en producción con datos reales.
+El admin edita desde `AdminContenido` (`/admin-contenido`): **frases del día**, **recursos**, **preguntas frecuentes**, **textos de la landing** (lema, bajada, «Qué te ofrece», «Cómo funciona») y las páginas **Acerca de**, **Términos** y **Privacidad**.
+
+- Los textos originales viven en el código ([`apps/api/src/content/`](../apps/api/src/content/)): `site.ts` (tipos y valores por defecto, también lo importa la web) y `index.ts` (recursos y FAQ). Lo editado se guarda **completo por clave** en la tabla `site_content` (`quotes`, `landing`, `articles`, `faq`, `terminos`, `privacidad`, `acerca`); sin fila, o si lo guardado deja de ser válido, vale el original. «Volver al texto original» borra la fila.
+- `PUT /admin/content/:key` valida con [`content/schemas.ts`](../apps/api/src/content/schemas.ts) (largos, íconos y categorías de una lista, ids de recurso únicos). Recursos y páginas se editan como texto simple (`## Título`, `- ` para listas, párrafos con línea en blanco), convertido a bloques en [`lib/blocksText.ts`](../apps/web/src/lib/blocksText.ts). No hay HTML: se muestra como texto.
+- `GET /content` es público (la landing y la privacidad se ven sin ingresar). La web lo lee con `useContent()` y muestra los originales mientras carga o si falla. El asistente arma su contexto con el contenido vigente.
 
 ---
 

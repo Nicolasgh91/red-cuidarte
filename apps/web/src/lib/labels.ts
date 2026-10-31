@@ -1,3 +1,4 @@
+import { DEFAULT_QUOTES } from "../content";
 import type { Role } from "../api/types";
 
 export const MOODS = ["Muy bajo", "Bajo", "Neutral", "Bien", "Muy bien"] as const;
@@ -28,19 +29,12 @@ export const indexToLabel = (labels: Scale, idx: number): string =>
 
 export const freqLabel = (f: number): string => (FREQS.find((x) => x[0] === f) ?? FREQS[1]!)[1];
 
-export const QUOTES = [
-  "Cuidamos a quien cuida.",
-  "Descansar también es cuidarte.",
-  "Pedir ayuda es una forma de cuidar.",
-  "Un minuto para vos también cuenta.",
-  "No tenés que poder con todo.",
-  "Lo que hacés todos los días importa.",
-  "Respirá. Estás haciendo lo mejor que podés.",
-];
-export const quoteOfDay = (now: Date = new Date()): string =>
-  QUOTES[
+/** Frases originales; las vigentes (que edita el admin) vienen de `useContent().quotes`. */
+export const QUOTES = DEFAULT_QUOTES;
+export const quoteOfDay = (now: Date = new Date(), quotes: readonly string[] = QUOTES): string =>
+  quotes[
     Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 864e5) %
-      QUOTES.length
+      quotes.length
   ] ?? "";
 
 /** Número de emergencias: la spec no define uno por usuario. */

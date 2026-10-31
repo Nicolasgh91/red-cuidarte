@@ -18,7 +18,6 @@ import type { ApiClient } from "../api/types";
 import { authReducer, initialAuthState } from "./machine";
 import type { AuthState } from "./machine";
 import { DeviceController } from "./controller";
-import { DEMO_MODE, demoServices, setDemoUser } from "./demo";
 import type { DeviceApi, Passkeys } from "./deviceFlow";
 import { localDeviceStore } from "./deviceStore";
 import type { DeviceStore } from "./deviceStore";
@@ -34,25 +33,35 @@ interface AuthContextValue {
    * AuthFlowError con el mensaje para mostrar en la pantalla.
    */
   signIn(email: string, password: string): Promise<void>;
-  /** Autorregistro de cuidador/a: crea la cuenta en la API y después inicia sesión. */
+  /** Autorregistro de cuidador/a o paciente: crea la cuenta en la API y después inicia sesión. */
   signUp(data: SignupData): Promise<void>;
   sendRecoveryCode(email: string): Promise<void>;
   resetPassword(email: string, code: string, password: string): Promise<void>;
   /** Registra o verifica la passkey de este dispositivo (gesto del usuario). */
   checkDevice(): Promise<void>;
-  /** Modo demo: entra como el usuario elegido en el selector. */
-  enterDemo(userId: string): void;
   signOut(): Promise<void>;
 }
 
-export interface SignupData {
-  first_name: string;
-  last_names: string;
-  phone: string;
-  email: string;
-  birth_date: string;
-  password: string;
-}
+/** Datos del autorregistro según el rol elegido; el de administrador no se puede pedir. */
+export type SignupData =
+  | {
+      role: "caregiver";
+      first_name: string;
+      last_names: string;
+      phone: string;
+      email: string;
+      birth_date: string;
+      password: string;
+    }
+  | {
+      role: "patient";
+      first_name: string;
+      last_name: string;
+      email: string;
+      password: string;
+    };
+
+export type SignupRole = SignupData["role"];
 
 /** Cualquier falla del ingreso sale como AuthFlowError, con un mensaje listo para mostrar. */
 async function flow<T>(p: Promise<T>, fallback: string): Promise<T> {
@@ -101,7 +110,7 @@ interface Props {
 
 export function AuthProvider({
   children,
-  services = DEMO_MODE ? demoServices : supabaseServices,
+  services = supabaseServices,
   store = localDeviceStore,
   passkeys = webPasskeys,
   apiOverride,
@@ -128,11 +137,6 @@ export function AuthProvider({
         case "device_blocked":
           return dispatch({ type: "device_blocked", message: issue.message });
         case "not_registered":
-          // En demo, el usuario elegido ya no existe: se vuelve al selector.
-          if (DEMO_MODE) {
-            setDemoUser(null);
-            return endSession("Ese usuario ya no existe. Elegí otro.");
-          }
           return dispatch({ type: "not_registered" });
         case "device_unregistered":
           return dispatch({ type: "device_checking" });
@@ -160,8 +164,7 @@ export function AuthProvider({
         if (cancelled) return;
         if (!s) return dispatch({ type: "no_session" });
         ctl.setUser(s.userId);
-        // En demo no hay passkey: la sesión ya está lista.
-        dispatch({ type: "session_restored", hasDeviceToken: DEMO_MODE || !!store.getToken() });
+        dispatch({ type: "session_restored", hasDeviceToken: !!store.getToken() });
       })
       .catch(() => {
         if (!cancelled) dispatch({ type: "no_session" });
@@ -251,15 +254,6 @@ export function AuthProvider({
     [services, opened],
   );
 
-  const enterDemo = useCallback(
-    (userId: string) => {
-      setDemoUser(userId);
-      ctl.setUser(userId);
-      dispatch({ type: "demo_entered" });
-    },
-    [ctl],
-  );
-
   const signOut = useCallback(async () => {
     try {
       await services.signOut();
@@ -278,10 +272,9 @@ export function AuthProvider({
       sendRecoveryCode,
       resetPassword,
       checkDevice: () => checkDevice(true),
-      enterDemo,
       signOut,
     }),
-    [state, api, signIn, signUp, sendRecoveryCode, resetPassword, checkDevice, enterDemo, signOut],
+    [state, api, signIn, signUp, sendRecoveryCode, resetPassword, checkDevice, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

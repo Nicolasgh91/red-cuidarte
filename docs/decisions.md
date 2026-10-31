@@ -19,8 +19,12 @@ Se pidió una landing pública, ingreso con mail y contraseña y una página par
 - **Registro abierto de Supabase sigue apagado:** las altas pasan siempre por la API, que crea también la fila en `users`. Así no hay usuarios de Auth sin rol.
 - **Límite:** 5 registros por IP por hora (tabla `signup_attempts`). No hay verificación del mail: cualquiera puede crear una cuenta de cuidador/a con un mail ajeno, pero no ve nada hasta que el admin le asigna pacientes. Si se abusa, el siguiente paso es confirmar el mail con un código antes de crear la ficha.
 - **Primera vez y olvido de contraseña:** las cuentas que da de alta el admin (y las personas cuidadas con mail) se crean sin contraseña. Entran por «¿Primera vez u olvidaste tu contraseña?»: `resetPasswordForEmail` manda un código de 6 dígitos, `verifyOtp({ type: "recovery" })` abre la sesión y `updateUser` guarda la contraseña. Sigue dependiendo del SMTP de DonWeb, como F5.
-- **Rutas sin sesión:** `/` (landing; la app Android abre directo en `/ingresar`), `/ingresar`, `/registro`, `/recuperar`, `/terminos` y `/privacidad`. Cualquier otra ruta lleva a `/ingresar`.
-- **Modo demo:** sin cambios; `/ingresar` muestra el selector de usuarios y no hay registro.
+- **Rutas sin sesión:** `/` (landing, también en la app Android; solo ofrece «Ingresar»), `/ingresar` (con el enlace a crear cuenta), `/registro`, `/recuperar`, `/terminos` y `/privacidad`. Cualquier otra ruta lleva a `/ingresar`.
+- **Registro con rol:** en `/registro` se elige «cuidador/a» o «paciente» (`POST /signup` con `role`). El paciente pide nombre, apellido, mail y contraseña y queda sin cuidadores hasta que el admin lo asigne. No se puede registrar un admin: ese rol se da en la base de datos.
+- **Medicación a cargo del cuidador:** el cuidador/a carga y quita la medicación de sus pacientes asignados; el admin conserva esa función.
+- **Vincular con un código:** un paciente que se registra solo no tiene cuidador. Para vincularse comparte un código de un solo uso (48 h) y el cuidador lo canjea; no se puede asignar a alguien por su mail, porque daría acceso a su medicación sin su consentimiento.
+- **Contenido editable:** el admin edita frases, recursos, preguntas frecuentes, textos de la landing y páginas legales (tabla `site_content`, ver `docs/architecture.md` 11.1). Los textos legales siguen siendo provisorios y deben revisarse con un profesional.
+- **Modo demo eliminado:** se quitaron `DEMO_MODE`/`VITE_DEMO_MODE`, el selector de usuarios, `GET /demo/users`, el atajo `Bearer demo:<id>` y el mock de desarrollo (`dev:mock`).
 
 ## F5 · Ingreso: código de 6 dígitos por mail (Supabase Auth OTP), sin contraseñas — reemplazada por F5b
 

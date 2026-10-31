@@ -9,7 +9,7 @@ import type { Patient, Shift } from "../../api/types";
 import { Markdown } from "../../components/common";
 import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
-import { ARTICLES, FAQ } from "../../content";
+import { useContent } from "../../api/queries/content";
 import { hrsLabel, listJoin, relDay } from "../../lib/dates";
 
 const SUGGEST = [
@@ -71,6 +71,7 @@ function CardMsg({
 }
 
 export function Asistente() {
+  const { articles, faq } = useContent();
   const me = useMe();
   const patientsQ = useMyPatients();
   const chat = useAssistantChat();
@@ -246,8 +247,8 @@ export function Asistente() {
         <aside className="card sources" aria-label="Con qué se alimenta el asistente">
           <h3>Con qué se alimenta</h3>
           <ul>
-            <li>Los {ARTICLES.length} recursos de Cuidarte mientras cuidás.</li>
-            <li>{FAQ.length} preguntas frecuentes, revisadas por Red Cuidar.</li>
+            <li>Los {articles.length} recursos de Cuidarte mientras cuidás.</li>
+            <li>{faq.length} preguntas frecuentes, revisadas por Red Cuidar.</li>
             <li>
               Tus turnos y tus pacientes:{" "}
               {listJoin(patients.map((p) => `${p.first_name} ${p.last_name}`.trim())) || "ninguno"}.
@@ -261,7 +262,7 @@ export function Asistente() {
           <details>
             <summary>Ver preguntas frecuentes</summary>
             <div className="faq">
-              {FAQ.map((f) => (
+              {faq.map((f) => (
                 <div key={f[0]}>
                   <b>{f[0]}</b>
                   {f[1]}

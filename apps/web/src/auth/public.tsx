@@ -1,18 +1,17 @@
-import { Capacitor } from "@capacitor/core";
 import { useEffect, useState } from "react";
 import type { FormEvent, InputHTMLAttributes, ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router";
 import { errorMessage } from "../api/errors";
-import { useDemoUsers } from "../api/queries/demo";
+import { useContent } from "../api/queries/content";
 import { Field } from "../components/common";
 import { Icon, Logo } from "../components/icons";
 import type { IconName } from "../components/icons";
 import { birthToIso } from "../lib/dates";
-import { CONTACT_EMAIL, DISCLAIMER, ROLES, quoteOfDay } from "../lib/labels";
+import { CONTACT_EMAIL, DISCLAIMER, quoteOfDay } from "../lib/labels";
 import { MSG, okMail, okPhone } from "../lib/validators";
 import { Terminos } from "../views/shared/Terminos";
 import { useAuth } from "./AuthProvider";
-import { DEMO_MODE, DEMO_ROLES } from "./demo";
+import type { SignupRole } from "./AuthProvider";
 
 /** Mínimo que pide Supabase Auth (configurado en el panel, ver docs/env.md). */
 export const MIN_PASSWORD = 8;
@@ -31,6 +30,7 @@ function AuthScene({ children, wide = false }: { children: ReactNode; wide?: boo
 
 /** Marca y lema. En la landing es el título de la página; en el resto, solo un encabezado. */
 function Brand({ title = false }: { title?: boolean }) {
+  const { landing } = useContent();
   const logo = (
     <Link to="/" className="auth-logo">
       <Logo />
@@ -40,8 +40,8 @@ function Brand({ title = false }: { title?: boolean }) {
   return (
     <header className="auth-brand">
       {title ? <h1>{logo}</h1> : logo}
-      <p className="auth-tagline">Cuidamos a quien cuida</p>
-      <p className="auth-lead">Vos sostenés a otros. Nosotros te acompañamos a vos.</p>
+      <p className="auth-tagline">{landing.tagline}</p>
+      <p className="auth-lead">{landing.lead}</p>
     </header>
   );
 }
@@ -104,67 +104,18 @@ function FormError({ message }: { message: string | null }) {
   );
 }
 
-const FEATURES: { icon: IconName; title: string; text: string }[] = [
-  {
-    icon: "pause",
-    title: "Pausas guiadas",
-    text: "Respiración y estiramientos de pocos minutos, para hacer en cualquier momento.",
-  },
-  {
-    icon: "calendar",
-    title: "Turnos y tareas",
-    text: "Tus horarios y las tareas del día de cada persona que cuidás, en un solo lugar.",
-  },
-  {
-    icon: "sun",
-    title: "Tu bienestar",
-    text: "Un registro diario de cómo estás. Lo ves solo vos.",
-  },
-  {
-    icon: "bell",
-    title: "Recordatorios",
-    text: "Avisos para tomar agua, estirarte y frenar un rato.",
-  },
-  {
-    icon: "chat",
-    title: "Asistente",
-    text: "Consultá tus turnos o cargalos escribiendo, como en un chat.",
-  },
-  {
-    icon: "book",
-    title: "Recursos",
-    text: "Lecturas breves para cuidar sin dejar de cuidarte.",
-  },
-];
-
-const STEPS = [
-  ["Creá tu cuenta", "Con tu mail y una contraseña. Lleva un minuto."],
-  [
-    "Registrá tu dispositivo",
-    "Tu cuenta queda ligada a tu celular o computadora con la huella, el rostro o el bloqueo de pantalla.",
-  ],
-  [
-    "Empezá",
-    "El equipo de Red Cuidar te asigna las personas que acompañás y ya podés usar la app.",
-  ],
-] as const;
-
 export function Landing() {
+  const { landing, quotes } = useContent();
   useEffect(() => {
-    document.title = "Cuidarte+ · Cuidamos a quien cuida";
-  }, []);
+    document.title = `Cuidarte+ · ${landing.tagline}`;
+  }, [landing.tagline]);
   return (
     <AuthScene wide>
       <section className="landing-hero">
         <Brand title />
         <div className="landing-cta">
-          {!DEMO_MODE && (
-            <Link className="primary-btn" to="/registro">
-              Crear cuenta <Icon name="arrowR" />
-            </Link>
-          )}
-          <Link className={DEMO_MODE ? "primary-btn" : "ghost landing-ghost"} to="/ingresar">
-            Ingresar
+          <Link className="primary-btn" to="/ingresar">
+            Ingresar <Icon name="arrowR" />
           </Link>
         </div>
       </section>
@@ -172,10 +123,10 @@ export function Landing() {
       <section className="landing-panel" aria-labelledby="landing-features">
         <h2 id="landing-features">Qué te ofrece</h2>
         <ul className="landing-features">
-          {FEATURES.map((f) => (
+          {landing.features.map((f) => (
             <li key={f.title}>
               <span className="badge">
-                <Icon name={f.icon} />
+                <Icon name={f.icon as IconName} />
               </span>
               <h3>{f.title}</h3>
               <p>{f.text}</p>
@@ -187,17 +138,17 @@ export function Landing() {
       <section className="landing-panel" aria-labelledby="landing-steps">
         <h2 id="landing-steps">Cómo funciona</h2>
         <ol className="landing-steps">
-          {STEPS.map(([title, text]) => (
-            <li key={title}>
-              <h3>{title}</h3>
-              <p>{text}</p>
+          {landing.steps.map((step) => (
+            <li key={step.title}>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
             </li>
           ))}
         </ol>
       </section>
 
       <footer className="landing-foot">
-        <p className="auth-quote">{quoteOfDay()}</p>
+        <p className="auth-quote">{quoteOfDay(new Date(), quotes)}</p>
         <nav aria-label="Información legal">
           <Link to="/privacidad">Privacidad</Link>
           <Link to="/terminos">Términos</Link>
@@ -275,11 +226,21 @@ export function LoginScreen({ error }: { error: string | null }) {
 }
 
 type RegisterErrors = Partial<
-  Record<"first" | "last" | "phone" | "birth" | "email" | "pass" | "pass2" | "terms", string>
+  Record<
+    "role" | "first" | "last" | "phone" | "birth" | "email" | "pass" | "pass2" | "terms",
+    string
+  >
 >;
+
+/** Roles que se pueden elegir al registrarse: el de administrador se da desde la base de datos. */
+const SIGNUP_ROLES = [
+  { value: "caregiver", label: "Soy cuidador/a", hint: "Acompaño a personas y llevo sus turnos." },
+  { value: "patient", label: "Soy paciente", hint: "Quiero que me cuiden y ver mi información." },
+] as const;
 
 export function RegisterScreen() {
   const { signUp } = useAuth();
+  const [role, setRole] = useState<SignupRole | null>(null);
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [phone, setPhone] = useState("");
@@ -297,10 +258,14 @@ export function RegisterScreen() {
     const mail = email.trim().toLowerCase();
     const birthIso = birthToIso(birth.trim());
     const next: RegisterErrors = {};
+    if (!role) next.role = "Elegí cómo vas a usar Cuidarte+.";
     if (!first.trim()) next.first = "Escribí tu nombre.";
-    if (!last.trim()) next.last = "Escribí tus apellidos.";
-    if (!okPhone(phone.trim())) next.phone = MSG.phone;
-    if (!birthIso) next.birth = MSG.birth;
+    if (!last.trim())
+      next.last = role === "patient" ? "Escribí tu apellido." : "Escribí tus apellidos.";
+    if (role === "caregiver") {
+      if (!okPhone(phone.trim())) next.phone = MSG.phone;
+      if (!birthIso) next.birth = MSG.birth;
+    }
     if (!okMail(mail)) next.email = MSG.mail;
     if (pass.length < MIN_PASSWORD)
       next.pass = `La contraseña tiene que tener al menos ${MIN_PASSWORD} caracteres.`;
@@ -308,17 +273,28 @@ export function RegisterScreen() {
     if (!terms) next.terms = "Para crear la cuenta tenés que aceptar los términos.";
     setErrors(next);
     setFormError(null);
-    if (Object.keys(next).length || !birthIso) return;
+    if (Object.keys(next).length || !role) return;
     setBusy(true);
     try {
-      await signUp({
-        first_name: first.trim(),
-        last_names: last.trim(),
-        phone: phone.trim(),
-        birth_date: birthIso,
-        email: mail,
-        password: pass,
-      });
+      if (role === "patient") {
+        await signUp({
+          role,
+          first_name: first.trim(),
+          last_name: last.trim(),
+          email: mail,
+          password: pass,
+        });
+      } else {
+        await signUp({
+          role,
+          first_name: first.trim(),
+          last_names: last.trim(),
+          phone: phone.trim(),
+          birth_date: birthIso as string,
+          email: mail,
+          password: pass,
+        });
+      }
     } catch (err) {
       setFormError(errorMessage(err));
       setBusy(false);
@@ -328,11 +304,34 @@ export function RegisterScreen() {
   return (
     <AuthScene>
       <Brand />
-      <AuthCard
-        title="Crear cuenta"
-        sub="Para personas que cuidan. Después, el equipo de Red Cuidar te asigna a quién acompañás."
-      >
+      <AuthCard title="Crear cuenta" sub="Lleva un minuto.">
         <form className="form" onSubmit={submit} noValidate>
+          <fieldset
+            className="field role-choice"
+            aria-describedby={errors.role ? "reg-role-err" : undefined}
+          >
+            <legend>Quiero registrarme como</legend>
+            {SIGNUP_ROLES.map((r) => (
+              <label className="check" key={r.value}>
+                <input
+                  type="radio"
+                  name="reg-role"
+                  value={r.value}
+                  checked={role === r.value}
+                  onChange={() => setRole(r.value)}
+                />
+                <span>
+                  {r.label}
+                  <small>{r.hint}</small>
+                </span>
+              </label>
+            ))}
+            {errors.role && (
+              <p className="err" id="reg-role-err" role="alert">
+                {errors.role}
+              </p>
+            )}
+          </fieldset>
           <div className="two">
             <Field id="reg-first" label="Nombre" error={errors.first}>
               <input
@@ -343,7 +342,11 @@ export function RegisterScreen() {
                 onChange={(e) => setFirst(e.target.value)}
               />
             </Field>
-            <Field id="reg-last" label="Apellidos" error={errors.last}>
+            <Field
+              id="reg-last"
+              label={role === "patient" ? "Apellido" : "Apellidos"}
+              error={errors.last}
+            >
               <input
                 type="text"
                 id="reg-last"
@@ -353,39 +356,41 @@ export function RegisterScreen() {
               />
             </Field>
           </div>
-          <div className="two">
-            <Field
-              id="reg-phone"
-              label="Celular"
-              hint="Con código de área, sin 0 ni 15."
-              error={errors.phone}
-            >
-              <input
-                type="text"
+          {role === "caregiver" && (
+            <div className="two">
+              <Field
                 id="reg-phone"
-                inputMode="tel"
-                autoComplete="tel-national"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </Field>
-            <Field
-              id="reg-birth"
-              label="Fecha de nacimiento"
-              hint="dd/mm/aaaa"
-              error={errors.birth}
-            >
-              <input
-                type="text"
+                label="Celular"
+                hint="Con código de área, sin 0 ni 15."
+                error={errors.phone}
+              >
+                <input
+                  type="text"
+                  id="reg-phone"
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </Field>
+              <Field
                 id="reg-birth"
-                inputMode="numeric"
-                placeholder="dd/mm/aaaa"
-                autoComplete="bday"
-                value={birth}
-                onChange={(e) => setBirth(e.target.value)}
-              />
-            </Field>
-          </div>
+                label="Fecha de nacimiento"
+                hint="dd/mm/aaaa"
+                error={errors.birth}
+              >
+                <input
+                  type="text"
+                  id="reg-birth"
+                  inputMode="numeric"
+                  placeholder="dd/mm/aaaa"
+                  autoComplete="bday"
+                  value={birth}
+                  onChange={(e) => setBirth(e.target.value)}
+                />
+              </Field>
+            </div>
+          )}
           <Field id="reg-email" label="Correo electrónico" error={errors.email}>
             <IconInput
               icon="mail"
@@ -626,55 +631,6 @@ export function RecoverScreen() {
   );
 }
 
-/** Modo demo: en vez de pedir el mail, se elige como qué usuario de la base entrar. */
-export function DemoLoginScreen({ error }: { error: string | null }) {
-  const { enterDemo } = useAuth();
-  const users = useDemoUsers();
-  const shown = error ?? (users.error ? errorMessage(users.error) : null);
-  return (
-    <AuthScene>
-      <Brand />
-      <AuthCard
-        title="Probá Cuidarte+"
-        sub="Versión de demostración: elegí con qué usuario querés entrar."
-      >
-        <FormError message={shown} />
-        {users.isPending && (
-          <p className="sub" role="status">
-            Cargando usuarios…
-          </p>
-        )}
-        {users.data?.length === 0 && (
-          <p className="sub">Todavía no hay usuarios cargados en la base.</p>
-        )}
-        {DEMO_ROLES.map((role) => {
-          const list = users.data?.filter((u) => u.role === role) ?? [];
-          if (!list.length) return null;
-          return (
-            <section key={role} className="form" aria-label={ROLES[role]}>
-              <h2>{ROLES[role]}</h2>
-              {list.map((u) => (
-                <button
-                  key={u.id}
-                  className="primary-btn"
-                  type="button"
-                  onClick={() => enterDemo(u.id)}
-                >
-                  Entrar como {u.name}
-                </button>
-              ))}
-            </section>
-          );
-        })}
-        <p className="auth-note">
-          <Icon name="info" />
-          Los cambios que hagas quedan guardados en la cuenta elegida, como si fueras esa persona.
-        </p>
-      </AuthCard>
-    </AuthScene>
-  );
-}
-
 /** Términos sin sesión (el registro los enlaza); con sesión se ven dentro de la app. */
 function PublicTerminos() {
   return (
@@ -697,17 +653,12 @@ function PublicTerminos() {
  * sesión) lleva a ingresar, donde se ve el motivo.
  */
 export function PublicRoutes({ error }: { error: string | null }) {
-  const login = DEMO_MODE ? <DemoLoginScreen error={error} /> : <LoginScreen error={error} />;
   return (
     <Routes>
-      {/* La app instalada abre directo en el ingreso: la landing es para la web. */}
-      <Route
-        path="/"
-        element={Capacitor.isNativePlatform() ? <Navigate to="/ingresar" replace /> : <Landing />}
-      />
-      <Route path="/ingresar" element={login} />
-      {!DEMO_MODE && <Route path="/registro" element={<RegisterScreen />} />}
-      {!DEMO_MODE && <Route path="/recuperar" element={<RecoverScreen />} />}
+      <Route path="/" element={<Landing />} />
+      <Route path="/ingresar" element={<LoginScreen error={error} />} />
+      <Route path="/registro" element={<RegisterScreen />} />
+      <Route path="/recuperar" element={<RecoverScreen />} />
       <Route path="/terminos" element={<PublicTerminos />} />
       <Route path="*" element={<Navigate to="/ingresar" replace />} />
     </Routes>

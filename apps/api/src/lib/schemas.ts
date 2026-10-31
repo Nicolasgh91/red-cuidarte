@@ -44,21 +44,33 @@ export const contactMessage = z.object({
     .max(2000, "El mensaje puede tener hasta 2000 caracteres."),
 });
 
-/** Autorregistro: la ficha más la contraseña (bcrypt de Supabase usa hasta 72 bytes). */
-export const signup = caregiverProfile.extend({
-  password: z
-    .string()
-    .min(8, "La contraseña tiene que tener al menos 8 caracteres.")
-    .max(72, "La contraseña puede tener hasta 72 caracteres."),
+const password = z
+  .string()
+  .min(8, "La contraseña tiene que tener al menos 8 caracteres.")
+  .max(72, "La contraseña puede tener hasta 72 caracteres.");
+
+export const linkCode = z.object({
+  code: z.string().trim().min(4, "Escribí el código.").max(20, "Revisá el código."),
 });
 
 export const newCaregiver = caregiverProfile.extend({ patient_ids: z.array(uuid).default([]) });
-export const newPatient = z.object({
+export const patientProfile = z.object({
   first_name: name("el nombre"),
   last_name: name("el apellido"),
+});
+export const newPatient = patientProfile.extend({
   /** Opcional: con mail la persona puede ingresar; sin mail es solo una ficha. */
   email: email.optional(),
 });
+
+/**
+ * Autorregistro: la ficha más la contraseña (bcrypt de Supabase usa hasta 72 bytes), según el rol
+ * elegido. Solo se puede ser cuidador/a o paciente: los admin se cargan en la base de datos.
+ */
+export const signup = z.discriminatedUnion("role", [
+  caregiverProfile.extend({ role: z.literal("caregiver"), password }),
+  patientProfile.extend({ role: z.literal("patient"), email, password }),
+]);
 
 export const newMedication = z.object({
   name: name("el medicamento"),

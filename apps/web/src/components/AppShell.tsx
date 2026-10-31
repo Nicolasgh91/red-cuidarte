@@ -5,9 +5,7 @@ import { fullName } from "../api/types";
 import { RoleRoutes } from "../RoleRoutes";
 import { HOME, NAV, sectionOf } from "../nav";
 import { ROLES } from "../lib/labels";
-import { DEMO_MODE } from "../auth/demo";
 import { AccountMenu } from "./AccountMenu";
-import { DemoBar } from "./DemoBar";
 import { Icon, Logo } from "./icons";
 import { WhatsAppButton } from "./WhatsAppButton";
 
@@ -25,7 +23,6 @@ export function AppShell({ me }: { me: Me }) {
 
   return (
     <div className={`shell${bare ? " bare" : ""}`}>
-      {DEMO_MODE && <DemoBar me={me} />}
       <header className="top">
         <Link className="logo" to={`/${HOME[role]}`} aria-label="Cuidarte+, ir al inicio">
           <Logo />

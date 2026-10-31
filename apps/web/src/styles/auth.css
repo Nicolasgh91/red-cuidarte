@@ -370,3 +370,17 @@
   color: var(--ink);
   text-underline-offset: 3px;
 }
+
+.role-choice {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+.role-choice legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-weight: 600;
+}

@@ -95,6 +95,108 @@ describe("perfil y pacientes asignados", () => {
     expect(JSON.stringify(body)).not.toContain("Levotiroxina");
   });
 
+  it("POST /me/patients crea la ficha y la asigna a quien la crea, sin mail", async () => {
+    const c = await h.caregiver();
+    const other = await h.caregiver();
+    const r = await h.req("/me/patients", {
+      as: c,
+      json: { first_name: " Elena ", last_name: "Ríos" },
+    });
+    expect(r.status).toBe(201);
+    const { id } = (await r.json()) as { id: string };
+    expect(h.authCreated).toEqual([]);
+    expect(
+      await h.sql`select 1 from users where id = ${id} and role = 'patient' and email is null`,
+    ).toHaveLength(1);
+    expect(
+      await h.sql`select 1 from patients where user_id = ${id} and first_name = 'Elena'`,
+    ).toHaveLength(1);
+    expect(
+      await h.sql`select caregiver_id from caregiver_patients where patient_id = ${id}`,
+    ).toEqual([{ caregiver_id: c }]);
+    const mine = (await (await h.req("/me/patients", { as: c })).json()) as {
+      patients: { id: string }[];
+    };
+    expect(mine.patients.map((p) => p.id)).toEqual([id]);
+    expect(
+      ((await (await h.req("/me/patients", { as: other })).json()) as { patients: unknown[] })
+        .patients,
+    ).toEqual([]);
+  });
+
+  it("POST /me/patients con mail crea la cuenta de Auth; no repite mails y valida", async () => {
+    const c = await h.caregiver();
+    const ok = await h.req("/me/patients", {
+      as: c,
+      json: { first_name: "Raúl", last_name: "Paz", email: "Raul@Example.org" },
+    });
+    expect(ok.status).toBe(201);
+    expect(h.authCreated).toEqual(["raul@example.org"]);
+    expect(h.authPasswords).toEqual([undefined]);
+
+    const dup = await h.req("/me/patients", {
+      as: c,
+      json: { first_name: "Otro", last_name: "Paz", email: "raul@example.org" },
+    });
+    expect(dup.status).toBe(409);
+    expect(
+      (await h.req("/me/patients", { as: c, json: { first_name: "", last_name: "Paz" } })).status,
+    ).toBe(400);
+    expect(await h.sql`select 1 from caregiver_patients where caregiver_id = ${c}`).toHaveLength(1);
+  });
+
+  it("POST /me/patients es solo para cuidadores y no deja datos si falla", async () => {
+    const p = await h.patient({ email: "p@example.org" });
+    const a = await h.admin();
+    const json = { first_name: "Ana", last_name: "Gil" };
+    expect((await h.req("/me/patients", { as: p, json })).status).toBe(403);
+    expect((await h.req("/me/patients", { as: a, json })).status).toBe(403);
+    expect((await h.req("/me/patients", { json })).status).toBe(401);
+    expect(await h.sql`select 1 from patients where first_name = 'Ana'`).toHaveLength(0);
+  });
+
+  it("el cuidador carga y quita medicación de sus pacientes, y la ve en /me/patients", async () => {
+    const c = await h.caregiver();
+    const p = await h.patient();
+    await h.assign(c, p);
+    const r = await h.req(`/me/patients/${p}/medications`, {
+      as: c,
+      json: { name: "Enalapril", dose: "10 mg", times: ["20:00", "08:00"] },
+    });
+    expect(r.status).toBe(201);
+    const med = (await r.json()) as { id: string };
+    const list = (await (await h.req("/me/patients", { as: c })).json()) as {
+      patients: { medications: { name: string; times: string[] }[] }[];
+    };
+    expect(list.patients[0]!.medications).toEqual([
+      expect.objectContaining({ name: "Enalapril", times: ["08:00", "20:00"] }),
+    ]);
+    expect((await h.req(`/me/medications/${med.id}`, { as: c, method: "DELETE" })).status).toBe(
+      200,
+    );
+    expect((await h.req(`/me/medications/${med.id}`, { as: c, method: "DELETE" })).status).toBe(
+      404,
+    );
+  });
+
+  it("no se puede tocar la medicación de pacientes ajenos ni entrando sin ser cuidador", async () => {
+    const c = await h.caregiver();
+    const other = await h.caregiver();
+    const p = await h.patient();
+    await h.assign(other, p);
+    const med = await h.medication(p, "Aspirina", "100 mg", ["09:00"]);
+    const json = { name: "X", dose: "1", times: ["08:00"] };
+    expect((await h.req(`/me/patients/${p}/medications`, { as: c, json })).status).toBe(404);
+    expect((await h.req(`/me/medications/${med}`, { as: c, method: "DELETE" })).status).toBe(404);
+    expect(await h.sql`select 1 from medications where patient_id = ${p}`).toHaveLength(1);
+    const a = await h.admin();
+    expect((await h.req(`/me/patients/${p}/medications`, { as: a, json })).status).toBe(403);
+    expect((await h.req(`/me/patients/${p}/medications`, { as: p, json })).status).toBe(403);
+    expect((await h.req(`/me/patients/${other}/medications`, { as: other, json: {} })).status).toBe(
+      400,
+    );
+  });
+
   it("la medicación se guarda cifrada en la base", async () => {
     const p = await h.patient();
     await h.medication(p, "Enalapril", "10 mg", ["08:00"]);

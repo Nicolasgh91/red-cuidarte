@@ -95,10 +95,11 @@ describe("Tareas", () => {
     await waitFor(() => expect(del).toHaveBeenCalledWith({ param: { id: "t-uuid" } }));
   });
 
-  it("sin pacientes asignados explica qué hacer", async () => {
+  it("sin pacientes explica qué hacer y lleva a agregar uno", async () => {
     renderWithApp(<Tareas />, {
       api: api({ $get: vi.fn().mockResolvedValue(ok({ date: iso(new Date()), patients: [] })) }),
     });
-    expect(await screen.findByText(/Todavía no tenés pacientes asignados/)).toBeInTheDocument();
+    expect(await screen.findByText(/Todavía no tenés pacientes/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agregá uno" })).toHaveAttribute("href", "/pacientes");
   });
 });

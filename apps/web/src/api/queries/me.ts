@@ -21,6 +21,68 @@ export function useMyPatients() {
   });
 }
 
+/** El cuidador/a da de alta a una persona cuidada y queda asignado a ella. */
+export function useAddMyPatient() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (json: { first_name: string; last_name: string; email?: string }) =>
+      unwrap(call(api.me.patients.$post, { json })),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-patients"] }),
+        qc.invalidateQueries({ queryKey: ["tasks"] }),
+      ]),
+  });
+}
+
+/** El cuidador/a canjea el código que le pasó una persona cuidada. */
+export function useLinkPatient() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => unwrap(call(api.me.patients.link.$post, { json: { code } })),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-patients"] }),
+        qc.invalidateQueries({ queryKey: ["tasks"] }),
+      ]),
+  });
+}
+
+/** Medicación de un paciente asignado: la carga el cuidador/a. */
+export function useAddMyMedication() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { patientId: string; name: string; dose: string; times: string[] }) =>
+      unwrap(
+        call(api.me.patients[":id"].medications.$post, {
+          param: { id: v.patientId } as never,
+          json: { name: v.name, dose: v.dose, times: v.times } as never,
+        }),
+      ),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-patients"] }),
+        qc.invalidateQueries({ queryKey: ["tasks"] }),
+      ]),
+  });
+}
+
+export function useRemoveMyMedication() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unwrap(call(api.me.medications[":id"].$delete, { param: { id } })),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-patients"] }),
+        qc.invalidateQueries({ queryKey: ["tasks"] }),
+      ]),
+  });
+}
+
 export function useSaveProfile() {
   const api = useApi();
   const qc = useQueryClient();

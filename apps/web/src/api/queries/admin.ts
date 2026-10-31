@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { unwrap } from "../errors";
 import { call } from "../rpc";
 import { useApi } from "../../auth/AuthProvider";
+import type { ContentKey, SiteContent } from "../../content";
 import type { CaregiverProfile } from "../types";
 
 export function useAdminSummary() {
@@ -112,5 +113,52 @@ export function useSendTestMail() {
   const api = useApi();
   return useAdminMutation((to: string) =>
     unwrap(call(api.admin.mail.test.$post, { json: { to } })),
+  );
+}
+
+/** Contenido de la web con la lista de claves que el admin ya editó. */
+export function useAdminContent() {
+  const api = useApi();
+  return useQuery({
+    queryKey: ["admin", "content"],
+    queryFn: async () =>
+      (await unwrap(api.admin.content.$get())) as unknown as {
+        content: SiteContent;
+        custom: ContentKey[];
+      },
+  });
+}
+
+/** Mutación de contenido: refresca el panel y lo que ve el resto de la web. */
+function useContentMutation<V>(fn: (v: V) => Promise<unknown>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin"] }),
+        qc.invalidateQueries({ queryKey: ["content"] }),
+      ]),
+  });
+}
+
+export function useSaveContent() {
+  const api = useApi();
+  return useContentMutation((v: { key: ContentKey; value: SiteContent[ContentKey] }) =>
+    unwrap(
+      // El cuerpo se valida en la API según la clave, así que el tipo del cliente no lo declara.
+      call(api.admin.content[":key"].$put, {
+        param: { key: v.key },
+        json: v.value,
+      } as never),
+    ),
+  );
+}
+
+/** Vuelve al texto original de una clave. */
+export function useResetContent() {
+  const api = useApi();
+  return useContentMutation((key: ContentKey) =>
+    unwrap(call(api.admin.content[":key"].$delete, { param: { key } as never })),
   );
 }

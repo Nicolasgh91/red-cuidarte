@@ -198,7 +198,7 @@ export const FAQ: readonly (readonly [string, string])[] = [
   ],
   [
     "¿De dónde salen las tareas de medicación?",
-    "De la ficha del paciente que carga el administrador. Si algo no coincide con la receta, avisale al administrador y seguí la indicación médica.",
+    "De la ficha de cada paciente, que cargás vos en Personas cuidadas. Si algo no coincide con la receta, seguí la indicación médica.",
   ],
   [
     "¿Qué hago ante una urgencia?",

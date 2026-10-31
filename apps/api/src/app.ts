@@ -7,13 +7,13 @@ import { HttpError } from "./errors.js";
 import { admin } from "./routes/admin.js";
 import { assistant } from "./routes/assistant.js";
 import { contact } from "./routes/contact.js";
-import { demo } from "./routes/demo.js";
 import { device } from "./routes/device.js";
 import { internal } from "./routes/internal.js";
 import { me } from "./routes/me.js";
 import { patient } from "./routes/patient.js";
 import { reminders } from "./routes/reminders.js";
 import { shifts } from "./routes/shifts.js";
+import { content } from "./routes/content.js";
 import { signup } from "./routes/signup.js";
 import { tasks } from "./routes/tasks.js";
 import { wellbeing } from "./routes/wellbeing.js";
@@ -87,7 +87,7 @@ export function createApp(deps: Deps) {
   const app = base
     .get("/health", (c) => c.json({ ok: true as const }))
     .route("/internal", internal)
-    .route("/demo", demo)
+    .route("/content", content)
     .route("/signup", signup)
     .route("/device", device_)
     .route("/", bound);

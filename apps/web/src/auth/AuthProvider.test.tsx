@@ -82,12 +82,22 @@ function mount(svc: AuthServices, api = deviceApi(), store = memoryStore(), rout
 /** Completa el formulario de registro con datos válidos (salvo lo que se pise). */
 async function fillRegister(
   user: ReturnType<typeof userEvent.setup>,
-  over: { pass2?: string } = {},
+  over: { pass2?: string; role?: "caregiver" | "patient" } = {},
 ) {
-  await user.type(await screen.findByLabelText("Nombre"), "Sofía");
-  await user.type(screen.getByLabelText("Apellidos"), "Ejemplo");
-  await user.type(screen.getByLabelText("Celular"), "342 155 000000");
-  await user.type(screen.getByLabelText("Fecha de nacimiento"), "14/05/1980");
+  const role = over.role ?? "caregiver";
+  await user.click(
+    await screen.findByRole("radio", {
+      name: role === "patient" ? /Soy paciente/ : /Soy cuidador/,
+    }),
+  );
+  await user.type(screen.getByLabelText("Nombre"), "Sofía");
+  if (role === "caregiver") {
+    await user.type(screen.getByLabelText("Apellidos"), "Ejemplo");
+    await user.type(screen.getByLabelText("Celular"), "342 155 000000");
+    await user.type(screen.getByLabelText("Fecha de nacimiento"), "14/05/1980");
+  } else {
+    await user.type(screen.getByLabelText("Apellido"), "Ejemplo");
+  }
   await user.type(screen.getByLabelText("Correo electrónico"), "Sofia@Ejemplo.org");
   await user.type(screen.getByLabelText("Contraseña"), "una-clave-larga");
   await user.type(screen.getByLabelText("Repetí la contraseña"), over.pass2 ?? "una-clave-larga");
@@ -99,11 +109,19 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it("la landing lleva a crear cuenta y a ingresar", async () => {
+  it("la landing es la bienvenida y solo ofrece ingresar", async () => {
     mount(services(), deviceApi(), memoryStore(), "/");
     expect(await screen.findByRole("heading", { level: 1, name: "Cuidarte+" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Crear cuenta/ })).toHaveAttribute("href", "/registro");
-    expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/ingresar");
+    expect(screen.getByRole("link", { name: /Ingresar/ })).toHaveAttribute("href", "/ingresar");
+    expect(screen.queryByRole("link", { name: /Crear cuenta/ })).not.toBeInTheDocument();
+  });
+
+  it("el ingreso ofrece crear una cuenta", async () => {
+    mount(services(), deviceApi(), memoryStore(), "/ingresar");
+    expect(await screen.findByRole("link", { name: /No tenés cuenta/ })).toHaveAttribute(
+      "href",
+      "/registro",
+    );
   });
 
   it("sin sesión, una ruta de la app lleva a ingresar", async () => {
@@ -180,6 +198,7 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
 
     expect(signup).toHaveBeenCalledWith({
       json: {
+        role: "caregiver",
         first_name: "Sofía",
         last_names: "Ejemplo",
         phone: "342 155 000000",
@@ -190,6 +209,37 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
     });
     expect(svc.signIn).toHaveBeenCalledWith("sofia@ejemplo.org", "una-clave-larga");
     expect(await screen.findByText("App lista")).toBeInTheDocument();
+  });
+
+  it("registro de paciente: pide menos datos y manda el rol", async () => {
+    const svc = services();
+    const signup = vi.fn(async () => ok({ id: "u1" }));
+    mount(svc, deviceApi({ signup }), memoryStore(), "/registro");
+    const user = userEvent.setup();
+    await fillRegister(user, { role: "patient" });
+    expect(screen.queryByLabelText("Celular")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+
+    expect(signup).toHaveBeenCalledWith({
+      json: {
+        role: "patient",
+        first_name: "Sofía",
+        last_name: "Ejemplo",
+        email: "sofia@ejemplo.org",
+        password: "una-clave-larga",
+      },
+    });
+    expect(await screen.findByText("App lista")).toBeInTheDocument();
+  });
+
+  it("registro: hay que elegir un rol", async () => {
+    const signup = vi.fn(async () => ok({ id: "u1" }));
+    mount(services(), deviceApi({ signup }), memoryStore(), "/registro");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Crear cuenta" }));
+    expect(screen.getByText("Elegí cómo vas a usar Cuidarte+.")).toBeInTheDocument();
+    expect(signup).not.toHaveBeenCalled();
   });
 
   it("registro: valida en el cliente y muestra el error de la API", async () => {
