@@ -21,6 +21,8 @@ const CHALLENGE_TTL_MS = 5 * 60_000;
 const PASSKEY_EXISTS_MSG =
   "Tu cuenta ya tiene una passkey. Ingresá con ella (también podés usar tu teléfono con el código QR) o pedile al administrador que la restablezca.";
 const UNREGISTERED_MSG = "Esta cuenta todavía no tiene una passkey registrada.";
+const UV_MSG =
+  "Tu dispositivo no confirmó que eras vos. Activá el bloqueo de pantalla (huella, rostro o PIN) y probá de nuevo.";
 
 const labelOf = (c: Context<AppEnv>, label?: string) =>
   (label?.trim() || c.req.header("user-agent") || "Dispositivo").slice(0, 80);
@@ -43,6 +45,54 @@ async function takeChallenge(c: Context<AppEnv>, purpose: Purpose): Promise<stri
     throw badRequest("El desafío venció. Probá de nuevo.", "challenge_expired");
   }
   return row.challenge;
+}
+
+/** Origen que informó el navegador en clientDataJSON (solo para el log). */
+function clientOrigin(response: { response?: { clientDataJSON?: unknown } }): string | undefined {
+  try {
+    const json = Buffer.from(String(response.response?.clientDataJSON), "base64url").toString();
+    return (JSON.parse(json) as { origin?: string }).origin;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Rechazo de @simplewebauthn/server (v14): lo deja en el log con el origen recibido y el esperado
+ * (sin desafío ni credencial) y lo traduce a un motivo que la persona pueda resolver.
+ */
+function webauthnError(
+  c: Context<AppEnv>,
+  step: "register" | "login",
+  response: { response?: { clientDataJSON?: unknown } },
+  e: unknown,
+  fallback: string,
+) {
+  const { env } = c.get("deps");
+  const error = e instanceof Error ? e.message : String(e);
+  let err = badRequest(fallback, "webauthn_failed");
+  if (error.includes("response origin")) {
+    const web = env.WEBAUTHN_ORIGINS.find((o) => o.startsWith("http"));
+    err = badRequest(
+      `Esta dirección no está habilitada para passkeys. Entrá desde ${web}.`,
+      "webauthn_origin",
+    );
+  } else if (error.includes("response challenge")) {
+    err = badRequest(
+      "Se cruzaron dos intentos (¿tenés otra pestaña abierta?). Probá de nuevo.",
+      "webauthn_challenge",
+    );
+  } else if (error.startsWith("User verification")) {
+    err = badRequest(UV_MSG, "webauthn_user_verification");
+  }
+  console.error(`[webauthn] ${step}/verify`, {
+    reason: err.code,
+    error: err.code === "webauthn_challenge" ? undefined : error,
+    origin: clientOrigin(response),
+    expectedOrigins: env.WEBAUTHN_ORIGINS,
+    rpId: env.WEBAUTHN_RP_ID,
+  });
+  return err;
 }
 
 /** Emite el token: en la cookie siempre; en el cuerpo, solo para la app nativa. */
@@ -96,8 +146,13 @@ async function verifyAssertion(c: Context<AppEnv>, response: AuthenticationRespo
       requireUserVerification: true,
     });
   } catch (e) {
-    console.error("[webauthn] login/verify", e);
-    throw badRequest("No pudimos verificar tu passkey. Probá de nuevo.", "webauthn_failed");
+    throw webauthnError(
+      c,
+      "login",
+      response,
+      e,
+      "No pudimos verificar tu passkey. Probá de nuevo.",
+    );
   }
   if (!info.verified) throw badRequest("No pudimos verificar tu passkey.", "webauthn_failed");
   return { credentialId: d.credential_id, info: info.authenticationInfo };
@@ -161,8 +216,13 @@ export const device = new Hono<AppEnv>()
         requireUserVerification: true,
       });
     } catch (e) {
-      console.error("[webauthn] register/verify", e);
-      throw badRequest("No pudimos registrar tu passkey. Probá de nuevo.", "webauthn_failed");
+      throw webauthnError(
+        c,
+        "register",
+        body.response,
+        e,
+        "No pudimos registrar tu passkey. Probá de nuevo.",
+      );
     }
     if (!info.verified || !info.registrationInfo)
       throw badRequest("No pudimos registrar tu passkey.", "webauthn_failed");

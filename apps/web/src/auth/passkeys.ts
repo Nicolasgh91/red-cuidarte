@@ -68,7 +68,16 @@ export function deviceErrorMessage(e: unknown, phase?: "register" | "login"): st
       : "No se completó la verificación. Probá de nuevo.";
   if (name === "InvalidStateError" || code === "ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED")
     return "Este equipo ya tiene una passkey guardada para Cuidarte+. Probá de nuevo.";
-  if (name === "NotSupportedError" || name === "SecurityError")
+  // La passkey exige huella, rostro o PIN: sin bloqueo de pantalla el equipo no puede crearla.
+  if (
+    name === "ConstraintError" ||
+    code === "ERROR_AUTHENTICATOR_MISSING_USER_VERIFICATION_SUPPORT"
+  )
+    return "Tu dispositivo no confirmó que eras vos. Activá el bloqueo de pantalla (huella, rostro o PIN) y probá de nuevo.";
+  // El navegador no acepta el dominio: pasa, por ejemplo, entrando desde www.
+  if (name === "SecurityError" || code === "ERROR_INVALID_DOMAIN" || code === "ERROR_INVALID_RP_ID")
+    return "Esta dirección no está habilitada para passkeys. Entrá desde https://redasistir.online.";
+  if (name === "NotSupportedError")
     return "Este navegador no permite usar passkeys. Probá con otro.";
   if (e instanceof Error && e.name === "ApiError") return e.message;
   return "No pudimos verificar tu passkey. Probá de nuevo.";

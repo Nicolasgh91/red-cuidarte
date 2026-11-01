@@ -269,6 +269,7 @@ Variables, configuración de Vercel y Supabase y checklist de lanzamiento en [`d
 | [`docs/architecture.md`](docs/architecture.md)         | Arquitectura, decisiones vigentes y dónde tocar cada cosa |
 | [`docs/spec.md`](docs/spec.md)                         | Especificación funcional                                  |
 | [`docs/ops.md`](docs/ops.md)                           | Variables, Vercel, Supabase, límites y lanzamiento        |
+| [`docs/passkeys.md`](docs/passkeys.md)                 | Passkeys: requisitos, alternativas por equipo y errores   |
 | [`docs/android.md`](docs/android.md)                   | App Android: build, passkeys y publicación                |
 | [`docs/dns.md`](docs/dns.md)                           | DNS y configuración de mail (SPF, DKIM, DMARC)            |
 | [`docs/play-data-safety.md`](docs/play-data-safety.md) | Declaración de seguridad de datos para Google Play        |

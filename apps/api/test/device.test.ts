@@ -165,7 +165,7 @@ describe("passkey de la cuenta (F6)", () => {
     const bad = await post(c, "/register/verify", {
       response: auth.register(ro, { noUserVerification: true }),
     });
-    expect(await code(bad)).toBe("webauthn_failed");
+    expect(await code(bad)).toBe("webauthn_user_verification");
     expect(tokenOf(bad)).toBeNull();
 
     expect((await registerPasskey(c, auth)).status).toBe(200);
@@ -176,7 +176,7 @@ describe("passkey de la cuenta (F6)", () => {
     const r = await post(c, "/login/verify", {
       response: auth.authenticate(lo, { noUserVerification: true }),
     });
-    expect(await code(r)).toBe("webauthn_failed");
+    expect(await code(r)).toBe("webauthn_user_verification");
     expect(tokenOf(r)).toBeNull();
   });
 
@@ -245,13 +245,16 @@ describe("passkey de la cuenta (F6)", () => {
     const auth = new SoftAuthenticator();
     // origen incorrecto
     let opts = (await (await post(c, "/register/options")).json()) as Opts;
-    expect(
-      (
-        await post(c, "/register/verify", {
-          response: auth.register(opts, { origin: "https://evil.example" }),
-        })
-      ).status,
-    ).toBe(400);
+    const wrongOrigin = await post(c, "/register/verify", {
+      response: auth.register(opts, { origin: "https://evil.example" }),
+    });
+    expect(wrongOrigin.status).toBe(400);
+    expect(await wrongOrigin.json()).toEqual({
+      error: {
+        code: "webauthn_origin",
+        message: `Esta dirección no está habilitada para passkeys. Entrá desde ${WEB}.`,
+      },
+    });
     // el desafío se consume aunque falle: reutilizarlo no sirve
     expect((await post(c, "/register/verify", { response: auth.register(opts) })).status).toBe(400);
     // vencido
@@ -268,6 +271,25 @@ describe("passkey de la cuenta (F6)", () => {
       (await post(c, "/login/verify", { response: auth.authenticate(lo, { badSignature: true }) }))
         .status,
     ).toBe(400);
+  });
+
+  it("un segundo pedido de opciones invalida el desafío anterior (otra pestaña)", async () => {
+    const c = await withoutPasskey();
+    const auth = new SoftAuthenticator();
+    const first = (await (await post(c, "/register/options")).json()) as Opts;
+    await post(c, "/register/options");
+    const r = await post(c, "/register/verify", { response: auth.register(first) });
+    expect(await code(r)).toBe("webauthn_challenge");
+    expect(tokenOf(r)).toBeNull();
+    // después del rechazo se puede volver a intentar
+    expect((await registerPasskey(c, auth)).status).toBe(200);
+  });
+
+  it("rechaza una passkey creada para otro rpId", async () => {
+    const c = await withoutPasskey();
+    const r = await registerPasskey(c, new SoftAuthenticator("evil.example", WEB));
+    expect(await code(r)).toBe("webauthn_failed");
+    expect(tokenOf(r)).toBeNull();
   });
 
   it("login sin passkey registrada → 404; verify sin pedir opciones → 400", async () => {
