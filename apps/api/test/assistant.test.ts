@@ -208,7 +208,7 @@ describe("asistente (F8)", () => {
   it("si Groq devuelve límite alcanzado: mensaje claro y no se descuenta del cupo", async () => {
     const { c } = await setup();
     h.setLlm(() => {
-      throw new LlmError("Groq respondió 429");
+      throw new LlmError("Groq respondió 429", 429);
     });
     const r = await chat(c);
     expect(r.status).toBe(429);
@@ -216,6 +216,21 @@ describe("asistente (F8)", () => {
       code: "assistant_busy",
       message: expect.stringContaining("Probá de nuevo"),
     });
+    expect(await h.sql`select messages from assistant_usage where caregiver_id = ${c}`).toEqual([
+      { messages: 0 },
+    ]);
+  });
+
+  it("si Groq rechaza la configuración (key inválida): 503, no «muchas consultas», y no se descuenta", async () => {
+    const { c } = await setup();
+    h.setLlm(() => {
+      throw new LlmError("Groq respondió 401: Invalid API Key", 401, "invalid_api_key");
+    });
+    const r = await chat(c);
+    expect(r.status).toBe(503);
+    expect(((await r.json()) as { error: { code: string } }).error.code).toBe(
+      "assistant_unavailable",
+    );
     expect(await h.sql`select messages from assistant_usage where caregiver_id = ${c}`).toEqual([
       { messages: 0 },
     ]);

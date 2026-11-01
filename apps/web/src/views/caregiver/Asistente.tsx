@@ -104,7 +104,7 @@ export function Asistente() {
         ...(r.added.length ? [{ type: "card" as const, shifts: r.added, undone: false }] : []),
       ]);
     } catch (e) {
-      // 429 assistant_limit / assistant_busy y demás: se muestra el mensaje del servidor.
+      // 429 assistant_limit / assistant_busy, 503 assistant_unavailable y demás: se muestra el mensaje del servidor.
       setTurns(turns);
       setItems((l) => [
         ...l,

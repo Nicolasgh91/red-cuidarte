@@ -195,14 +195,28 @@ export async function runAssistant(
     };
   } catch (e) {
     await refundMessage(deps, caregiverId, today);
-    if (e instanceof LlmError || (e as Error).name === "TimeoutError") {
+    const timeout = (e as Error).name === "TimeoutError";
+    if (!(e instanceof LlmError) && !timeout) throw e;
+    const status = e instanceof LlmError ? e.status : undefined;
+    // Sin esto la causa real (key, modelo, límite) no queda en ningún lado: el usuario solo ve el 429/503.
+    console.error("assistant llm", {
+      status,
+      code: e instanceof LlmError ? e.code : undefined,
+      message: (e as Error).message,
+    });
+    if (timeout || status === undefined || status === 429 || status >= 500) {
       throw new HttpError(
         429,
         "assistant_busy",
         "Hay muchas consultas seguidas. Probá de nuevo en un rato.",
       );
     }
-    throw e;
+    // 401/403/404/400/413: configuración o pedido, no carga. Reintentar no sirve.
+    throw new HttpError(
+      503,
+      "assistant_unavailable",
+      "El asistente no está disponible en este momento. Probá más tarde.",
+    );
   }
 }
 

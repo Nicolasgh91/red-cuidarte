@@ -84,6 +84,8 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 | Supabase Free            | 500 MB de base, 5 GB de egress, 50.000 usuarios de Auth por mes, 2 proyectos. **Se pausa tras 7 días sin actividad** (el cron diario lo evita: si falla una semana, se pausa producción)                                                                                                                  |
 | GitHub Actions (privado) | 2.000 min/mes, 500 MB de artifacts (los backups se guardan 21 días)                                                                                                                                                                                                                                       |
 
+**Si el asistente falla:** buscar `assistant llm` en los logs de Vercel (se guardan 1 hora): trae el status y el código de Groq. 401 → rotar `GROQ_API_KEY`; 404 o `model_decommissioned` → cambiar `GROQ_MODEL`; 429/413 frecuentes → tope de tokens por minuto de la cuenta. Los 429 cortos y los 5xx ya se reintentan una vez.
+
 ## Pruebas pendientes con servicios reales
 
 - **Passkeys en Android (S1):** ver [`android.md`](android.md#passkeys-y-assetlinksjson). Hasta resolverlo, la app Android no se puede usar en producción.
