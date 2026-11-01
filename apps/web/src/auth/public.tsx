@@ -13,7 +13,7 @@ import { Terminos } from "../views/shared/Terminos";
 import { useAuth } from "./AuthProvider";
 import type { SignupRole } from "./AuthProvider";
 
-/** Mínimo que pide Supabase Auth (configurado en el panel, ver docs/env.md). */
+/** Mínimo que pide Supabase Auth (configurado en el panel, ver docs/ops.md). */
 export const MIN_PASSWORD = 8;
 
 /** Fondo de atardecer de las pantallas sin sesión, con el aviso médico al pie. */

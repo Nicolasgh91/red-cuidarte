@@ -1,17 +1,8 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
-import type { ReminderSettings } from "../api/types";
-import { toMin } from "../lib/dates";
-import { MESSAGES } from "./messages";
+import { MESSAGES, dailyReminders } from "./scheduler";
 import type { ReminderScheduler, ReminderType } from "./scheduler";
 
 const CHANNEL_ID = "recordatorios";
-
-/** Un aviso que se repite todos los días a esta hora. */
-interface DailyReminder {
-  type: ReminderType;
-  hour: number;
-  minute: number;
-}
 
 // Rangos de ids por tipo: permiten cancelar solo lo nuestro. Agua cada 30 min entre 00:00 y 23:59 = 48 como máximo.
 const ID_BASE: Record<ReminderType, number> = { water: 1000, stretch: 2000, relax: 3000 };
@@ -19,31 +10,6 @@ export const reminderId = (type: ReminderType, index: number): number => ID_BASE
 const ALL_IDS = (Object.keys(ID_BASE) as ReminderType[]).flatMap((t) =>
   Array.from({ length: 100 }, (_, i) => reminderId(t, i)),
 );
-
-/**
- * De la configuración a horarios diarios fijos (puro, para poder probarlo): agua y estiramientos
- * a partir de «Desde» cada `freq` minutos hasta «Hasta» inclusive (igual que la web); relajación en
- * los horarios elegidos.
- */
-export function dailyReminders(settings: ReminderSettings): DailyReminder[] {
-  const out: DailyReminder[] = [];
-  for (const type of ["water", "stretch"] as const) {
-    const r = settings[type];
-    const from = toMin(r.from);
-    const to = toMin(r.to);
-    if (!r.on || from == null || to == null || r.freq <= 0) continue;
-    for (let m = from; m <= to; m += r.freq) {
-      out.push({ type, hour: Math.floor(m / 60), minute: m % 60 });
-    }
-  }
-  if (settings.relax.on) {
-    for (const t of [...new Set(settings.relax.times)].sort().slice(0, 3)) {
-      const m = toMin(t);
-      if (m != null) out.push({ type: "relax", hour: Math.floor(m / 60), minute: m % 60 });
-    }
-  }
-  return out;
-}
 
 /**
  * Recordatorios como notificaciones locales del dispositivo (funcionan con la app cerrada y se

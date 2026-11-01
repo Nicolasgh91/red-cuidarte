@@ -79,7 +79,9 @@ describe("Admin › Passkeys", () => {
 
   it("si la API falla, muestra el motivo", async () => {
     const { api, release } = setup();
-    release.mockResolvedValue(fail(404, "not_found", "Esa cuenta no tiene una passkey registrada."));
+    release.mockResolvedValue(
+      fail(404, "not_found", "Esa cuenta no tiene una passkey registrada."),
+    );
     const user = userEvent.setup();
     renderWithApp(<AdminDispositivos />, { api });
     await user.click((await screen.findAllByRole("button", { name: "Restablecer passkey" }))[0]!);

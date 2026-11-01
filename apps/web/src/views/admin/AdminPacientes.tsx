@@ -9,6 +9,7 @@ import type { AdminCaregiver, AdminPatient } from "../../api/types";
 import { AddPatientForm } from "../../components/AddPatientForm";
 import { Medications } from "../../components/Medications";
 import { Async } from "../../components/common";
+import { personName } from "../../api/types";
 
 function PatientCard({
   patient,
@@ -22,13 +23,13 @@ function PatientCard({
   const cgs = patient.caregiver_ids
     .map((id) => caregivers.find((c) => c.id === id))
     .filter((c): c is AdminCaregiver => !!c)
-    .map((c) => `${c.first_name} ${c.last_names}`.trim());
+    .map(personName);
 
   return (
     <section className="card pcard">
       <div className="row-between">
         <h2 className="section" style={{ fontSize: "1.25rem" }}>
-          {`${patient.first_name} ${patient.last_name}`.trim()}
+          {personName(patient)}
         </h2>
         <span className="optional">
           {cgs.length ? `Cuidan: ${cgs.join(", ")}` : "Sin cuidadores asignados"}

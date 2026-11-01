@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Capacitor } from "@capacitor/core";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { errorMessage } from "./api/errors";
 import { useMe } from "./api/queries/me";
@@ -8,10 +7,8 @@ import { AuthGate, Splash } from "./auth/screens";
 import { AppShell } from "./components/AppShell";
 import { LayerProvider } from "./components/Layer";
 import { ToastProvider } from "./components/Toasts";
-import { RemindersRuntime, createNativeReminderScheduler } from "./reminders";
+import { RemindersRuntime } from "./reminders/runtime";
 import { Privacidad } from "./views/shared/Privacidad";
-
-const nativeScheduler = () => createNativeReminderScheduler();
 
 /** Pide el rol a la API (GET /me) y arma la app de ese rol. */
 function RoleApp() {
@@ -48,12 +45,7 @@ function RoleApp() {
   }
   const shell = <AppShell me={me.data} />;
   if (me.data.role !== "caregiver") return shell;
-  // En la app Android los avisos son notificaciones locales (suenan con la app cerrada).
-  return (
-    <RemindersRuntime createScheduler={Capacitor.isNativePlatform() ? nativeScheduler : undefined}>
-      {shell}
-    </RemindersRuntime>
-  );
+  return <RemindersRuntime>{shell}</RemindersRuntime>;
 }
 
 export function App() {

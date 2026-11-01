@@ -8,7 +8,7 @@ export default tseslint.config(
   reactHooks.configs.flat.recommended,
   {
     // El contenido editable se muestra como texto: nada de HTML inyectado (la CSP es solo una
-    // defensa más). Ver docs/decisions.md, F6.
+    // defensa más). Ver docs/architecture.md, «Decisiones vigentes».
     rules: {
       "no-restricted-syntax": [
         "error",

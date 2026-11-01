@@ -6,7 +6,7 @@ import { loadEnv } from "./env.js";
 import { createGroqClient } from "./services/llm.js";
 import { createSmtpMailer } from "./services/mailer.js";
 
-/** Dependencias de producción/desarrollo, desde variables de entorno (ver docs/env.md). */
+/** Dependencias de producción/desarrollo, desde variables de entorno (ver docs/ops.md). */
 export function createDeps(source: Record<string, string | undefined> = process.env): Deps {
   const env = loadEnv(source);
   return {

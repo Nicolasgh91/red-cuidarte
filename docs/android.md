@@ -2,20 +2,20 @@
 
 `apps/web` empaquetada con Capacitor 8. Proyecto nativo en `apps/web/android/` (versionado, salvo lo generado). `appId`: `online.redasistir.cuidarte` (no se puede cambiar después de publicar en Play).
 
-## Estado (2026-10-22)
+## Estado (2026-11-01)
 
-| Pieza                                                                                             | Estado                                                                     |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Proyecto Android generado, íconos (adaptativo vectorial + PNG para API 24–25), `ic_stat_cuidarte` | ✅ En el repo                                                              |
-| Recordatorios con notificaciones locales (`apps/web/src/reminders/native.ts`)                     | ✅ Código y tests con el plugin simulado. **No probado en un teléfono**    |
-| Botón de urgencia (`tel:`)                                                                        | ✅ Ya estaba en la web (`Layer.tsx`)                                       |
-| `/privacidad` pública                                                                             | ✅ Borrador (revisión legal pendiente, F10)                                |
-| `docs/play-data-safety.md`                                                                        | ✅ Borrador                                                                |
-| Passkeys en la app                                                                                | ⛔ **Bloqueado por S1** (ver abajo)                                        |
-| Compilar el APK/AAB                                                                               | ⛔ No hay Android SDK/Android Studio en esta máquina: **nunca se compiló** |
-| Prueba en un Android real, Play Console, prueba interna                                           | 👤 Pendiente                                                               |
+| Pieza                                                                                             | Estado                                                                  |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Proyecto Android generado, íconos (adaptativo vectorial + PNG para API 24–25), `ic_stat_cuidarte` | ✅ En el repo                                                           |
+| Recordatorios con notificaciones locales (`apps/web/src/reminders/native.ts`)                     | ✅ Código y tests con el plugin simulado. **No probado en un teléfono** |
+| Botón de urgencia (`tel:`)                                                                        | ✅ Ya estaba en la web (`Layer.tsx`)                                    |
+| `/privacidad` pública                                                                             | ✅ Borrador (revisión legal pendiente)                                  |
+| [`play-data-safety.md`](play-data-safety.md)                                                      | ✅ Borrador                                                             |
+| Passkeys en la app                                                                                | ⛔ **Bloqueado** (ver abajo)                                            |
+| Compilar el APK/AAB                                                                               | ⛔ **Nunca se compiló**                                                 |
+| Prueba en un Android real, Play Console, prueba interna                                           | 👤 Pendiente                                                            |
 
-## Compilar (👤 en la Mac/PC de Nico, con Android Studio)
+## Compilar (con Android Studio)
 
 ```bash
 pnpm install
@@ -23,26 +23,54 @@ pnpm --filter web cap:sync   # build de la web + copia a android/
 pnpm --filter web cap:open   # abre Android Studio; Run en un emulador o teléfono
 ```
 
-`VITE_API_URL`, `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` se leen en el build (`apps/web/.env.local`). La API tiene que aceptar el origen de la app: `https://localhost` en `ALLOWED_ORIGINS` (el origen por defecto del WebView de Capacitor en Android) y en `NATIVE_ORIGINS`.
+`VITE_API_URL` (URL absoluta), `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` se leen en el build (`apps/web/.env.local`). La API tiene que aceptar el origen de la app: `https://localhost` (el origen del WebView de Capacitor) en `ALLOWED_ORIGINS` y en `NATIVE_ORIGINS` ([`ops.md`](ops.md#variables-de-entorno)).
 
 ## Recordatorios
 
-- Se programan como notificaciones diarias fijas (`schedule.on {hour, minute}`) y se **reprograman** cada vez que cambia la configuración (guardar en Recordatorios, o al abrir la app y traer `GET /reminders`). El plugin las restaura al reiniciar el teléfono.
-- **Sin alarma exacta:** el manifest quita `SCHEDULE_EXACT_ALARM` (Google Play restringe ese permiso a apps de alarmas/calendario). Android puede demorar un aviso unos minutos con el teléfono en reposo; para agua y estiramientos es aceptable. Si se necesita precisión, hay que pedir la declaración de alarmas exactas en Play.
-- Permiso de notificaciones (Android 13+): se pide al guardar/abrir si todavía no se decidió. Si lo niegan, no se programa nada.
-- **Para probar en un teléfono real:** configurar agua cada 30 minutos, cerrar la app (deslizarla de recientes) y esperar el aviso; repetir con la pantalla bloqueada y tras reiniciar. Aceptación del roadmap: «recordatorios sonando con la app cerrada».
-- Fabricantes con ahorro de batería agresivo (Xiaomi, Huawei, Samsung) pueden matar las alarmas: documentar para el usuario que deshabilite la optimización de batería de Cuidarte+ si no suenan.
+- Se programan como notificaciones diarias fijas (`schedule.on {hour, minute}`) con el mismo cálculo de horarios que la web (`dailyReminders` en `reminders/scheduler.ts`) y se **reprograman** cada vez que cambia la configuración. El plugin las restaura al reiniciar el teléfono.
+- **Sin alarma exacta:** el manifest quita `SCHEDULE_EXACT_ALARM` (Google Play lo restringe a apps de alarmas o calendario). Un aviso puede demorarse unos minutos con el teléfono en reposo.
+- Permiso de notificaciones (Android 13+): lo pide la app al programar. Si lo niegan, no se programa nada. La tarjeta de permiso del navegador en Recordatorios se muestra solo en la web.
+- **Prueba en un teléfono real:** agua cada 30 minutos, cerrar la app (deslizarla de recientes) y esperar el aviso; repetir con la pantalla bloqueada y tras reiniciar.
+- Fabricantes con ahorro de batería agresivo (Xiaomi, Huawei, Samsung) pueden matar las alarmas: pedir que deshabiliten la optimización de batería para Cuidarte+ si no suenan.
 
-## Passkeys (S1 pendiente)
+## Passkeys y `assetlinks.json`
 
-El WebView de Capacitor sirve la app desde `https://localhost`, que **no coincide** con el `rpId` `redasistir.online`: el WebAuthn del WebView no sirve. Hace falta un plugin nativo (Credential Manager) + `assetlinks.json` (`docs/assetlinks.md`) + el origen `android:apk-key-hash:…` en `WEBAUTHN_ORIGINS`. Candidatos y procedimiento en `docs/spikes.md` (S1).
+El WebView de Capacitor sirve la app desde `https://localhost`, que **no coincide** con el `rpId` `redasistir.online`: el WebAuthn del WebView no sirve. **Hasta resolverlo, el paso de la passkey no funciona en Android y la app no se puede usar en producción.**
 
-El cliente ya está preparado: la interfaz `Passkeys` (`apps/web/src/auth/deviceFlow.ts`) es el punto de enchufe; hoy usa `@simplewebauthn/browser`. **Hasta que S1 se resuelva, en la app Android el paso de verificar la passkey no va a funcionar**, así que la app no es usable en producción. No se instaló ningún plugin de passkeys sin haberlo probado.
+Qué falta (spike S1):
 
-**Token de dispositivo en la app:** el WebView llama a la API desde otro sitio, así que no usa la cookie de la web. Para los orígenes de `NATIVE_ORIGINS` la API devuelve el token también en el cuerpo y lo acepta en `X-Device-Token` (ver `docs/decisions.md`, F6). Hoy `DeviceStore` (`apps/web/src/auth/deviceStore.ts`) lo guarda en `localStorage`, igual que supabase-js guarda su sesión: **antes de publicar** hay que pasar los dos al almacenamiento seguro del sistema (Keystore). Se decide y prueba junto con S1.
+1. Elegir un plugin de passkeys para Capacitor 8 sobre Credential Manager. Candidatos encontrados (ninguno probado): `@capgo/capacitor-passkey`, `capacitor-webauthn`, `@capawesome/capacitor-passkeys`. Revisar licencia, código y soporte de `rpId` propio. Si ninguno anda, un plugin propio mínimo sobre `androidx.credentials`. Se enchufa en `apps/web/src/auth/passkeys.ts` (`registerPasskey` y `loginWithPasskey`).
+2. Publicar `https://redasistir.online/.well-known/assetlinks.json` desde `apps/web/public/.well-known/` (con `Content-Type: application/json`, sin redirecciones):
+
+   ```json
+   [
+     {
+       "relation": [
+         "delegate_permission/common.handle_all_urls",
+         "delegate_permission/common.get_login_creds"
+       ],
+       "target": {
+         "namespace": "android_app",
+         "package_name": "online.redasistir.cuidarte",
+         "sha256_cert_fingerprints": ["<SHA-256 del certificado de firma>"]
+       }
+     }
+   ]
+   ```
+
+   Cargar **las dos** huellas: la de _debug_ y la de **App Signing de Google Play** (Play Console › Integridad de la app), que es la que vale en producción. No inventar el hash.
+
+3. Agregar a `WEBAUTHN_ORIGINS` el origen que manda la app: `android:apk-key-hash:<base64url del SHA-256>`. Conversión: `echo "AA:BB:..." | tr -d ':' | xxd -r -p | basenc --base64url | tr -d '='`.
+4. En un emulador con Google Play: registrar una passkey desde la app, volver a ingresar y repetir desde Chrome Android (comparten el `rpId`).
+
+Verificación del archivo: https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://redasistir.online&relation=delegate_permission/common.get_login_creds
+
+**Token de dispositivo en la app:** el WebView llama a la API desde otro sitio y no usa la cookie de la web. Para los orígenes de `NATIVE_ORIGINS` la API devuelve el token también en el cuerpo y lo acepta en `X-Device-Token`. Hoy se guarda en `localStorage` (`auth/deviceStore.ts`), igual que la sesión de supabase-js: **antes de publicar** hay que pasar los dos al almacenamiento seguro del sistema (Keystore), junto con S1.
+
+**iOS** (cuando se pague Apple Developer): `/.well-known/apple-app-site-association` con `webcredentials` y `<TeamID>.<bundle id>`.
 
 ## Publicar
 
-- Firmar con la clave de subida; activar Play App Signing y cargar **ambas** huellas SHA-256 en `assetlinks.json`.
-- Política: `https://redasistir.online/privacidad` y formulario de seguridad de datos (`docs/play-data-safety.md`).
+- Firmar con la clave de subida; activar Play App Signing y cargar **ambas** huellas en `assetlinks.json`.
+- Política: `https://redasistir.online/privacidad` y formulario de seguridad de datos ([`play-data-safety.md`](play-data-safety.md)).
 - Declaración de apps de salud en Play Console (la app maneja datos de salud).

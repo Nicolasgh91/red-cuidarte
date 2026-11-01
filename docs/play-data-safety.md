@@ -1,6 +1,6 @@
 # Google Play — formulario «Seguridad de los datos» (borrador)
 
-Borrador para completar en Play Console, armado a partir del modelo de datos (`tasks/spec-v2.md`). **Requiere revisión legal (F10)**; no declarar nada que la revisión no confirme.
+Borrador para completar en Play Console, armado a partir del modelo de datos (`docs/spec.md`). **Requiere revisión legal (F10)**; no declarar nada que la revisión no confirme.
 
 ## Recopilación y uso compartido
 
@@ -13,7 +13,7 @@ Borrador para completar en Play Console, armado a partir del modelo de datos (`t
 | Salud y estado físico                  | **Información de salud** (medicación de las personas cuidadas; registro de ánimo, energía y estrés del cuidador) | Sí                                                                                        | No¹                                                    | Funcionamiento de la app                                              | Bienestar: sí; medicación: la carga el administrador |
 | Actividad de la app                    | Turnos y tareas completadas                                                                                      | Sí                                                                                        | No                                                     | Funcionamiento de la app                                              | No                                                   |
 | Mensajes                               | Mensajes al asistente                                                                                            | Se envían a Groq para generar la respuesta; **la conversación no se guarda** en Cuidarte+ | Sí, con el proveedor del modelo (Groq) como procesador | Funcionamiento de la app                                              | Sí                                                   |
-| Identificadores de dispositivo u otros | Credencial de passkey, etiqueta del dispositivo, dirección IP y user agent                                       | Sí                                                                                        | No                                                     | Seguridad (un dispositivo por cuenta) y auditoría                     | No                                                   |
+| Identificadores de dispositivo u otros | Credencial de passkey, etiqueta del dispositivo, dirección IP y user agent                                       | Sí                                                                                        | No                                                     | Seguridad (una passkey por cuenta)                                    | No                                                   |
 
 ¹ El procesamiento por Supabase (base y autenticación), Vercel (hosting) y el proveedor de correo se declara como «procesamiento de servicio», no como uso compartido, si la revisión legal lo confirma.
 

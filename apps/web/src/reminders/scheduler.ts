@@ -1,18 +1,58 @@
 import type { ReminderSettings } from "../api/types";
-import { pad, toMin } from "../lib/dates";
+import type { IconName } from "../components/icons";
+import { toMin } from "../lib/dates";
 
 export type ReminderType = "water" | "stretch" | "relax";
 
+/** Textos de los avisos: los usan la web (toast) y la app Android (notificación local). */
+export const MESSAGES: Record<ReminderType, { icon: IconName; text: string }> = {
+  water: { icon: "cup", text: "Es hora de tomar agua. Un minuto para hidratarte." },
+  stretch: { icon: "walk", text: "Hora de estirarte: cuello, hombros y espalda." },
+  relax: { icon: "leaf", text: "Tomate 5 minutos para relajarte." },
+};
+
 /**
- * Punto de extensión de los recordatorios. La web usa avisos dentro de la app (y notificación
- * del navegador) solo mientras está abierta; la app de Android (fase F9a) va a implementar esta
- * misma interfaz con notificaciones locales de Capacitor.
+ * Las dos implementaciones de los recordatorios: la web avisa dentro de la app (y con una
+ * notificación del navegador) solo mientras está abierta; Android programa notificaciones locales
+ * (`native.ts`).
  */
 export interface ReminderScheduler {
   /** Reemplaza la programación anterior por la de estos ajustes. */
   schedule(settings: ReminderSettings): void | Promise<void>;
   /** Cancela todo lo programado. */
   cancel(): void | Promise<void>;
+}
+
+/** Un aviso que se repite todos los días a esta hora. */
+interface DailyReminder {
+  type: ReminderType;
+  hour: number;
+  minute: number;
+}
+
+/**
+ * De la configuración a horarios diarios fijos (puro, para poder probarlo): agua y estiramientos
+ * a partir de «Desde» cada `freq` minutos hasta «Hasta» inclusive; relajación en los horarios
+ * elegidos (hasta 3). Es el mismo cálculo para la web y para Android.
+ */
+export function dailyReminders(settings: ReminderSettings): DailyReminder[] {
+  const out: DailyReminder[] = [];
+  for (const type of ["water", "stretch"] as const) {
+    const r = settings[type];
+    const from = toMin(r.from);
+    const to = toMin(r.to);
+    if (!r.on || from == null || to == null || r.freq <= 0) continue;
+    for (let m = from; m <= to; m += r.freq) {
+      out.push({ type, hour: Math.floor(m / 60), minute: m % 60 });
+    }
+  }
+  if (settings.relax.on) {
+    for (const t of [...new Set(settings.relax.times)].sort().slice(0, 3)) {
+      const m = toMin(t);
+      if (m != null) out.push({ type: "relax", hour: Math.floor(m / 60), minute: m % 60 });
+    }
+  }
+  return out;
 }
 
 /** Qué avisos tocan en este minuto (puro, para poder probarlo). `fired` evita repetirlos. */
@@ -22,32 +62,12 @@ export function dueReminders(
   fired: Set<string>,
 ): ReminderType[] {
   const due: ReminderType[] = [];
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  const day = now.toDateString();
-  const hm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-
-  for (const k of ["water", "stretch"] as const) {
-    const r = settings[k];
-    if (!r.on) continue;
-    const from = toMin(r.from);
-    const to = toMin(r.to);
-    const key = `${k}|${day}|${hm}`;
-    if (
-      from != null &&
-      to != null &&
-      minutes >= from &&
-      minutes <= to &&
-      (minutes - from) % r.freq === 0 &&
-      !fired.has(key)
-    ) {
-      fired.add(key);
-      due.push(k);
-    }
-  }
-  const key = `relax|${day}|${hm}`;
-  if (settings.relax.on && settings.relax.times.includes(hm) && !fired.has(key)) {
+  for (const r of dailyReminders(settings)) {
+    if (r.hour !== now.getHours() || r.minute !== now.getMinutes()) continue;
+    const key = `${r.type}|${now.toDateString()}|${r.hour}:${r.minute}`;
+    if (fired.has(key)) continue;
     fired.add(key);
-    due.push("relax");
+    due.push(r.type);
   }
   return due;
 }

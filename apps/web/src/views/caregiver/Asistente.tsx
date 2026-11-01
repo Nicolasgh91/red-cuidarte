@@ -11,6 +11,7 @@ import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { useContent } from "../../api/queries/content";
 import { hrsLabel, listJoin, relDay } from "../../lib/dates";
+import { patientName, personName } from "../../api/types";
 
 const SUGGEST = [
   "La semana que viene trabajo lunes y miércoles de 8 a 14 con Elena",
@@ -24,11 +25,6 @@ type Item =
   | { type: "bot"; text: string }
   | { type: "err"; text: string }
   | { type: "card"; shifts: Shift[]; undone: boolean };
-
-const pName = (patients: Patient[], id: string): string => {
-  const p = patients.find((x) => x.id === id);
-  return p ? `${p.first_name} ${p.last_name}`.trim() : "Paciente";
-};
 
 function CardMsg({
   item,
@@ -52,7 +48,7 @@ function CardMsg({
       <ul>
         {item.shifts.map((s) => (
           <li key={s.id}>
-            {relDay(s.date)} · {hrsLabel(s)} · {pName(patients, s.patient_id)}
+            {relDay(s.date)} · {hrsLabel(s)} · {patientName(patients, s.patient_id)}
           </li>
         ))}
       </ul>
@@ -249,10 +245,7 @@ export function Asistente() {
           <ul>
             <li>Los {articles.length} recursos de Cuidarte mientras cuidás.</li>
             <li>{faq.length} preguntas frecuentes, revisadas por Red Cuidar.</li>
-            <li>
-              Tus turnos y tus pacientes:{" "}
-              {listJoin(patients.map((p) => `${p.first_name} ${p.last_name}`.trim())) || "ninguno"}.
-            </li>
+            <li>Tus turnos y tus pacientes: {listJoin(patients.map(personName)) || "ninguno"}.</li>
             <li>La medicación cargada en la ficha de cada paciente.</li>
           </ul>
           <p className="optional" style={{ margin: 0 }}>

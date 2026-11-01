@@ -26,11 +26,11 @@ Aplicación web y Android para personas que cuidan a adultos mayores: organiza t
 
 Cuidarte+ (Red Cuidar) centraliza el día a día del cuidado: quién está de turno, qué tareas y tomas de medicación quedan pendientes y cómo se siente la persona que cuida. La aplicación tiene tres roles:
 
-| Rol         | Quién                       | Qué puede hacer                                                                                                        |
-| ----------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `caregiver` | Cuidador/a                  | Turnos (a mano o por chat), tareas diarias, medicación de sus pacientes, asistente, bienestar, pausas y recordatorios. |
-| `admin`     | Coordinación                | Alta y asignación de cuidadores y pacientes, medicación, restablecimiento de passkeys, registro de mails y contenido.  |
-| `patient`   | Persona cuidada (con mail)  | Vista de solo lectura del día: quién la cuida, medicación del día y botón de emergencia.                               |
+| Rol         | Quién                      | Qué puede hacer                                                                                                        |
+| ----------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `caregiver` | Cuidador/a                 | Turnos (a mano o por chat), tareas diarias, medicación de sus pacientes, asistente, bienestar, pausas y recordatorios. |
+| `admin`     | Coordinación               | Alta y asignación de cuidadores y pacientes, medicación, restablecimiento de passkeys, registro de mails y contenido.  |
+| `patient`   | Persona cuidada (con mail) | Vista de solo lectura del día: quién la cuida, medicación del día y botón de emergencia.                               |
 
 ## Funcionalidades
 
@@ -46,15 +46,15 @@ Cuidarte+ (Red Cuidar) centraliza el día a día del cuidado: quién está de tu
 
 ## Stack tecnológico
 
-| Capa            | Tecnologías                                                                           |
-| --------------- | ------------------------------------------------------------------------------------- |
-| Frontend        | React 19, Vite 8, React Router 8, TanStack Query 5, CSS con tokens, PWA               |
-| Mobile          | Capacitor 8 (Android), Local Notifications                                            |
+| Capa            | Tecnologías                                                                             |
+| --------------- | --------------------------------------------------------------------------------------- |
+| Frontend        | React 19, Vite 8, React Router 8, TanStack Query 5, CSS con tokens, PWA                 |
+| Mobile          | Capacitor 8 (Android), Local Notifications                                              |
 | API             | Hono 4 (RPC tipado), zod 4, postgres.js (SQL sin ORM), SimpleWebAuthn, jose, Nodemailer |
-| Datos y Auth    | Supabase: Postgres 17 y Supabase Auth                                                 |
-| IA              | Groq (endpoint compatible con OpenAI, tool calling)                                   |
-| Infraestructura | Vercel (sitio estático, Functions y Cron), GitHub Actions                             |
-| Calidad         | TypeScript estricto, ESLint, Prettier, Vitest, Testing Library                        |
+| Datos y Auth    | Supabase: Postgres 17 y Supabase Auth                                                   |
+| IA              | Groq (endpoint compatible con OpenAI, tool calling)                                     |
+| Infraestructura | Vercel (sitio estático, Functions y Cron), GitHub Actions                               |
+| Calidad         | TypeScript estricto, ESLint, Prettier, Vitest, Testing Library                          |
 
 ## Arquitectura
 
@@ -189,7 +189,7 @@ pnpm db:migrate     # aplica supabase/migrations sobre la base "cuidarte"
 
 ### Ejecución en local
 
-1. Copiar `apps/api/.env.example` a `apps/api/.env.local` y `apps/web/.env.example` a `apps/web/.env.local`, y completar los valores. La descripción de cada variable está en [`docs/env.md`](docs/env.md).
+1. Copiar `apps/api/.env.example` a `apps/api/.env.local` y `apps/web/.env.example` a `apps/web/.env.local`, y completar los valores. La descripción de cada variable está en [`docs/ops.md`](docs/ops.md#variables-de-entorno).
 2. Levantar la API y la web en terminales separadas:
 
 ```bash
@@ -199,25 +199,25 @@ pnpm --filter web dev   # http://localhost:5173
 
 ## Scripts
 
-| Comando                     | Descripción                                          |
-| --------------------------- | ---------------------------------------------------- |
-| `pnpm lint`                 | ESLint en todos los paquetes                         |
-| `pnpm typecheck`            | Chequeo de tipos de TypeScript                       |
-| `pnpm test`                 | Tests de API y web                                   |
-| `pnpm format`               | Formatea el repositorio con Prettier                 |
-| `pnpm format:check`         | Verifica el formato (lo usa CI)                      |
-| `pnpm db:up`                | Levanta el Postgres local con Docker Compose         |
-| `pnpm db:migrate`           | Aplica las migraciones a la base local               |
-| `pnpm --filter web build`   | Build de producción de la web                        |
-| `pnpm --filter web cap:sync` | Build y sincronización del proyecto Android         |
-| `pnpm --filter web cap:open` | Abre el proyecto Android en Android Studio          |
+| Comando                      | Descripción                                  |
+| ---------------------------- | -------------------------------------------- |
+| `pnpm lint`                  | ESLint en todos los paquetes                 |
+| `pnpm typecheck`             | Chequeo de tipos de TypeScript               |
+| `pnpm test`                  | Tests de API y web                           |
+| `pnpm format`                | Formatea el repositorio con Prettier         |
+| `pnpm format:check`          | Verifica el formato (lo usa CI)              |
+| `pnpm db:up`                 | Levanta el Postgres local con Docker Compose |
+| `pnpm db:migrate`            | Aplica las migraciones a la base local       |
+| `pnpm --filter web build`    | Build de producción de la web                |
+| `pnpm --filter web cap:sync` | Build y sincronización del proyecto Android  |
+| `pnpm --filter web cap:open` | Abre el proyecto Android en Android Studio   |
 
 ## Tests
 
-| Paquete | Herramientas                     | Enfoque                                                                                                                                                                       |
-| ------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API     | Vitest sobre **Postgres real**   | Cada corrida recrea `cuidarte_test` con las migraciones. Las rutas se prueban con `app.request()` y dependencias falsas; un autenticador WebAuthn por software cubre las passkeys. |
-| Web     | Vitest, jsdom, Testing Library   | Unitarios de lógica pura (máquina de estados del ingreso, recordatorios, fechas) e integración de pantallas con un cliente de API simulado.                                    |
+| Paquete | Herramientas                   | Enfoque                                                                                                                                                                            |
+| ------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API     | Vitest sobre **Postgres real** | Cada corrida recrea `cuidarte_test` con las migraciones. Las rutas se prueban con `app.request()` y dependencias falsas; un autenticador WebAuthn por software cubre las passkeys. |
+| Web     | Vitest, jsdom, Testing Library | Unitarios de lógica pura (recordatorios, fechas, cliente de la API) e integración de pantallas e ingreso con un cliente de API simulado.                                           |
 
 ```bash
 pnpm db:up && pnpm test
@@ -245,36 +245,30 @@ flowchart LR
   API --> SB[(Supabase)]
 ```
 
-| Componente  | Plataforma                         | Notas                                                                  |
-| ----------- | ---------------------------------- | ---------------------------------------------------------------------- |
-| Web         | Vercel (sitio estático)            | Rewrite de `/api/*` a la API (mismo origen) y fallback de SPA.         |
-| API         | Vercel Functions                   | Una sola función para todas las rutas; tarea diaria por Vercel Cron.   |
-| Base y Auth | Supabase (entornos dev y prod)     | Conexión por pooler en modo transacción.                               |
-| Android     | Capacitor                          | Empaqueta el mismo build de la web.                                    |
+| Componente  | Plataforma                     | Notas                                                                |
+| ----------- | ------------------------------ | -------------------------------------------------------------------- |
+| Web         | Vercel (sitio estático)        | Rewrite de `/api/*` a la API (mismo origen) y fallback de SPA.       |
+| API         | Vercel Functions               | Una sola función para todas las rutas; tarea diaria por Vercel Cron. |
+| Base y Auth | Supabase (entornos dev y prod) | Conexión por pooler en modo transacción.                             |
+| Android     | Capacitor                      | Empaqueta el mismo build de la web.                                  |
 
-Configuración paso a paso en [`docs/vercel-setup.md`](docs/vercel-setup.md) y checklist de lanzamiento en [`docs/launch-checklist.md`](docs/launch-checklist.md).
+Variables, configuración de Vercel y Supabase y checklist de lanzamiento en [`docs/ops.md`](docs/ops.md).
 
 ## Seguridad
 
 - Ningún secreto se guarda en el repositorio: se gestionan como GitHub Secrets y variables de entorno de Vercel.
 - RLS habilitado en todas las tablas sin políticas, y permisos revocados para los roles `anon` y `authenticated`: la Data API de Supabase no expone datos.
 - Doble factor: JWT de Supabase más un token de dispositivo emitido tras verificar la passkey (cookie `HttpOnly`, `Secure`, `SameSite=Strict` en la web).
-- Acciones sensibles de administración exigen una reverificación reciente de la passkey.
 - Medicación cifrada en la aplicación; la base nunca ve la clave ni el texto plano.
 - Todas las respuestas de la API se envían con `Cache-Control: private, no-store`.
 
 ## Documentación
 
-| Documento                                                | Contenido                                              |
-| -------------------------------------------------------- | ------------------------------------------------------ |
-| [`docs/architecture.md`](docs/architecture.md)           | Arquitectura detallada y guía para contribuir          |
-| [`docs/decisions.md`](docs/decisions.md)                 | Registro de decisiones técnicas                        |
-| [`docs/env.md`](docs/env.md)                             | Variables de entorno por proyecto                      |
-| [`docs/free-tier.md`](docs/free-tier.md)                 | Límites de los planes gratuitos utilizados             |
-| [`docs/vercel-setup.md`](docs/vercel-setup.md)           | Configuración de los proyectos en Vercel               |
-| [`docs/launch-checklist.md`](docs/launch-checklist.md)   | Checklist de lanzamiento                               |
-| [`docs/android.md`](docs/android.md)                     | Build y publicación de la app Android                  |
-| [`docs/assetlinks.md`](docs/assetlinks.md)               | Digital Asset Links para passkeys en Android           |
-| [`docs/dns.md`](docs/dns.md)                             | DNS y configuración de mail (SPF, DKIM, DMARC)         |
-| [`docs/play-data-safety.md`](docs/play-data-safety.md)   | Declaración de seguridad de datos para Google Play     |
-| [`tasks/spec-v2.md`](tasks/spec-v2.md)                   | Especificación funcional                               |
+| Documento                                              | Contenido                                                 |
+| ------------------------------------------------------ | --------------------------------------------------------- |
+| [`docs/architecture.md`](docs/architecture.md)         | Arquitectura, decisiones vigentes y dónde tocar cada cosa |
+| [`docs/spec.md`](docs/spec.md)                         | Especificación funcional                                  |
+| [`docs/ops.md`](docs/ops.md)                           | Variables, Vercel, Supabase, límites y lanzamiento        |
+| [`docs/android.md`](docs/android.md)                   | App Android: build, passkeys y publicación                |
+| [`docs/dns.md`](docs/dns.md)                           | DNS y configuración de mail (SPF, DKIM, DMARC)            |
+| [`docs/play-data-safety.md`](docs/play-data-safety.md) | Declaración de seguridad de datos para Google Play        |

@@ -13,6 +13,7 @@ import { Async, EmptyCard, Field } from "../../components/common";
 import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { Medications } from "../../components/Medications";
+import { personName } from "../../api/types";
 
 /** Una persona que ya se registró le pasa su código y queda vinculada. */
 function LinkForm() {
@@ -84,7 +85,7 @@ export function Pacientes() {
             list.map((p) => (
               <section className="card pcard" key={p.id}>
                 <h2 className="section" style={{ fontSize: "1.25rem" }}>
-                  {`${p.first_name} ${p.last_name}`.trim()}
+                  {personName(p)}
                 </h2>
                 <Medications
                   patientId={p.id}

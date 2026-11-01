@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { createContext, useContext, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
@@ -5,9 +6,9 @@ import { useReminders } from "../api/queries/reminders";
 import { Icon } from "../components/icons";
 import { useLayer } from "../components/Layer";
 import { useToast } from "../components/Toasts";
-import { MESSAGES } from "./messages";
-import { createWebReminderScheduler } from "./scheduler";
-import type { ReminderScheduler, ReminderType } from "./scheduler";
+import { createNativeReminderScheduler } from "./native";
+import { MESSAGES, createWebReminderScheduler } from "./scheduler";
+import type { ReminderType } from "./scheduler";
 
 type Notify = (type: ReminderType) => void;
 const NotifierContext = createContext<Notify | null>(null);
@@ -20,16 +21,10 @@ export function useNotifier(): Notify {
 }
 
 /**
- * Provee `notify` y mantiene programados los recordatorios del cuidador (GET /reminders).
- * `createScheduler` es el punto donde una app nativa enchufa otra implementación.
+ * Provee `notify` y mantiene programados los recordatorios del cuidador (GET /reminders). En la app
+ * Android son notificaciones locales (suenan con la app cerrada); en la web, avisos con la app abierta.
  */
-export function RemindersRuntime({
-  children,
-  createScheduler = createWebReminderScheduler,
-}: {
-  children: ReactNode;
-  createScheduler?: (notify: Notify) => ReminderScheduler;
-}) {
+export function RemindersRuntime({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const { openPlayer } = useLayer();
   const { data } = useReminders();
@@ -69,7 +64,13 @@ export function RemindersRuntime({
     [toast, openPlayer],
   );
 
-  const scheduler = useMemo(() => createScheduler(notify), [createScheduler, notify]);
+  const scheduler = useMemo(
+    () =>
+      Capacitor.isNativePlatform()
+        ? createNativeReminderScheduler()
+        : createWebReminderScheduler(notify),
+    [notify],
+  );
   useEffect(() => {
     if (data) void scheduler.schedule(data);
     return () => void scheduler.cancel();

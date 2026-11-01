@@ -14,8 +14,7 @@ import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { birthToIso, isoToBirth } from "../../lib/dates";
 import { okMail, okPhone } from "../../lib/validators";
-
-const pFull = (p: AdminPatient) => `${p.first_name} ${p.last_name}`.trim();
+import { personName } from "../../api/types";
 
 function AssignCell({
   caregiver,
@@ -57,7 +56,7 @@ function AssignCell({
               disabled={assign.isPending}
               onChange={(e) => change(p.id, e.target.checked)}
             />{" "}
-            {pFull(p)}
+            {personName(p)}
           </label>
         ))}
       </details>
@@ -188,7 +187,7 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
                     setIds((l) => (e.target.checked ? [...l, p.id] : l.filter((x) => x !== p.id)))
                   }
                 />
-                <span>{pFull(p)}</span>
+                <span>{personName(p)}</span>
               </label>
             ))}
           </div>

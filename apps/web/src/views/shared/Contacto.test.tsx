@@ -58,11 +58,7 @@ describe("Contacto", () => {
       "rate_limited",
       "Ya mandaste 3 mensajes en las últimas 24 horas. Probá de nuevo más tarde.",
     ],
-    [
-      502,
-      "mail_failed",
-      "No pudimos enviar tu mensaje ahora. Probá de nuevo en un rato.",
-    ],
+    [502, "mail_failed", "No pudimos enviar tu mensaje ahora. Probá de nuevo en un rato."],
   ])(
     "error %i: muestra el mensaje del servidor y conserva lo escrito",
     async (status, code, msg) => {

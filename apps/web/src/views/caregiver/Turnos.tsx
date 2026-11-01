@@ -21,11 +21,7 @@ import {
   weekLabel,
 } from "../../lib/dates";
 import { WD } from "../../lib/labels";
-
-const patientName = (patients: Patient[], id: string): string => {
-  const p = patients.find((x) => x.id === id);
-  return p ? `${p.first_name} ${p.last_name}`.trim() : "Paciente";
-};
+import { patientName, personName } from "../../api/types";
 
 function ShiftRow({
   shift,
@@ -66,13 +62,7 @@ function ShiftRow({
   );
 }
 
-function AddShiftForm({
-  patients,
-  defaultDate,
-}: {
-  patients: Patient[];
-  defaultDate: string;
-}) {
+function AddShiftForm({ patients, defaultDate }: { patients: Patient[]; defaultDate: string }) {
   const create = useCreateShift();
   const { toast } = useToast();
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
@@ -119,7 +109,7 @@ function AddShiftForm({
             <select id="sh-p" value={patientId} onChange={(e) => setPatientId(e.target.value)}>
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {`${p.first_name} ${p.last_name}`.trim()}
+                  {personName(p)}
                 </option>
               ))}
             </select>

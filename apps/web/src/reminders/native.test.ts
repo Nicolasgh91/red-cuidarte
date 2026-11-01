@@ -11,7 +11,8 @@ const plugin = vi.hoisted(() => ({
 }));
 vi.mock("@capacitor/local-notifications", () => ({ LocalNotifications: plugin }));
 
-import { createNativeReminderScheduler, dailyReminders, reminderId } from "./native";
+import { createNativeReminderScheduler, reminderId } from "./native";
+import { dailyReminders } from "./scheduler";
 
 const settings = (over: Partial<ReminderSettings> = {}): ReminderSettings => ({
   water: { on: true, freq: 60, from: "08:00", to: "10:00" },

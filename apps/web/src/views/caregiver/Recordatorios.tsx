@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { errorMessage } from "../../api/errors";
@@ -9,8 +10,8 @@ import type { IconName } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { toMin } from "../../lib/dates";
 import { FREQS } from "../../lib/labels";
-import { useNotifier } from "../../reminders";
-import type { ReminderType } from "../../reminders";
+import { useNotifier } from "../../reminders/runtime";
+import type { ReminderType } from "../../reminders/scheduler";
 
 function IntervalCard({
   id,
@@ -272,7 +273,8 @@ export function Recordatorios() {
         <h1>Recordatorios</h1>
         <p className="sub">Avisos para hidratarte, estirarte y relajarte durante el día.</p>
       </div>
-      <PermissionCard />
+      {/* En Android el permiso lo pide la app al programar las notificaciones locales. */}
+      {!Capacitor.isNativePlatform() && <PermissionCard />}
       <Async query={q}>{(data) => <RemindersForm initial={data} />}</Async>
       <p className="foot-note">
         En la web, los avisos aparecen solo mientras la app está abierta. En la app de Android

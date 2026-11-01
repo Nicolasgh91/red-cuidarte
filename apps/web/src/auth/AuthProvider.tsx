@@ -8,7 +8,12 @@ import { ApiError, errorMessage, unwrap } from "../api/errors";
 import { call } from "../api/rpc";
 import type { ApiClient } from "../api/types";
 import { deviceStore } from "./deviceStore";
-import { deviceErrorMessage, loginWithPasskey, passkeysSupported, registerPasskey } from "./passkeys";
+import {
+  deviceErrorMessage,
+  loginWithPasskey,
+  passkeysSupported,
+  registerPasskey,
+} from "./passkeys";
 import * as supabase from "./services";
 import { AuthFlowError } from "./services";
 

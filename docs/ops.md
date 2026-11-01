@@ -1,0 +1,123 @@
+# Operación
+
+Todo lo que hace falta para desplegar y mantener Cuidarte+: variables, Vercel, Supabase, correo, límites de los planes gratuitos y el checklist de lanzamiento. La arquitectura está en [`architecture.md`](architecture.md); DNS en [`dns.md`](dns.md); Android en [`android.md`](android.md).
+
+## Variables de entorno
+
+Solo nombres. **Nunca** valores en el repo: van en Vercel (Settings › Environment Variables, Preview y Production por separado) y en GitHub Secrets. Local: `apps/api/.env.local` y `apps/web/.env.local` (ignorados por git). Se aplican en un deploy nuevo: después de cambiarlas, **Deployments › ⋯ › Redeploy**.
+
+### API (proyecto Vercel `red-cuidarte`, raíz `apps/api`)
+
+Todas son obligatorias salvo las que tienen default: si falta una, la API no arranca (500 `FUNCTION_INVOCATION_FAILED`). Se validan en [`apps/api/src/env.ts`](../apps/api/src/env.ts).
+
+| Variable                                           | Para qué                                                                                                                                               | De dónde sale                                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                     | Postgres **por el pooler** de Supabase, modo transacción (puerto 6543). Local: `postgres://postgres:postgres@localhost:54329/cuidarte`                 | Supabase › Connect › Transaction pooler                                                              |
+| `SUPABASE_URL`                                     | Valida el JWT (JWKS) y administra usuarios de Auth                                                                                                     | Supabase › Settings › API                                                                            |
+| `SUPABASE_SERVICE_ROLE_KEY`                        | Alta y baja de usuarios de Auth. **Solo vive en la API**                                                                                               | Supabase › API Keys › `service_role`                                                                 |
+| `MEDICATIONS_KEY`                                  | Cifrado AES-256-GCM de `medications` (32 bytes en base64)                                                                                              | `openssl rand -base64 32`. **Guardarla también en un gestor**: si se pierde, la medicación no se lee |
+| `DEVICE_TOKEN_SECRET`                              | Firma del token de la passkey                                                                                                                          | `openssl rand -base64 48`                                                                            |
+| `CRON_SECRET`                                      | Vercel Cron lo manda como `Authorization: Bearer` a `/internal/jobs/daily`                                                                             | `openssl rand -base64 24`                                                                            |
+| `ALLOWED_ORIGINS`                                  | CORS, separados por coma y **sin `/` final**: `https://redasistir.online,https://localhost`                                                            | —                                                                                                    |
+| `NATIVE_ORIGINS`                                   | Orígenes de la app nativa (`https://localhost,capacitor://localhost`): solo a ellos se les devuelve el token en el cuerpo y se acepta `X-Device-Token` | —                                                                                                    |
+| `WEBAUTHN_RP_ID`                                   | `redasistir.online`                                                                                                                                    | —                                                                                                    |
+| `WEBAUTHN_RP_NAME`                                 | Nombre en el diálogo de la passkey (default `Cuidarte+`)                                                                                               | —                                                                                                    |
+| `WEBAUTHN_ORIGINS`                                 | `https://redasistir.online` y, para Android, `android:apk-key-hash:<hash>`                                                                             | Ver [`android.md`](android.md#passkeys-y-assetlinksjson)                                             |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Casilla `info@redasistir.online` en DonWeb (465 TLS o 587 STARTTLS; default 465)                                                                       | Panel de DonWeb                                                                                      |
+| `SMTP_FROM`                                        | Remitente y destino del formulario de contacto (default `Cuidarte+ <info@redasistir.online>`)                                                          | —                                                                                                    |
+| `GROQ_API_KEY`                                     | Asistente                                                                                                                                              | console.groq.com › API Keys                                                                          |
+| `GROQ_MODEL`                                       | Modelo (default `openai/gpt-oss-120b`)                                                                                                                 | —                                                                                                    |
+
+Verificación: `https://red-cuidarte.vercel.app/health` → `{"ok":true}`.
+
+### Web (proyecto Vercel `red-cuidarte-web`, raíz `apps/web`; se leen al compilar)
+
+| Variable                 | Para qué                                                                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`           | `/api` en la web (el rewrite de `apps/web/vercel.json` la manda a la API: mismo origen, sin CORS). URL absoluta en Android |
+| `VITE_SUPABASE_URL`      | URL del proyecto de Supabase                                                                                               |
+| `VITE_SUPABASE_ANON_KEY` | Clave anon (pública por diseño: la Data API no expone nada, ver RLS)                                                       |
+
+### GitHub Secrets y tests
+
+| Nombre                | Usado por                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `BACKUP_DATABASE_URL` | `backup.yml`: conexión directa o _session pooler_ (**no** el de transacción: `pg_dump` necesita sesión)     |
+| `BACKUP_PASSPHRASE`   | `backup.yml`: cifra el volcado. Guardarla también fuera de GitHub                                           |
+| `TEST_DATABASE_URL`   | Tests de la API (default: base `cuidarte_test` del Postgres de docker-compose; en CI la define el workflow) |
+
+Crear el Environment `production` en GitHub (Settings › Environments) para `backup.yml`.
+
+## Vercel
+
+| Proyecto           | Raíz       | URL                                   |
+| ------------------ | ---------- | ------------------------------------- |
+| `red-cuidarte`     | `apps/api` | `https://red-cuidarte.vercel.app`     |
+| `red-cuidarte-web` | `apps/web` | `https://red-cuidarte-web.vercel.app` |
+
+- La web llama a `/api/...` en su propio dominio y un rewrite la reenvía a la API: si cambia el dominio de la API, hay que cambiar ese rewrite.
+- La función de la API corre en `cle1` (Cleveland), cerca de Supabase `us-east-2` (`apps/api/vercel.json`). Hobby permite **una sola región**.
+- No usar las URLs por deploy (`<proyecto>-<hash>...`) en la configuración: cambian en cada deploy.
+
+## Supabase
+
+- **Dos proyectos:** `cuidarte-prod` y `cuidarte-dev`. El MCP de Supabase se conecta solo a dev (prod tiene datos de salud).
+- **Auth:** Providers › Email activado; **Allow new users to sign up = off** (las cuentas las crea la API ya confirmadas). Contraseñas de **8+ caracteres**. Plantilla «Reset password» con `{{ .Token }}` (código de 6 dígitos, sin enlaces). SMTP propio (el de Supabase tiene un tope muy bajo).
+- **Migraciones:** se ejecutan **a mano** en el editor SQL, en orden y respetando el comentario de cabecera de cada archivo. Las que borran algo dicen «después del deploy»: primero se agrega, después se despliega la API y recién entonces se borra.
+- **Admins:** se cargan por SQL ([`supabase/seed/admin_jorge.sql`](../supabase/seed/admin_jorge.sql)). Para restablecer la passkey de un admin sin otro admin: `delete from devices where user_id = (select id from users where email = '<mail>' and role = 'admin');`.
+
+## Correo (DonWeb)
+
+1. Crear la casilla `info@redasistir.online` en el panel de DonWeb y cargar sus datos en `SMTP_*`.
+2. Configurar SPF, DKIM y DMARC ([`dns.md`](dns.md)) para que no caiga en spam.
+3. Configurar la misma casilla como SMTP de Supabase Auth (códigos de recuperación).
+4. Desde **Admin › Correos**, «Enviar mail de prueba» y revisar que llegue a la bandeja de entrada.
+
+## Límites de los planes gratuitos
+
+Relevados el 2026-10-22: volver a verificar antes de lanzar.
+
+| Servicio                 | Límite que importa                                                                                                                                                                                                                                                                                        |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vercel Hobby             | 1 M invocaciones y 4 h de CPU activa por mes; funciones de hasta 300 s; una región; cron una vez por día con precisión de una hora; logs por **1 hora**; **prohibido el uso comercial** (si pasa a serlo, Pro a US$ 20/mes); no admite repos de organizaciones                                            |
+| Groq                     | **8.000 tokens/min y 200.000/día para toda la cuenta**, 30 pedidos/min. El contexto fijo del asistente pesa ~2.200 tokens y una consulta con herramientas hace dos llamadas: alcanza para ~3 consultas por minuto entre todos. El límite propio de 20 mensajes por usuario y por día no protege este tope |
+| Supabase Free            | 500 MB de base, 5 GB de egress, 50.000 usuarios de Auth por mes, 2 proyectos. **Se pausa tras 7 días sin actividad** (el cron diario lo evita: si falla una semana, se pausa producción)                                                                                                                  |
+| GitHub Actions (privado) | 2.000 min/mes, 500 MB de artifacts (los backups se guardan 21 días)                                                                                                                                                                                                                                       |
+
+## Pruebas pendientes con servicios reales
+
+- **Passkeys en Android (S1):** ver [`android.md`](android.md#passkeys-y-assetlinksjson). Hasta resolverlo, la app Android no se puede usar en producción.
+- **API en Vercel (S2):** validar el JWT contra el JWKS real de Supabase (`iss`/`aud`), SMTP saliente a DonWeb por 465 y 587 (si falla, es bloqueante), que el cron llegue con el header, y la latencia de arranque en frío (10 pedidos tras 15 min de inactividad).
+- **Groq con herramientas (S3):** con `openai/gpt-oss-120b`, `openai/gpt-oss-20b` y `qwen/qwen3.8-27b`, 5 corridas de cada caso: cargar turnos en lenguaje natural con las fechas correctas, listar turnos, preguntar si falta el paciente, derivar al SAME ante una emergencia, no cambiar dosis y responder con los recursos de la app. Anotar tokens por pedido.
+
+## Checklist de lanzamiento
+
+**Decisiones y legales**
+
+- [ ] Revisión legal de términos, privacidad (Ley 25.326) y consentimiento para la medicación. Los textos actuales son **provisorios**.
+- [ ] Confirmar si el proyecto es comercial (si lo es, Vercel Pro antes de lanzar).
+- [ ] Registrar la base de datos personales ante la AAIP si corresponde.
+
+**Infraestructura**
+
+- [ ] Dominios `redasistir.online` y `api.redasistir.online` con HTTPS ([`dns.md`](dns.md)).
+- [ ] Variables separadas Preview/Production; ninguna en el repo.
+- [ ] Supabase Auth configurado (arriba). Migraciones aplicadas en orden. Admin cargado.
+- [ ] RLS contra producción: un pedido con la anon key a `/rest/v1/<tabla>` no devuelve nada.
+
+**Operación**
+
+- [ ] Rotación de secretos documentada: `MEDICATIONS_KEY` (requiere re-cifrar), `DEVICE_TOKEN_SECRET` (todos vuelven a verificar la passkey), `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `SMTP_PASS`.
+- [ ] Correr `backup.yml` a mano y **restaurar** con `scripts/restore-backup.sh`.
+- [ ] Correo configurado (arriba); un mensaje de Contacto llega con `Reply-To` = mail de quien escribe.
+- [ ] El cron corrió 3 días seguidos y dejó filas en `mail_log` cuando correspondía.
+- [ ] Vigilar los límites de la tabla de arriba.
+
+**Android** ([`android.md`](android.md))
+
+- [ ] Build firmado en un Android real; recordatorios sonando con la app cerrada.
+- [ ] `assetlinks.json` publicado con las huellas de debug y de Play App Signing; S1 resuelto.
+- [ ] Formulario de seguridad de datos ([`play-data-safety.md`](play-data-safety.md)) y política en `https://redasistir.online/privacidad`.
+- [ ] Prueba interna en Google Play y envío a revisión.
+
+**iOS** (en espera del pago de Apple Developer): Capacitor iOS, passkeys (repetir S1), TestFlight y formulario de privacidad de App Store.

@@ -13,6 +13,7 @@ import { Async, EmptyCard } from "../../components/common";
 import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { addDays, fmtDM, fmtLong, iso, relDay } from "../../lib/dates";
+import { personName } from "../../api/types";
 
 function PatientTasks({ group, date }: { group: TaskGroup; date: string }) {
   const toggle = useToggleTask(date);
@@ -22,7 +23,7 @@ function PatientTasks({ group, date }: { group: TaskGroup; date: string }) {
   const [text, setText] = useState("");
   const [time, setTime] = useState("");
   const pid = group.patient.id;
-  const name = `${group.patient.first_name} ${group.patient.last_name}`.trim();
+  const name = personName(group.patient);
   const list = group.tasks;
   const ok = list.filter((t) => t.done).length;
 

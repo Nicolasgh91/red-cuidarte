@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -33,10 +32,3 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
-
-// En la app Android los assets ya están dentro del paquete: no hace falta service worker.
-if ("serviceWorker" in navigator && import.meta.env.PROD && !Capacitor.isNativePlatform()) {
-  addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-  });
-}

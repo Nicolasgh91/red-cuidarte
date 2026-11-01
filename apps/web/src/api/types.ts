@@ -31,9 +31,24 @@ export interface Me {
   profile: Partial<CaregiverProfile & AdminProfile & PatientProfile> | null;
 }
 
-/** Nombre completo según el rol (cuidadores: apellidos; resto: apellido). */
-export const fullName = (p: Me["profile"]): string =>
-  p ? `${p.first_name ?? ""} ${p.last_names ?? p.last_name ?? ""}`.trim() : "";
+/** "Nombre Apellido(s)" de cualquier persona (cuidadores: apellidos; resto: apellido). */
+export const personName = (p: {
+  first_name?: string;
+  last_name?: string;
+  last_names?: string;
+}): string => `${p.first_name ?? ""} ${p.last_names ?? p.last_name ?? ""}`.trim();
+
+/** Nombre completo del perfil de la sesión. */
+export const fullName = (p: Me["profile"]): string => (p ? personName(p) : "");
+
+/** Nombre del paciente con ese id, o «Paciente» si ya no está en la lista. */
+export const patientName = (
+  patients: readonly { id: string; first_name: string; last_name: string }[] | undefined,
+  id: string,
+): string => {
+  const p = patients?.find((x) => x.id === id);
+  return p ? personName(p) : "Paciente";
+};
 
 export type Shift = Res<ApiClient["shifts"]["$get"]>["shifts"][number];
 export type Patient = Res<ApiClient["me"]["patients"]["$get"]>["patients"][number];

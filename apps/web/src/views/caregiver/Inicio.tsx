@@ -9,6 +9,7 @@ import { absEnd, absStart, addDays, hrsLabel, iso, nowAbs, relDay } from "../../
 import { useContent } from "../../api/queries/content";
 import { DISCLAIMER, quoteOfDay } from "../../lib/labels";
 import type { ReactNode } from "react";
+import { patientName } from "../../api/types";
 
 function NavCard({
   to,
@@ -49,10 +50,6 @@ export function Inicio() {
   const next = shifts.data
     ?.filter((s) => absEnd(s) > nowAbs())
     .sort((a, b) => absStart(a) - absStart(b))[0];
-  const patientName = (id: string) => {
-    const p = patients.data?.find((x) => x.id === id);
-    return p ? `${p.first_name} ${p.last_name}`.trim() : "Paciente";
-  };
   const groups = tasks.data?.patients ?? [];
   const total = groups.reduce((n, g) => n + g.tasks.length, 0);
   const ok = groups.reduce((n, g) => n + g.tasks.filter((t) => t.done).length, 0);
@@ -62,7 +59,7 @@ export function Inicio() {
     : shifts.isError
       ? "No pudimos cargar tus turnos."
       : next
-        ? `${relDay(next.date)}, ${hrsLabel(next)} · ${patientName(next.patient_id)}`
+        ? `${relDay(next.date)}, ${hrsLabel(next)} · ${patientName(patients.data, next.patient_id)}`
         : "No tenés turnos cargados. Contáselos al asistente.";
   const taskText = tasks.isPending
     ? "Cargando…"

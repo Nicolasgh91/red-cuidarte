@@ -5,14 +5,14 @@ import userEvent from "@testing-library/user-event";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, fakeApi, ok } from "../test/render";
-import { AuthProvider } from "./AuthProvider";
+import { AuthProvider, useApi } from "./AuthProvider";
 import { deviceStore } from "./deviceStore";
 import * as svc from "./services";
 import { AuthFlowError } from "./services";
 import { AuthGate } from "./screens";
 
 vi.mock("./services", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./services")>()),
+  ...(await importOriginal<typeof svc>()),
   getSession: vi.fn(),
   onSignedOut: vi.fn(),
   signIn: vi.fn(),
@@ -389,5 +389,96 @@ describe("ingreso con mail y contraseña + passkey", () => {
     mount(svc, deviceApi({ logout: vi.fn(async () => Promise.reject(new TypeError("red"))) }));
     await userEvent.setup().click(await screen.findByRole("button", { name: "Cerrar sesión" }));
     expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
+  });
+});
+
+describe("re-ingreso con passkey ante un 403 device_login_required", () => {
+  /** API simulada por `fetch`: así se prueba el cliente real con su manejo de 403. */
+  function fakeServer(meStatuses: number[]) {
+    const calls: string[] = [];
+    const json = (status: number, body: unknown) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = new URL(input instanceof Request ? input.url : String(input)).pathname;
+      calls.push(path);
+      if (path === "/me") {
+        const st = meStatuses.shift() ?? 200;
+        return st === 200
+          ? json(200, { id: "u1", role: "caregiver", profile: null })
+          : json(st, { error: { code: "device_login_required", message: "Verificá tu passkey." } });
+      }
+      if (path === "/device/status")
+        return json(200, { registered: true, verified: false, label: null, last_seen_at: null });
+      if (path === "/device/login/options") return json(200, { challenge: "c" });
+      return json(200, { ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return { calls };
+  }
+
+  /** Captura el cliente de la API para pedir desde el test, aunque la app no esté montada. */
+  let api: ReturnType<typeof useApi>;
+  function Grab() {
+    api = useApi();
+    return <p>App lista</p>;
+  }
+  const mountReal = () =>
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/inicio"]}>
+          <AuthProvider>
+            <AuthGate>
+              <Grab />
+            </AuthGate>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
+    deviceStore.setVerified("u1"); // entra directo: el token vence después
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("dos pedidos simultáneos comparten un solo re-ingreso y se reintentan una vez", async () => {
+    const { calls } = fakeServer([403, 403]);
+    passkeys.login.mockResolvedValue({ id: "cred-1" } as never);
+    mountReal();
+    await screen.findByText("App lista");
+    const [a, b] = await Promise.all([api.me.$get(), api.me.$get()]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(passkeys.login).toHaveBeenCalledTimes(1);
+    expect(calls.filter((c) => c === "/device/login/verify")).toHaveLength(1);
+    expect(calls.filter((c) => c === "/me")).toHaveLength(4);
+    expect(screen.getByText("App lista")).toBeInTheDocument();
+  });
+
+  it("si el intento automático falla, pide un gesto y no reintenta solo (sin bucle)", async () => {
+    fakeServer([403, 403, 403, 403]);
+    const gesture = Object.assign(new Error("gesto"), { name: "NotAllowedError" });
+    passkeys.login.mockRejectedValueOnce(gesture);
+    mountReal();
+    await screen.findByText("App lista");
+
+    expect((await api.me.$get()).status).toBe(403);
+    const button = await screen.findByRole("button", { name: "Verificar con mi passkey" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(passkeys.login).toHaveBeenCalledTimes(1);
+
+    // Mientras espera el gesto, otros 403 no abren otra ceremonia.
+    await Promise.all([api.me.$get(), api.me.$get()]);
+    expect(passkeys.login).toHaveBeenCalledTimes(1);
+
+    // Con el botón (gesto de la persona) se verifica y vuelve a la app.
+    passkeys.login.mockResolvedValueOnce({ id: "cred-1" } as never);
+    await userEvent.setup().click(button);
+    expect(await screen.findByText("App lista")).toBeInTheDocument();
+    expect(passkeys.login).toHaveBeenCalledTimes(2);
   });
 });
