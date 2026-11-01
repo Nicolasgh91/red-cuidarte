@@ -22,6 +22,7 @@ export const passkeysSupported = (): boolean => browserSupportsWebAuthn();
 export function deviceErrorMessage(e: unknown): string {
   const name = e instanceof Error ? e.name : "";
   const code = (e as { code?: string } | null)?.code ?? "";
+  console.error("[passkey]", name, code, e);
   if (name === "NotAllowedError" || code === "ERROR_CEREMONY_ABORTED")
     return "No se completó la verificación. Probá de nuevo.";
   if (name === "InvalidStateError" || code === "ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED")

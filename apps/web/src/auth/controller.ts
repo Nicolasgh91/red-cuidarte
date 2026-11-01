@@ -69,6 +69,7 @@ export class DeviceController {
     this.checking = true;
     try {
       if (!(this.deps.supported ?? passkeysSupported)()) {
+        console.warn("[passkey] WebAuthn no disponible en este navegador");
         throw new AuthFlowError(
           "Este navegador no permite verificar el dispositivo. Probá con otro.",
         );
