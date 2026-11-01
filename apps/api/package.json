@@ -10,7 +10,8 @@
     "dev": "tsx watch --env-file-if-exists=.env.local src/dev.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc --noEmit --strict false",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval:assistant": "tsx --env-file-if-exists=.env.local scripts/eval-assistant.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

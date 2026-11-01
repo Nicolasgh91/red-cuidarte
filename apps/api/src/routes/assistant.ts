@@ -3,11 +3,16 @@ import { z } from "zod";
 import type { AppEnv } from "../deps.js";
 import { uuid } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
-import { runAssistant, undoAssistantShifts } from "../services/assistant.js";
+import { MAX_MESSAGE_CHARS, runAssistant, undoAssistantShifts } from "../services/assistant.js";
 
 const chatBody = z.object({
   messages: z
-    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(2000) }))
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().min(1).max(MAX_MESSAGE_CHARS),
+      }),
+    )
     .min(1)
     .max(14)
     .refine((m) => m.at(-1)?.role === "user", "El último mensaje tiene que ser tuyo."),

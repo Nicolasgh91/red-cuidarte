@@ -1,4 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { HttpError } from "../src/errors.js";
+import { fitHistory, runAssistant } from "../src/services/assistant.js";
+import { EMERGENCY_REPLY } from "../src/services/emergency.js";
 import { LlmError, type LlmResult, type ToolCall } from "../src/services/llm.js";
 import { createHarness, type Harness } from "./harness.js";
 
@@ -16,6 +19,22 @@ const toolTurn = (...calls: ToolCall[]): LlmResult => ({ content: null, tool_cal
 const say = (content: string): LlmResult => ({ content, tool_calls: [] });
 const chat = (who: string, text = "hola") =>
   h.req("/assistant/chat", { as: who, json: { messages: [{ role: "user", content: text }] } });
+type ChatRes = { reply: string; added: { id: string; date: string; patient_id: string }[] };
+const chatJson = async (who: string, text?: string) =>
+  (await (await chat(who, text)).json()) as ChatRes;
+const turno = (paciente: string, fecha = "2026-10-26", desde = "08:00", hasta = "14:00") => ({
+  paciente,
+  fecha,
+  desde,
+  hasta,
+});
+const agregar = (...turnos: object[]) => call("agregar_turnos", { turnos });
+const systemOf = (n = 0) =>
+  (h.llmCalls[n]!.messages as { role: string; content: string }[])
+    .filter((m) => m.role === "system")
+    .map((m) => m.content);
+const usageOf = (c: string) =>
+  h.sql`select messages from assistant_usage where caregiver_id = ${c}`;
 
 async function setup() {
   const c = await h.caregiver({ first_name: "Sofía" });
@@ -27,30 +46,17 @@ async function setup() {
 }
 
 describe("asistente (F8)", () => {
-  it("«trabajo lunes y miércoles de 8 a 14 con Elena» crea los turnos correctos y los devuelve para Deshacer", async () => {
+  it("«trabajo lunes y miércoles de 8 a 14 con Elena» crea los turnos con una sola llamada y los devuelve para Deshacer", async () => {
     const { c, elena } = await setup();
-    h.setLlm((n) =>
-      n === 1
-        ? toolTurn(
-            call("agregar_turnos", {
-              turnos: [
-                { paciente: "Elena", fecha: "2026-10-26", desde: "08:00", hasta: "14:00" },
-                { paciente: "Elena", fecha: "2026-10-28", desde: "08:00", hasta: "14:00" },
-              ],
-            }),
-          )
-        : say("Listo: cargué lunes 26 y miércoles 28, de 8 a 14, con Elena."),
+    h.setLlm(() => toolTurn(agregar(turno("Elena"), turno("Elena", "2026-10-28"))));
+    const res = await chatJson(
+      c,
+      "La semana que viene trabajo lunes y miércoles de 8 a 14 con Elena",
     );
-    const res = (await (
-      await chat(c, "La semana que viene trabajo lunes y miércoles de 8 a 14 con Elena")
-    ).json()) as {
-      reply: string;
-      added: { id: string; date: string; patient_id: string; source: string }[];
-    };
-    expect(res.reply).toContain("cargué lunes 26");
-    expect(res.added.map((s) => [s.date, s.patient_id, s.source])).toEqual([
-      ["2026-10-26", elena, "assistant"],
-      ["2026-10-28", elena, "assistant"],
+    expect(res.reply).toBe("Listo, cargué 2 turnos.");
+    expect(res.added.map((s) => [s.date, s.patient_id])).toEqual([
+      ["2026-10-26", elena],
+      ["2026-10-28", elena],
     ]);
     expect(
       await h.sql`select date::text, start_time::text, end_time::text, source from shifts order by date`,
@@ -58,17 +64,14 @@ describe("asistente (F8)", () => {
       { date: "2026-10-26", start_time: "08:00:00", end_time: "14:00:00", source: "assistant" },
       { date: "2026-10-28", start_time: "08:00:00", end_time: "14:00:00", source: "assistant" },
     ]);
-    // el resultado de la herramienta vuelve al modelo
-    const last = h.llmCalls.at(-1)!.messages as { role: string; content: string }[];
-    expect(last.at(-1)!.role).toBe("tool");
-    expect(JSON.parse(last.at(-1)!.content).agregados).toHaveLength(2);
+    expect(h.llmCalls).toHaveLength(1);
   });
 
   it("el contexto incluye hoy, pacientes asignados, medicación, FAQ y recursos, y nada de bienestar ni de otros", async () => {
     const { c } = await setup();
     await h.sql`insert into wellbeing_records (caregiver_id, mood, energy, stress, note) values (${c}, 0, 0, 4, 'NOTA-PRIVADA-123')`;
     await chat(c);
-    const system = (h.llmCalls[0]!.messages[0] as { content: string }).content;
+    const system = systemOf().join("\n");
     expect(system).toContain("Miércoles, 21 de octubre de 2026 (2026-10-21)");
     expect(system).toContain("Hora actual: 12:00");
     expect(system).toContain("Pacientes asignados: Elena Ejemplo");
@@ -78,6 +81,21 @@ describe("asistente (F8)", () => {
     expect(system).toContain("No des diagnósticos");
     expect(system).not.toContain("Raúl");
     expect(JSON.stringify(h.llmCalls)).not.toContain("NOTA-PRIVADA-123");
+  });
+
+  it("la parte fija del contexto es idéntica para otra persona y a otra hora (para el caché de Groq)", async () => {
+    const { c, raul } = await setup();
+    const other = await h.caregiver({ first_name: "Marta" });
+    await h.assign(other, raul);
+    await chat(c);
+    h.setNow(new Date("2026-10-22T20:37:00Z"));
+    await chat(other);
+    const [fixedA, dynA] = systemOf(0);
+    const [fixedB, dynB] = systemOf(1);
+    expect(fixedA).toBe(fixedB);
+    // (la FAQ trae a «Elena» de ejemplo: es contenido fijo)
+    expect(fixedA).not.toMatch(/Raúl|Sofía|Marta|Hora actual|2026|\d\d:\d\d/);
+    expect(dynA).not.toBe(dynB);
   });
 
   it("el contexto usa los recursos y las preguntas frecuentes que editó el admin", async () => {
@@ -95,69 +113,53 @@ describe("asistente (F8)", () => {
         },
       ])})`;
     await chat(c);
-    const system = (h.llmCalls[0]!.messages[0] as { content: string }).content;
+    const system = systemOf().join("\n");
     expect(system).toContain("¿Pregunta nueva?");
     expect(system).toContain("Texto editado por el admin.");
     expect(system).not.toContain("¿Cómo cargo mis turnos?");
     expect(system).not.toContain("Manejo del estrés del cuidador");
   });
 
-  it("valida con las mismas reglas que el alta manual: superposición, paciente no asignado y formato", async () => {
+  it("valida con las mismas reglas que el alta manual y responde con lo que efectivamente pasó", async () => {
     const { c, elena } = await setup();
     await h.shift(c, elena, "2026-10-26", "10:00", "12:00");
-    let toolResult: { agregados: unknown[]; errores: string[] } | undefined;
-    h.setLlm((n, input) => {
-      if (n === 1) {
-        return toolTurn(
-          call("agregar_turnos", {
-            turnos: [
-              { paciente: "Elena", fecha: "2026-10-26", desde: "08:00", hasta: "14:00" }, // se superpone
-              { paciente: "Raúl", fecha: "2026-10-27", desde: "08:00", hasta: "14:00" }, // no asignado
-              { paciente: "Elena", fecha: "27/10", desde: "08:00", hasta: "14:00" }, // formato
-              { paciente: "Elena", fecha: "2026-10-27", desde: "08:00", hasta: "08:00" }, // 0 minutos
-              { paciente: "Elena", fecha: "2026-10-27", desde: "22:00", hasta: "06:00" }, // ok (cruza medianoche)
-              { paciente: "Elena", fecha: "2026-10-28", desde: "03:00", hasta: "07:00" }, // pisa el nocturno
-            ],
-          }),
-        );
-      }
-      toolResult = JSON.parse((input.messages.at(-1) as { content: string }).content);
-      return say("Cargué uno y hubo errores.");
-    });
-    const res = (await (await chat(c)).json()) as { added: unknown[] };
+    h.setLlm(() =>
+      toolTurn(
+        agregar(
+          turno("Elena"), // se superpone
+          turno("Raúl", "2026-10-27"), // no asignado
+          turno("Elena", "27/10"), // formato
+          turno("Elena", "2026-10-27", "08:00", "08:00"), // 0 minutos
+          turno("Elena", "2026-10-27", "22:00", "06:00"), // ok (cruza medianoche)
+          turno("Elena", "2026-10-28", "03:00", "07:00"), // pisa el nocturno
+        ),
+      ),
+    );
+    const res = await chatJson(c);
     expect(res.added).toHaveLength(1);
-    expect(toolResult!.agregados).toEqual([
-      { fecha: "2026-10-27", desde: "22:00", hasta: "06:00", paciente: "Elena Ejemplo" },
-    ]);
-    expect(toolResult!.errores).toHaveLength(5);
-    expect(toolResult!.errores[0]).toContain("Se superpone");
-    expect(toolResult!.errores[1]).toContain("no es un paciente asignado");
+    const lines = res.reply.split("\n");
+    expect(lines[0]).toBe("Cargué 1 de 6 turnos.");
+    expect(lines.slice(1)).toHaveLength(5);
+    expect(lines[1]).toContain("Se superpone");
+    expect(lines[2]).toContain("no es un paciente asignado");
     expect(await h.sql`select 1 from shifts`).toHaveLength(2);
+    expect(h.llmCalls).toHaveLength(1);
   });
 
-  it("listar_turnos devuelve solo los turnos del propio cuidador", async () => {
+  it("listar_turnos responde sin otra llamada y solo con los turnos del propio cuidador", async () => {
     const { c, elena } = await setup();
     const otro = await h.caregiver();
     await h.assign(otro, elena);
     await h.shift(c, elena, "2026-10-21", "08:00", "14:00");
     await h.shift(otro, elena, "2026-10-21", "14:00", "20:00");
-    let out: { fecha: string; desde: string; paciente: string }[] = [];
-    h.setLlm((n, input) => {
-      if (n === 1)
-        return toolTurn(call("listar_turnos", { desde: "2026-10-19", hasta: "2026-10-25" }));
-      out = JSON.parse((input.messages.at(-1) as { content: string }).content);
-      return say("Tenés un turno.");
-    });
-    await chat(c, "¿Qué turnos tengo esta semana?");
-    expect(out).toEqual([
-      {
-        fecha: "2026-10-21",
-        dia: "Miércoles, 21 de octubre",
-        desde: "08:00",
-        hasta: "14:00",
-        paciente: "Elena Ejemplo",
-      },
-    ]);
+    h.setLlm(() => toolTurn(call("listar_turnos", { desde: "2026-10-19", hasta: "2026-10-25" })));
+    const res = await chatJson(c, "¿Qué turnos tengo esta semana?");
+    expect(res.reply).toBe(
+      "Tus turnos entre el lunes 19 de octubre y el domingo 25 de octubre:\n- Miércoles, 21 de octubre: de 08:00 a 14:00 con Elena Ejemplo",
+    );
+    expect(h.llmCalls).toHaveLength(1);
+    h.setLlm(() => toolTurn(call("listar_turnos", { desde: "2026-10-26", hasta: "2026-10-26" })));
+    expect((await chatJson(c)).reply).toBe("No tenés turnos el lunes 26 de octubre.");
   });
 
   it("Deshacer borra solo turnos propios cargados por el asistente", async () => {
@@ -170,16 +172,8 @@ describe("asistente (F8)", () => {
         { id: string }[]
       >`insert into shifts (caregiver_id, patient_id, date, start_time, end_time, source) values (${otro}, ${elena}, '2026-10-27', '08:00', '10:00', 'assistant') returning id`
     )[0]!.id;
-    h.setLlm((n) =>
-      n === 1
-        ? toolTurn(
-            call("agregar_turnos", {
-              turnos: [{ paciente: "Elena", fecha: "2026-10-29", desde: "08:00", hasta: "10:00" }],
-            }),
-          )
-        : say("Listo."),
-    );
-    const { added } = (await (await chat(c)).json()) as { added: { id: string }[] };
+    h.setLlm(() => toolTurn(agregar(turno("Elena", "2026-10-29", "08:00", "10:00"))));
+    const { added } = await chatJson(c);
     const r = await h.req("/assistant/undo", {
       as: c,
       json: { shift_ids: [added[0]!.id, manual, ofOtro] },
@@ -197,9 +191,7 @@ describe("asistente (F8)", () => {
     const err = ((await r.json()) as { error: { code: string; message: string } }).error;
     expect(err.code).toBe("assistant_limit");
     expect(err.message).toContain("20 mensajes");
-    expect(await h.sql`select messages from assistant_usage where caregiver_id = ${c}`).toEqual([
-      { messages: 20 },
-    ]);
+    expect(await usageOf(c)).toEqual([{ messages: 20 }]);
     expect((await chat(other)).status).toBe(200); // el límite es por usuario
     h.setNow(new Date("2026-10-22T15:00:00Z")); // al día siguiente se renueva
     expect((await chat(c)).status).toBe(200);
@@ -216,9 +208,7 @@ describe("asistente (F8)", () => {
       code: "assistant_busy",
       message: expect.stringContaining("Probá de nuevo"),
     });
-    expect(await h.sql`select messages from assistant_usage where caregiver_id = ${c}`).toEqual([
-      { messages: 0 },
-    ]);
+    expect(await usageOf(c)).toEqual([{ messages: 0 }]);
   });
 
   it("si Groq rechaza la configuración (key inválida): 503, no «muchas consultas», y no se descuenta", async () => {
@@ -231,15 +221,24 @@ describe("asistente (F8)", () => {
     expect(((await r.json()) as { error: { code: string } }).error.code).toBe(
       "assistant_unavailable",
     );
-    expect(await h.sql`select messages from assistant_usage where caregiver_id = ${c}`).toEqual([
-      { messages: 0 },
-    ]);
+    expect(await usageOf(c)).toEqual([{ messages: 0 }]);
+  });
+
+  it("si Groq tarda más que el plazo: «ocupado» y no se descuenta", async () => {
+    const { c } = await setup();
+    h.setLlm(() => new Promise((r) => setTimeout(() => r(say("tarde")), 300)));
+    const e = await runAssistant(h.deps, c, [{ role: "user", content: "hola" }], 50).catch(
+      (x: unknown) => x,
+    );
+    expect(e).toBeInstanceOf(HttpError);
+    expect(e).toMatchObject({ status: 429, code: "assistant_busy" });
+    expect(await usageOf(c)).toEqual([{ messages: 0 }]);
   });
 
   it("corta los bucles de herramientas", async () => {
     const { c } = await setup();
-    h.setLlm(() => toolTurn(call("listar_turnos", { desde: "2026-10-19", hasta: "2026-10-25" })));
-    const res = (await (await chat(c)).json()) as { reply: string };
+    h.setLlm(() => toolTurn(call("listar_turnos", { desde: "ayer", hasta: "hoy" })));
+    const res = await chatJson(c);
     expect(res.reply).toContain("no pude terminar");
     expect(h.llmCalls).toHaveLength(4);
   });
@@ -266,5 +265,187 @@ describe("asistente (F8)", () => {
     ).toBe(400);
     expect((await chat(a)).status).toBe(403);
     expect(h.llmCalls).toHaveLength(0);
+  });
+});
+
+describe("asistente: paciente de cada turno", () => {
+  it("sin paciente y con más de uno asignado: error y ningún turno", async () => {
+    const { c, raul } = await setup();
+    await h.assign(c, raul);
+    h.setLlm(() => toolTurn(agregar(turno(""))));
+    const res = await chatJson(c);
+    expect(res.added).toEqual([]);
+    expect(res.reply).toContain("Falta el paciente");
+    expect(await h.sql`select 1 from shifts`).toHaveLength(0);
+  });
+
+  it("sin paciente y con uno solo asignado: es ese", async () => {
+    const { c, elena } = await setup();
+    h.setLlm(() => toolTurn(agregar(turno(""))));
+    expect((await chatJson(c)).added.map((s) => s.patient_id)).toEqual([elena]);
+  });
+
+  it("«Raul» sin tilde es Raúl", async () => {
+    const { c, raul } = await setup();
+    await h.assign(c, raul);
+    h.setLlm(() => toolTurn(agregar(turno("raul ejemplo"))));
+    expect((await chatJson(c)).added.map((s) => s.patient_id)).toEqual([raul]);
+  });
+
+  it("un nombre que coincide con dos pacientes: error", async () => {
+    const { c } = await setup();
+    await h.assign(c, await h.patient({ first_name: "Elena", last_name: "Otra" }));
+    h.setLlm(() => toolTurn(agregar(turno("Elena"))));
+    const res = await chatJson(c);
+    expect(res.added).toEqual([]);
+    expect(res.reply).toContain("hay más de un paciente con ese nombre");
+  });
+});
+
+describe("asistente: urgencias", () => {
+  it("una urgencia activa se responde sin Groq y sin gastar el cupo", async () => {
+    const { c } = await setup();
+    const res = await chatJson(c, "Mi mamá no respira, ¿qué hago?");
+    expect(res).toEqual({ reply: EMERGENCY_REPLY, added: [] });
+    expect(res.reply).toContain("SAME 107");
+    expect(h.llmCalls).toHaveLength(0);
+    expect(await usageOf(c)).toEqual([]);
+  });
+
+  it("responde aunque el cupo esté agotado y Groq caído", async () => {
+    const { c } = await setup();
+    await h.sql`insert into assistant_usage (caregiver_id, date, messages) values (${c}, '2026-10-21', 20)`;
+    h.setLlm(() => {
+      throw new LlmError("Groq respondió 429", 429);
+    });
+    const r = await chat(c, "Se cayó y se golpeó la cabeza");
+    expect(r.status).toBe(200);
+    expect(((await r.json()) as ChatRes).reply).toBe(EMERGENCY_REPLY);
+  });
+
+  it("una pregunta hipotética sigue por Groq", async () => {
+    const { c } = await setup();
+    await chat(c, "¿Qué hago si se desmaya?");
+    expect(h.llmCalls).toHaveLength(1);
+  });
+});
+
+describe("asistente: integridad de los turnos", () => {
+  it("después de escribir no hay otra ronda con el modelo: los turnos se crean una sola vez", async () => {
+    const { c } = await setup();
+    h.setLlm(() => toolTurn(agregar(turno("Elena"))));
+    const res = await chatJson(c);
+    expect(res.added).toHaveLength(1);
+    expect(h.llmCalls).toHaveLength(1);
+    expect(await h.sql`select 1 from shifts`).toHaveLength(1);
+  });
+
+  it("herramientas mezcladas: se cargan los turnos y se avisa la consulta que falló", async () => {
+    const { c } = await setup();
+    h.setLlm(() =>
+      toolTurn(call("listar_turnos", { desde: "x", hasta: "y" }, "a"), {
+        ...agregar(turno("Elena")),
+        id: "b",
+      }),
+    );
+    const res = await chatJson(c);
+    expect(res.added).toHaveLength(1);
+    expect(res.reply).toBe(
+      "Listo, cargué 1 turno.\nNo pude consultar tus turnos. Preguntame de nuevo.",
+    );
+    expect(h.llmCalls).toHaveLength(1);
+  });
+
+  it("éxito parcial: lo que se pudo cargar queda cargado y en `added`", async () => {
+    const { c, elena } = await setup();
+    await h.shift(c, elena, "2026-10-26", "10:00", "12:00");
+    h.setLlm(() => toolTurn(agregar(turno("Elena"), turno("Elena", "2026-10-27"))));
+    const res = await chatJson(c);
+    expect(res.added.map((s) => s.date)).toEqual(["2026-10-27"]);
+    expect(res.reply.split("\n")[0]).toBe("Cargué 1 de 2 turnos.");
+  });
+
+  it("turnos repetidos en el mismo pedido se crean una vez, aunque vengan en dos llamadas", async () => {
+    const { c } = await setup();
+    h.setLlm(() =>
+      toolTurn(agregar(turno("Elena"), turno("elena")), { ...agregar(turno("Elena")), id: "b" }),
+    );
+    const res = await chatJson(c);
+    expect(res.added).toHaveLength(1);
+    expect(res.reply).toBe("Listo, cargué 1 turno.");
+  });
+
+  it("el mismo pedido dos veces: «ya estaba cargado», sin turno nuevo ni nada para Deshacer", async () => {
+    const { c } = await setup();
+    h.setLlm(() => toolTurn(agregar(turno("Elena"))));
+    await chatJson(c);
+    const again = await chatJson(c);
+    expect(again.added).toEqual([]);
+    expect(again.reply).toBe(
+      "El lunes 26 de octubre de 08:00 a 14:00 con Elena Ejemplo ya estaba cargado.",
+    );
+    expect(await h.sql`select 1 from shifts`).toHaveLength(1);
+  });
+
+  it("dos pedidos iguales al mismo tiempo dejan un solo turno", async () => {
+    const { c } = await setup();
+    h.setLlm(() => toolTurn(agregar(turno("Elena"))));
+    const [a, b] = await Promise.all([chatJson(c), chatJson(c)]);
+    expect(a.added.length + b.added.length).toBe(1);
+    expect(await h.sql`select 1 from shifts`).toHaveLength(1);
+  });
+
+  it("argumentos inválidos sin escritura: vuelve al modelo para que corrija", async () => {
+    const { c } = await setup();
+    h.setLlm((n) =>
+      n === 1 ? toolTurn(call("agregar_turnos", { turnos: "lunes" })) : say("¿Qué días trabajás?"),
+    );
+    const res = await chatJson(c);
+    expect(res.reply).toBe("¿Qué días trabajás?");
+    expect(h.llmCalls).toHaveLength(2);
+    const sent = h.llmCalls[1]!.messages.at(-1) as { role: string; content: string };
+    expect(sent.role).toBe("tool");
+    expect(JSON.parse(sent.content)).toEqual({ error: "Falta la lista de turnos." });
+  });
+});
+
+describe("asistente: presupuesto del historial", () => {
+  const est = (s: string) => Math.ceil(s.length / 3);
+  const total = (h: { content: string }[]) => h.reduce((n, m) => n + est(m.content), 0);
+  type Turn = { role: "user" | "assistant"; content: string };
+  const conv = (lens: number[]): Turn[] =>
+    lens.map((n, i) => ({
+      role: i % 2 ? "assistant" : "user",
+      content: `${i}:`.padEnd(n, "x"),
+    }));
+
+  it("nunca pasa el presupuesto, con historiales largos al azar", () => {
+    let seed = 7;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let k = 0; k < 200; k++) {
+      const lens = Array.from({ length: 1 + 2 * Math.floor(rand() * 7) }, () =>
+        Math.ceil(rand() * 2000),
+      );
+      const out = fitHistory(conv(lens));
+      expect(total(out)).toBeLessThanOrEqual(1500);
+      expect(out.at(-1)!.content).toHaveLength(lens.at(-1)!); // el último entra entero
+    }
+  });
+
+  it("la respuesta anterior del asistente se conserva recortada desde el final", () => {
+    const hist = conv([2000, 2000, 2000]);
+    // Con mensajes de hasta 2.000 caracteres entran los dos; una respuesta más larga se recorta.
+    hist[1]!.content = "x".repeat(3000) + " ¿Con qué paciente?";
+    const out = fitHistory(hist);
+    expect(out).toHaveLength(2);
+    expect(out[0]!.content.startsWith("…")).toBe(true);
+    expect(out[0]!.content.endsWith("¿Con qué paciente?")).toBe(true);
+    expect(total(out)).toBeLessThanOrEqual(1500);
+  });
+
+  it("entran los tres últimos intercambios completos si caben, y lo anterior solo si sobra", () => {
+    expect(fitHistory(conv(Array(7).fill(100)))).toHaveLength(7);
+    const out = fitHistory(conv([2000, 2000, 500, 500, 500, 500, 500, 500, 500]));
+    expect(out.map((m) => m.content.split(":")[0])).toEqual(["2", "3", "4", "5", "6", "7", "8"]);
   });
 });

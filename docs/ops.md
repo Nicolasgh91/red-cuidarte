@@ -77,20 +77,28 @@ Crear el Environment `production` en GitHub (Settings › Environments) para `ba
 
 Relevados el 2026-10-22: volver a verificar antes de lanzar.
 
-| Servicio                 | Límite que importa                                                                                                                                                                                                                                                                                        |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vercel Hobby             | 1 M invocaciones y 4 h de CPU activa por mes; funciones de hasta 300 s; una región; cron una vez por día con precisión de una hora; logs por **1 hora**; **prohibido el uso comercial** (si pasa a serlo, Pro a US$ 20/mes); no admite repos de organizaciones                                            |
-| Groq                     | **8.000 tokens/min y 200.000/día para toda la cuenta**, 30 pedidos/min. El contexto fijo del asistente pesa ~2.200 tokens y una consulta con herramientas hace dos llamadas: alcanza para ~3 consultas por minuto entre todos. El límite propio de 20 mensajes por usuario y por día no protege este tope |
-| Supabase Free            | 500 MB de base, 5 GB de egress, 50.000 usuarios de Auth por mes, 2 proyectos. **Se pausa tras 7 días sin actividad** (el cron diario lo evita: si falla una semana, se pausa producción)                                                                                                                  |
-| GitHub Actions (privado) | 2.000 min/mes, 500 MB de artifacts (los backups se guardan 21 días)                                                                                                                                                                                                                                       |
+| Servicio                 | Límite que importa                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Vercel Hobby             | 1 M invocaciones y 4 h de CPU activa por mes; funciones de hasta 300 s; una región; cron una vez por día con precisión de una hora; logs por **1 hora**; **prohibido el uso comercial** (si pasa a serlo, Pro a US$ 20/mes); no admite repos de organizaciones                                                                                                                                                                                                           |
+| Groq                     | **8.000 tokens/min (TPM), 200.000 tokens/día (TPD), 30 pedidos/min (RPM) y 1.000 pedidos/día (RPD)** para toda la organización. El contexto fijo pesa ~2.200 tokens (estimado; medir con `eval:assistant`). Groq lo cachea y los tokens cacheados no cuentan para el límite, pero el caché no está garantizado. Cargar o listar turnos usa una sola llamada y las urgencias no llaman a Groq. El límite propio de 20 mensajes por usuario y por día no protege este tope |
+| Supabase Free            | 500 MB de base, 5 GB de egress, 50.000 usuarios de Auth por mes, 2 proyectos. **Se pausa tras 7 días sin actividad** (el cron diario lo evita: si falla una semana, se pausa producción)                                                                                                                                                                                                                                                                                 |
+| GitHub Actions (privado) | 2.000 min/mes, 500 MB de artifacts (los backups se guardan 21 días)                                                                                                                                                                                                                                                                                                                                                                                                      |
 
-**Si el asistente falla:** buscar `assistant llm` en los logs de Vercel (se guardan 1 hora): trae el status y el código de Groq. 401 → rotar `GROQ_API_KEY`; 404 o `model_decommissioned` → cambiar `GROQ_MODEL`; 429/413 frecuentes → tope de tokens por minuto de la cuenta. Los 429 cortos y los 5xx ya se reintentan una vez.
+**Si el asistente falla:** buscar `assistant llm` en los logs de Vercel (se guardan 1 hora): trae el status, el código de Groq y, en un 429, qué tope se alcanzó (`limit`: `TPM`, `TPD`, `RPM` o `RPD`). 401 → rotar `GROQ_API_KEY`; 404 o `model_decommissioned` → cambiar `GROQ_MODEL`; 429 `TPM` o 413 frecuentes → tope de tokens por minuto de la cuenta; 429 `TPD` o `RPD` → se acabó el cupo del día. Los 429 cortos y los 5xx se reintentan una vez si entran en el plazo de 17 s.
+
+**Consumo del asistente:** cada consulta deja en los logs una línea `assistant usage`, sin texto ni datos personales:
+
+- `path`: `emergency` (respondida sin Groq), `llm`, `tool_rendered` (respuesta armada por la API con el resultado de una herramienta) o `error`.
+- `calls`, `prompt`, `cached` y `completion`: llamadas a Groq y tokens, sumados.
+- `effective` = `prompt − cached + completion`: lo que cuenta para el límite. `cache_hit` = `cached / prompt`.
+- `ms` y `finish` (`length` indica que se cortó la salida).
+- `limits`: los headers `x-ratelimit-*` de la última llamada. En Groq, `remaining-requests` es el cupo de pedidos **del día** (RPD) y `remaining-tokens` el de tokens **del minuto** (TPM). TPD y RPM no vienen en los headers: solo aparecen en el 429. Si Groq agrega headers separados de entrada y salida (ITPM/OTPM), también quedan acá.
 
 ## Pruebas pendientes con servicios reales
 
 - **Passkeys en Android (S1):** ver [`android.md`](android.md#passkeys-y-assetlinksjson). Hasta resolverlo, la app Android no se puede usar en producción.
 - **API en Vercel (S2):** validar el JWT contra el JWKS real de Supabase (`iss`/`aud`), SMTP saliente a DonWeb por 465 y 587 (si falla, es bloqueante), que el cron llegue con el header, y la latencia de arranque en frío (10 pedidos tras 15 min de inactividad).
-- **Groq con herramientas (S3):** con `openai/gpt-oss-120b`, `openai/gpt-oss-20b` y `qwen/qwen3.8-27b`, 5 corridas de cada caso: cargar turnos en lenguaje natural con las fechas correctas, listar turnos, preguntar si falta el paciente, derivar al SAME ante una emergencia, no cambiar dosis y responder con los recursos de la app. Anotar tokens por pedido.
+- **Groq con herramientas (S3):** `GROQ_API_KEY=… pnpm --filter api eval:assistant 5` corre cada caso 5 veces contra la base de pruebas local (la recrea; nunca toca datos reales): cargar turnos con las fechas correctas, listar, preguntar si falta el paciente, urgencia activa e hipotética, no cambiar dosis, responder con los recursos e historial largo. Muestra por caso aciertos, tokens efectivos (primera corrida y resto, para ver el caché), llamadas, latencia, 429 y motivo de fin. Correrlo con `openai/gpt-oss-120b`, `openai/gpt-oss-20b` y `qwen/qwen3.8-27b` (`GROQ_MODEL=…`) y anotar acá los números. Gasta cupo de la cuenta.
 
 ## Checklist de lanzamiento
 
@@ -99,6 +107,7 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 - [ ] Revisión legal de términos, privacidad (Ley 25.326) y consentimiento para la medicación. Los textos actuales son **provisorios**.
 - [ ] Confirmar si el proyecto es comercial (si lo es, Vercel Pro antes de lanzar).
 - [ ] Registrar la base de datos personales ante la AAIP si corresponde.
+- [ ] Validar con un profesional de Red Cuidar el aviso de urgencia del asistente (`EMERGENCY_REPLY` en `apps/api/src/services/emergency.ts`).
 
 **Infraestructura**
 

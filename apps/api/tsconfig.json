@@ -10,5 +10,5 @@
     "noEmit": true,
     "lib": ["ES2023"]
   },
-  "include": ["src", "test", "api", "vitest.config.ts"]
+  "include": ["src", "test", "scripts", "api", "vitest.config.ts"]
 }
