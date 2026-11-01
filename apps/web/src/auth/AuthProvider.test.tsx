@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, fakeApi, ok } from "../test/render";
-import { AuthProvider } from "./AuthProvider";
+import { AuthProvider, useAuth } from "./AuthProvider";
 import type { DeviceStore } from "./deviceStore";
 import type { Passkeys } from "./deviceFlow";
 import { AuthFlowError } from "./services";
@@ -13,14 +13,16 @@ import { AuthGate } from "./screens";
 
 function memoryStore(): DeviceStore {
   let token: string | null = null;
-  let cred: [string, string] | null = null;
+  let verifiedUser: string | null = null;
   return {
     getToken: () => token,
     setToken: (t) => (token = t),
-    clearToken: () => (token = null),
-    getCredential: (u) => (cred && cred[0] === u ? cred[1] : null),
-    setCredential: (u, id) => (cred = [u, id]),
-    clearCredential: () => (cred = null),
+    isVerified: (u) => verifiedUser === u,
+    setVerified: (u) => (verifiedUser = u),
+    clear: () => {
+      token = null;
+      verifiedUser = null;
+    },
   };
 }
 
@@ -42,22 +44,28 @@ const passkeys: Passkeys = {
   login: vi.fn(async () => ({ id: "cred-1" })),
 };
 
-function deviceApi(over: { status?: unknown; registerOptions?: unknown; signup?: unknown } = {}) {
+const status = (registered: boolean, verified: boolean) =>
+  vi.fn(async () => ok({ registered, verified, label: null, last_seen_at: null }));
+
+function deviceApi(
+  over: { status?: unknown; registerOptions?: unknown; signup?: unknown; logout?: unknown } = {},
+) {
   return fakeApi({
     signup: { $post: over.signup ?? vi.fn(async () => ok({ id: "u1" })) },
+    logout: { $post: over.logout ?? vi.fn(async () => ok({ ok: true })) },
     device: {
-      status: {
-        $get:
-          over.status ??
-          vi.fn(async () => ok({ registered: false, label: null, last_seen_at: null })),
-      },
+      status: { $get: over.status ?? status(false, false) },
       register: {
         options: { $post: over.registerOptions ?? vi.fn(async () => ok({ challenge: "c" })) },
-        verify: { $post: vi.fn(async () => ok({ device_token: "tok" })) },
+        verify: { $post: vi.fn(async () => ok({ ok: true })) },
       },
       login: {
         options: { $post: vi.fn(async () => ok({ challenge: "c" })) },
-        verify: { $post: vi.fn(async () => ok({ device_token: "tok2" })) },
+        verify: { $post: vi.fn(async () => ok({ ok: true })) },
+      },
+      reauth: {
+        options: { $post: vi.fn(async () => ok({ challenge: "r" })) },
+        verify: { $post: vi.fn(async () => ok({ ok: true })) },
       },
     },
   });
@@ -103,8 +111,9 @@ async function fillRegister(
   await user.type(screen.getByLabelText("Repetí la contraseña"), over.pass2 ?? "una-clave-larga");
 }
 
-describe("ingreso con mail y contraseña + dispositivo", () => {
+describe("ingreso con mail y contraseña + passkey", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.stubGlobal("PublicKeyCredential", class {});
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -129,7 +138,7 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
     expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
   });
 
-  it("mail + contraseña → registra el dispositivo → app", async () => {
+  it("mail + contraseña → registra la passkey → app", async () => {
     const svc = services();
     const { store } = mount(svc);
     const user = userEvent.setup();
@@ -145,8 +154,9 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
     expect(svc.signIn).toHaveBeenCalledWith("sofia@ejemplo.org", "una-clave");
 
     expect(await screen.findByText("App lista")).toBeInTheDocument();
-    expect(store.getToken()).toBe("tok");
-    expect(store.getCredential("u1")).toBe("cred-1");
+    // en la web el token queda en la cookie HttpOnly: acá solo la pista
+    expect(store.getToken()).toBeNull();
+    expect(store.isVerified("u1")).toBe(true);
   });
 
   it("muestra u oculta la contraseña", async () => {
@@ -187,7 +197,7 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
     expect(screen.getByRole("button", { name: "Ingresar" })).toBeEnabled();
   });
 
-  it("registro: crea la cuenta en la API, inicia sesión y registra el dispositivo", async () => {
+  it("registro: crea la cuenta en la API, inicia sesión y registra la passkey", async () => {
     const svc = services();
     const signup = vi.fn(async () => ok({ id: "u1" }));
     mount(svc, deviceApi({ signup }), memoryStore(), "/registro");
@@ -261,7 +271,7 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
     expect(svc.signIn).not.toHaveBeenCalled();
   });
 
-  it("primera vez / olvidé la contraseña: código por mail → contraseña nueva → dispositivo", async () => {
+  it("primera vez / olvidé la contraseña: código por mail → contraseña nueva → passkey", async () => {
     const svc = services();
     mount(svc, deviceApi(), memoryStore(), "/recuperar");
     const user = userEvent.setup();
@@ -303,34 +313,35 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
     expect(screen.getByLabelText("Código")).toBeInTheDocument();
   });
 
-  it("la cuenta ya tiene otro dispositivo: pantalla de bloqueo con el mensaje del servidor", async () => {
-    const msg =
-      "Tu cuenta ya está registrada en otro dispositivo. Pedile al administrador que la libere.";
+  it("la cuenta ya tiene passkey: la pide (no registra otra) y, si no está acá, sugiere el QR", async () => {
     const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
-    mount(
-      svc,
-      deviceApi({
-        status: vi.fn(async () => ok({ registered: true, label: "Otro", last_seen_at: null })),
-        registerOptions: vi.fn(async () => fail(403, "device_blocked", msg)),
-      }),
-    );
-    expect(
-      await screen.findByRole("heading", { name: "Este dispositivo está bloqueado" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(msg)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "info@redasistir.online" })).toHaveAttribute(
-      "href",
-      "mailto:info@redasistir.online",
-    );
+    const notHere = Object.assign(new Error("x"), { name: "NotAllowedError" });
+    vi.mocked(passkeys.login).mockRejectedValueOnce(notHere).mockRejectedValueOnce(notHere);
+    mount(svc, deviceApi({ status: status(true, false) }));
+    const button = await screen.findByRole("button", { name: "Verificar con mi passkey" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument(); // el intento automático no muestra error
+    await userEvent.setup().click(button);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/código QR/);
+    expect(passkeys.register).not.toHaveBeenCalled();
     expect(screen.queryByText("App lista")).not.toBeInTheDocument();
   });
 
-  it("sesión abierta con token de dispositivo: entra directo", async () => {
+  it("sesión abierta y passkey ya verificada en este equipo: entra directo", async () => {
     const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
     const store = memoryStore();
-    store.setToken("guardado");
-    mount(svc, deviceApi(), store);
+    store.setVerified("u1");
+    const api = deviceApi();
+    mount(svc, api, store);
     expect(await screen.findByText("App lista")).toBeInTheDocument();
+    expect(api.device.status.$get).not.toHaveBeenCalled();
+  });
+
+  it("sin la pista pero con la cookie vigente: entra sin pedir la passkey", async () => {
+    const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
+    const { store } = mount(svc, deviceApi({ status: status(true, true) }));
+    expect(await screen.findByText("App lista")).toBeInTheDocument();
+    expect(passkeys.login).not.toHaveBeenCalled();
+    expect(store.isVerified("u1")).toBe(true);
   });
 
   it("si el navegador pide un gesto, ofrece el botón para verificar", async () => {
@@ -339,20 +350,69 @@ describe("ingreso con mail y contraseña + dispositivo", () => {
       Object.assign(new Error("gesto"), { name: "NotAllowedError" }),
     );
     mount(svc);
-    const button = await screen.findByRole("button", { name: "Registrar este dispositivo" });
+    const button = await screen.findByRole("button", { name: "Crear mi passkey" });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     await userEvent.setup().click(button);
     await waitFor(() => expect(screen.getByText("App lista")).toBeInTheDocument());
   });
 
-  it("cerrar sesión desde la pantalla de dispositivo vuelve al inicio de sesión", async () => {
+  it("cerrar sesión espera a que la API borre la cookie y recién después vuelve al ingreso", async () => {
     const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
     vi.mocked(passkeys.register).mockRejectedValueOnce(
       Object.assign(new Error("x"), { name: "NotAllowedError" }),
     );
-    mount(svc);
+    let done!: (v: unknown) => void;
+    const logout = vi.fn(() => new Promise((r) => (done = r)));
+    const store = memoryStore();
+    store.setToken("nativo");
+    mount(svc, deviceApi({ logout }), store);
     await userEvent.setup().click(await screen.findByRole("button", { name: "Cerrar sesión" }));
     expect(svc.signOut).toHaveBeenCalled();
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+    // mientras la API no confirma, la sesión local sigue
+    expect(screen.queryByRole("heading", { name: "Ingresar" })).not.toBeInTheDocument();
+    expect(store.getToken()).toBe("nativo");
+    done(ok({ ok: true }));
     expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
+    expect(store.getToken()).toBeNull();
+  });
+
+  it("si la API no responde al cerrar sesión, igual se cierra la sesión local", async () => {
+    const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
+    vi.mocked(passkeys.register).mockRejectedValueOnce(
+      Object.assign(new Error("x"), { name: "NotAllowedError" }),
+    );
+    mount(svc, deviceApi({ logout: vi.fn(async () => Promise.reject(new TypeError("red"))) }));
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+    expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
+  });
+
+  it("confirmPasskey pide la passkey aunque la sesión esté verificada", async () => {
+    function Sensitive() {
+      const { confirmPasskey } = useAuth();
+      return (
+        <button type="button" onClick={() => void confirmPasskey()}>
+          Acción sensible
+        </button>
+      );
+    }
+    const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
+    const store = memoryStore();
+    store.setVerified("u1");
+    const api = deviceApi();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AuthProvider services={svc} store={store} passkeys={passkeys} apiOverride={api}>
+            <AuthGate>
+              <Sensitive />
+            </AuthGate>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Acción sensible" }));
+    await waitFor(() => expect(api.device.reauth.verify.$post).toHaveBeenCalledTimes(1));
+    expect(passkeys.login).toHaveBeenCalledWith({ challenge: "r" });
   });
 });

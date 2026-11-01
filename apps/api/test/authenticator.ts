@@ -1,4 +1,4 @@
-// Autenticador WebAuthn por software (ES256, attestation "none") para probar F4 sin navegador.
+// Autenticador WebAuthn por software (ES256, attestation "none") para probar las passkeys sin navegador.
 import { createHash, generateKeyPairSync, randomBytes, sign, type KeyObject } from "node:crypto";
 
 type Cbor = number | string | Uint8Array | Map<Cbor, Cbor>;
@@ -27,6 +27,8 @@ export class SoftAuthenticator {
   private x: Buffer;
   private y: Buffer;
   counter = 0;
+  /** Passkey sincronizable y con respaldo (flags BE y BS), como las de Google o iCloud. */
+  synced = false;
 
   constructor(
     private rpId = "redasistir.online",
@@ -65,7 +67,7 @@ export class SoftAuthenticator {
     idLen.writeUInt16BE(this.credentialId.length);
     const authData = Buffer.concat([
       sha256(this.rpId),
-      Buffer.from([0x45]),
+      Buffer.from([0x45 | (this.synced ? 0x18 : 0)]),
       Buffer.alloc(4),
       Buffer.alloc(16),
       idLen,
@@ -95,7 +97,7 @@ export class SoftAuthenticator {
 
   authenticate(
     options: { challenge: string },
-    over: { origin?: string; badSignature?: boolean } = {},
+    over: { origin?: string; badSignature?: boolean; noUserVerification?: boolean } = {},
   ) {
     const clientDataJSON = Buffer.from(
       JSON.stringify({
@@ -107,7 +109,9 @@ export class SoftAuthenticator {
     );
     const counter = Buffer.alloc(4);
     counter.writeUInt32BE(++this.counter);
-    const authData = Buffer.concat([sha256(this.rpId), Buffer.from([0x05]), counter]);
+    // UP, UV (salvo noUserVerification) y BE/BS si es sincronizable.
+    const flags = (over.noUserVerification ? 0x01 : 0x05) | (this.synced ? 0x18 : 0);
+    const authData = Buffer.concat([sha256(this.rpId), Buffer.from([flags]), counter]);
     const signature = sign("sha256", Buffer.concat([authData, sha256(clientDataJSON)]), this.key);
     if (over.badSignature) signature[signature.length - 1]! ^= 0xff;
     return {

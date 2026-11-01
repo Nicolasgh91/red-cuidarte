@@ -66,6 +66,7 @@ export function Icon({ name, className = "i", style }: IconProps) {
       viewBox="0 0 24 24"
       aria-hidden="true"
       style={style}
+      // eslint-disable-next-line no-restricted-syntax -- trazos constantes de ICON_PATHS, sin input del usuario
       dangerouslySetInnerHTML={{ __html: ICON_PATHS[name] }}
     />
   );

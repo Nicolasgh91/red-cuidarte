@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { signDeviceToken } from "../src/auth/deviceToken.js";
-import { TEST_ENV, createHarness, type Harness } from "./harness.js";
+import { TEST_ENV, createHarness, deviceCookie, type Harness } from "./harness.js";
 
 let h: Harness;
 beforeAll(async () => void (h = await createHarness()));
@@ -47,21 +47,47 @@ describe("seguridad (F3)", () => {
     expect(await code(r)).toBe("device_login_required");
   });
 
-  it("el token de dispositivo de otra credencial no sirve (y 'Liberar' lo invalida)", async () => {
+  it("el token de dispositivo de otra credencial no sirve (y restablecer la passkey lo invalida)", async () => {
     const c = await h.caregiver();
     const stale = await signDeviceToken(TEST_ENV.DEVICE_TOKEN_SECRET, c, "otra-credencial");
-    const r = await h.req("/me", { as: c, device: false, headers: { "X-Device-Token": stale } });
+    const r = await h.req("/me", {
+      as: c,
+      device: false,
+      headers: { Cookie: deviceCookie(stale) },
+    });
     expect(r.status).toBe(403);
-    await h.sql`delete from devices where user_id = ${c}`; // admin libera
+    await h.sql`delete from devices where user_id = ${c}`; // admin restablece
     expect(await code(await h.req("/me", { as: c }))).toBe("device_unregistered");
   });
 
-  it("el token de dispositivo de otro usuario no sirve", async () => {
+  it("el token de dispositivo de otro usuario no sirve con el JWT propio", async () => {
     const a = await h.caregiver();
     const b = await h.caregiver();
     const tokenOfB = await signDeviceToken(TEST_ENV.DEVICE_TOKEN_SECRET, b, `test-credential${b}`);
-    const r = await h.req("/me", { as: a, device: false, headers: { "X-Device-Token": tokenOfB } });
+    const r = await h.req("/me", {
+      as: a,
+      device: false,
+      headers: { Cookie: deviceCookie(tokenOfB) },
+    });
     expect(r.status).toBe(403);
+    expect(await code(r)).toBe("device_login_required");
+  });
+
+  it("X-Device-Token solo se acepta desde la app nativa; la web usa la cookie", async () => {
+    const c = await h.caregiver();
+    const t = await signDeviceToken(TEST_ENV.DEVICE_TOKEN_SECRET, c, `test-credential${c}`);
+    const withHeader = (origin?: string) =>
+      h.req("/me", {
+        as: c,
+        device: false,
+        headers: { "X-Device-Token": t, ...(origin ? { Origin: origin } : {}) },
+      });
+    expect((await withHeader()).status).toBe(403);
+    expect((await withHeader("https://redasistir.online")).status).toBe(403);
+    expect((await withHeader("capacitor://localhost")).status).toBe(200);
+    expect(
+      (await h.req("/me", { as: c, headers: { Origin: "https://redasistir.online" } })).status,
+    ).toBe(200);
   });
 
   it("autoriza por rol en cada grupo de rutas", async () => {
@@ -101,6 +127,8 @@ describe("seguridad (F3)", () => {
     expect(cap.headers.get("access-control-allow-origin")).toBe("capacitor://localhost");
     const bad = await h.req("/health", { headers: { Origin: "https://evil.example" } });
     expect(bad.headers.get("access-control-allow-origin")).toBeNull();
+    // la cookie del token viaja con credenciales
+    expect(ok.headers.get("access-control-allow-credentials")).toBe("true");
   });
 
   it("Cache-Control private, no-store en toda respuesta salvo el preflight", async () => {

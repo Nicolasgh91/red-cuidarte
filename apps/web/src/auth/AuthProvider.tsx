@@ -37,8 +37,13 @@ interface AuthContextValue {
   signUp(data: SignupData): Promise<void>;
   sendRecoveryCode(email: string): Promise<void>;
   resetPassword(email: string, code: string, password: string): Promise<void>;
-  /** Registra o verifica la passkey de este dispositivo (gesto del usuario). */
+  /** Registra o verifica la passkey de la cuenta (gesto del usuario). */
   checkDevice(): Promise<void>;
+  /**
+   * Antes de una acción sensible del admin: pide la passkey siempre (llamar dentro del click).
+   * Lanza AuthFlowError si no se completa.
+   */
+  confirmPasskey(): Promise<void>;
   signOut(): Promise<void>;
 }
 
@@ -96,8 +101,14 @@ function deviceApiFrom(api: ApiClient): DeviceApi {
     loginOptions: () => unwrap(api.device.login.options.$post()),
     loginVerify: (response) =>
       unwrap(call(api.device.login.verify.$post, { json: { response: response as never } })),
+    reauthOptions: () => unwrap(api.device.reauth.options.$post()),
+    reauthVerify: (response) =>
+      unwrap(call(api.device.reauth.verify.$post, { json: { response: response as never } })),
   };
 }
+
+/** Tope para esperar a que la API borre la cookie al cerrar sesión. */
+const LOGOUT_TIMEOUT_MS = 5_000;
 
 interface Props {
   children: ReactNode;
@@ -126,16 +137,32 @@ export function AuthProvider({
       passkeys,
       store,
     });
-    const endSession = (error: string | null) => {
-      store.clearToken();
-      queryClient.clear();
-      ctl.setUser(null);
-      dispatch({ type: "signed_out", error });
+    /**
+     * Cierra la sesión del dispositivo. Espera a que la API borre la cookie del token (con tope)
+     * antes de limpiar lo local, para que una navegación no corte el borrado. Con
+     * `supabase: true` cierra también la sesión de Supabase. Llamadas simultáneas comparten el cierre.
+     */
+    let ending: Promise<void> | null = null;
+    const logout = async () => {
+      await (holder.api as ApiClient).logout.$post(undefined, {
+        init: { signal: AbortSignal.timeout(LOGOUT_TIMEOUT_MS) },
+      });
     };
+    const endSession = (error: string | null, opts: { supabase?: boolean } = {}) =>
+      (ending ??= (async () => {
+        await Promise.allSettled([
+          (async () => opts.supabase && (await services.signOut()))(),
+          logout(),
+        ]);
+        store.clear();
+        queryClient.clear();
+        ctl.setUser(null);
+        dispatch({ type: "signed_out", error });
+      })().finally(() => {
+        ending = null;
+      }));
     const onAuthIssue = (issue: AuthIssue) => {
       switch (issue.code) {
-        case "device_blocked":
-          return dispatch({ type: "device_blocked", message: issue.message });
         case "not_registered":
           return dispatch({ type: "not_registered" });
         case "device_unregistered":
@@ -143,8 +170,7 @@ export function AuthProvider({
         case "device_login_required":
           return dispatch({ type: "device_prompt", phase: "login", error: null });
         case "unauthorized":
-          void services.signOut().catch(() => undefined);
-          return endSession("Tu sesión venció. Ingresá de nuevo.");
+          return void endSession("Tu sesión venció. Ingresá de nuevo.", { supabase: true });
       }
     };
     holder.api ??= createApiClient(API_URL, {
@@ -164,14 +190,14 @@ export function AuthProvider({
         if (cancelled) return;
         if (!s) return dispatch({ type: "no_session" });
         ctl.setUser(s.userId);
-        dispatch({ type: "session_restored", hasDeviceToken: !!store.getToken() });
+        dispatch({ type: "session_restored", verified: store.isVerified(s.userId) });
       })
       .catch(() => {
         if (!cancelled) dispatch({ type: "no_session" });
       });
     let off: () => void = () => undefined;
     try {
-      off = services.onSignedOut(() => endSession(null));
+      off = services.onSignedOut(() => void endSession(null));
     } catch {
       /* sin configuración de Supabase: el error se muestra al intentar ingresar */
     }
@@ -254,14 +280,8 @@ export function AuthProvider({
     [services, opened],
   );
 
-  const signOut = useCallback(async () => {
-    try {
-      await services.signOut();
-    } catch {
-      /* igual se cierra la sesión local */
-    }
-    endSession(null);
-  }, [services, endSession]);
+  // Si Supabase falla, igual se cierra la sesión local.
+  const signOut = useCallback(() => endSession(null, { supabase: true }), [endSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -272,9 +292,10 @@ export function AuthProvider({
       sendRecoveryCode,
       resetPassword,
       checkDevice: () => checkDevice(true),
+      confirmPasskey: () => ctl.reauth(),
       signOut,
     }),
-    [state, api, signIn, signUp, sendRecoveryCode, resetPassword, checkDevice, signOut],
+    [state, api, signIn, signUp, sendRecoveryCode, resetPassword, checkDevice, ctl, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

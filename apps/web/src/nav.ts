@@ -45,7 +45,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: "admin", label: "Panel", icon: "grid", mobile: true },
     { path: "admin-cuidadores", label: "Cuidadores", icon: "users", mobile: true },
     { path: "admin-pacientes", label: "Pacientes", icon: "heart", mobile: true },
-    { path: "admin-dispositivos", label: "Dispositivos", icon: "phone", mobile: true },
+    { path: "admin-dispositivos", label: "Passkeys", icon: "phone", mobile: true },
     { path: "admin-correos", label: "Correos", icon: "mail", mobile: true },
     { path: "admin-contenido", label: "Contenido", icon: "book", mobile: true },
   ],

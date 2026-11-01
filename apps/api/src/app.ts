@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createMiddleware } from "hono/factory";
+import { clearDeviceCookie } from "./auth/deviceToken.js";
 import { authenticate, requireRole } from "./auth/middleware.js";
 import type { AppEnv, Deps } from "./deps.js";
-import { HttpError } from "./errors.js";
+import { HttpError, forbidden } from "./errors.js";
 import { admin } from "./routes/admin.js";
 import { assistant } from "./routes/assistant.js";
 import { contact } from "./routes/contact.js";
@@ -29,6 +30,8 @@ export function createApp(deps: Deps) {
       "*",
       cors({
         origin: (origin) => (deps.env.ALLOWED_ORIGINS.includes(origin) ? origin : null),
+        // La cookie del token de dispositivo (en desarrollo la web y la API están en otro puerto).
+        credentials: true,
         allowHeaders: ["Authorization", "Content-Type", "X-Device-Token"],
         allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         maxAge: 7200,
@@ -86,6 +89,13 @@ export function createApp(deps: Deps) {
 
   const app = base
     .get("/health", (c) => c.json({ ok: true as const }))
+    // Cierra la sesión del dispositivo: borra la cookie del token. No pide sesión (puede haber
+    // vencido); contra CSRF solo acepta orígenes conocidos (un POST del navegador siempre trae Origin).
+    .post("/logout", (c) => {
+      if (!deps.env.ALLOWED_ORIGINS.includes(c.req.header("Origin") ?? "")) throw forbidden();
+      clearDeviceCookie(c);
+      return c.json({ ok: true as const });
+    })
     .route("/internal", internal)
     .route("/content", content)
     .route("/signup", signup)

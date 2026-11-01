@@ -34,7 +34,7 @@ describe("cliente de la API", () => {
     expect(signal!.aborted).toBe(false);
   });
 
-  it("manda el JWT y el token de dispositivo en cada pedido", async () => {
+  it("manda el JWT y, en la app nativa, el token de dispositivo; siempre con la cookie", async () => {
     const { api, fetchImpl } = setup([json(200, { shifts: [] })]);
     const res = await api.shifts.$get({ query: { from: "2026-10-19", to: "2026-10-25" } } as never);
     expect(res.ok).toBe(true);
@@ -43,6 +43,17 @@ describe("cliente de la API", () => {
     const h = new Headers((init as RequestInit).headers);
     expect(h.get("Authorization")).toBe("Bearer jwt-1");
     expect(h.get("X-Device-Token")).toBe("dev-1");
+    expect((init as RequestInit).credentials).toBe("include");
+  });
+
+  it("en la web (sin token guardado) no manda X-Device-Token: va la cookie HttpOnly", async () => {
+    const { api, fetchImpl } = setup([json(200, { id: "u1", role: "admin", profile: null })], {
+      getDeviceToken: () => null,
+    });
+    await api.me.$get();
+    const init = fetchImpl.mock.calls[0]![1] as RequestInit;
+    expect(new Headers(init.headers).has("X-Device-Token")).toBe(false);
+    expect(init.credentials).toBe("include");
   });
 
   it("403 device_login_required: repite el ingreso con passkey y reintenta el pedido", async () => {
@@ -74,7 +85,7 @@ describe("cliente de la API", () => {
     });
   });
 
-  it.each(["device_unregistered", "device_blocked", "not_registered"] as const)(
+  it.each(["device_unregistered", "not_registered"] as const)(
     "403 %s cambia el estado de la sesión",
     async (code) => {
       const { api, hooks } = setup([json(403, { error: { code, message: "msg" } })]);
@@ -91,10 +102,11 @@ describe("cliente de la API", () => {
 
   it("las rutas /device/* no pasan por el manejo de 403 (lo hace el flujo de dispositivo)", async () => {
     const { api, hooks } = setup([
-      json(403, { error: { code: "device_blocked", message: "Otro dispositivo" } }),
+      json(403, { error: { code: "device_login_required", message: "Verificá" } }),
     ]);
-    const res = await api.device.register.options.$post({ json: { label: "x" } } as never);
+    const res = await api.device.login.options.$post();
     expect(res.status).toBe(403);
+    expect(hooks.relogin).not.toHaveBeenCalled();
     expect(hooks.onAuthIssue).not.toHaveBeenCalled();
   });
 

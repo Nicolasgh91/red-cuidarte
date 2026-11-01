@@ -14,17 +14,13 @@ export const API_URL: string = resolveApiUrl(
 );
 
 export interface AuthIssue {
-  code:
-    | "device_unregistered"
-    | "device_login_required"
-    | "device_blocked"
-    | "not_registered"
-    | "unauthorized";
+  code: "device_unregistered" | "device_login_required" | "not_registered" | "unauthorized";
   message: string;
 }
 
 export interface ApiHooks {
   getAccessToken(): Promise<string | null>;
+  /** Solo en la app nativa: en la web el token va en una cookie HttpOnly. */
   getDeviceToken(): string | null;
   /** 403 device_login_required: repite el ingreso con passkey. true si se obtuvo un token nuevo. */
   relogin(): Promise<boolean>;
@@ -34,7 +30,7 @@ export interface ApiHooks {
 /** Ningún pedido queda colgado: pasado este tiempo falla y la consulta muestra «Reintentar». */
 export const REQUEST_TIMEOUT_MS = 20_000;
 
-const AUTH_CODES = new Set<string>(["device_unregistered", "device_blocked", "not_registered"]);
+const AUTH_CODES = new Set<string>(["device_unregistered", "not_registered"]);
 
 async function errorBody(res: Response): Promise<{ code?: string; message?: string }> {
   try {
@@ -46,7 +42,8 @@ async function errorBody(res: Response): Promise<{ code?: string; message?: stri
 }
 
 /**
- * Cliente Hono RPC. Cada pedido lleva `Authorization: Bearer <JWT de Supabase>` y
+ * Cliente Hono RPC. Cada pedido lleva `Authorization: Bearer <JWT de Supabase>` y el token de
+ * dispositivo: en la web, la cookie HttpOnly (`credentials: "include"`); en la app nativa,
  * `X-Device-Token`. Los 403 de dispositivo/cuenta se resuelven acá (re-ingreso transparente
  * o cambio de estado de la sesión); el resto de los errores los ve quien llama (`unwrap`).
  */
@@ -65,7 +62,7 @@ export function createApiClient(
     if (dt) headers.set("X-Device-Token", dt);
     const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
     const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
-    return fetchImpl(input, { ...init, headers, signal });
+    return fetchImpl(input, { ...init, headers, signal, credentials: "include" });
   };
 
   const apiFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {

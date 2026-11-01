@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ApiError } from "./api/errors";
 import { App } from "./App";
+import { purgeLegacyDeviceKeys } from "./auth/deviceStore";
 import { applyTheme, getStoredTheme } from "./lib/theme";
 import "./styles/tokens.css";
 import "./styles/shell.css";
@@ -14,6 +15,7 @@ import "./styles/auth.css";
 import "./styles/responsive.css";
 
 applyTheme(getStoredTheme());
+purgeLegacyDeviceKeys(Capacitor.isNativePlatform());
 
 const queryClient = new QueryClient({
   defaultOptions: {

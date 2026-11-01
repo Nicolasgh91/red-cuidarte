@@ -18,6 +18,11 @@ export const envSchema = z.object({
   DEVICE_TOKEN_SECRET: z.string().min(32),
   CRON_SECRET: z.string().min(16),
   ALLOWED_ORIGINS: z.string().default("").transform(list),
+  /**
+   * Orígenes de la app nativa (WebView de Capacitor). Solo a ellos se les entrega el token de
+   * dispositivo en el cuerpo y se les acepta en X-Device-Token; la web usa únicamente la cookie.
+   */
+  NATIVE_ORIGINS: z.string().default("").transform(list),
   WEBAUTHN_RP_ID: z.string().min(1),
   WEBAUTHN_RP_NAME: z.string().default("Cuidarte+"),
   /** Orígenes aceptados para WebAuthn (web y, si aplica, android:apk-key-hash:...). */

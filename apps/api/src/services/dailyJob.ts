@@ -7,11 +7,13 @@ const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 /**
  * Tarea diaria (Vercel Cron, 12:00 UTC = 09:00 en Argentina, con precisión de hora en Hobby):
  *  1. mails de cumpleaños, idempotentes por (mail, tipo, año) vía mail_log;
- *  2. una consulta mínima para que Supabase no pause el proyecto por inactividad.
+ *  2. una consulta mínima para que Supabase no pause el proyecto por inactividad;
+ *  3. borra la auditoría de passkeys de más de 180 días.
  */
 export async function runDailyJob(deps: Deps) {
   const { sql, now } = deps;
   await sql`select 1`;
+  await sql`delete from device_events where at < ${new Date(now().getTime() - 180 * 86_400_000)}`;
   const t = nowAR(now());
   // Quienes nacieron un 29/2 se saludan el 28/2 en los años no bisiestos.
   const feb29Today = t.month === 2 && t.day === 28 && !isLeap(t.year);

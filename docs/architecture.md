@@ -27,13 +27,13 @@ Cuidarte+ es una app para personas que cuidan a adultos mayores. Hay tres roles:
 | Rol         | Quién                                | Qué hace                                                                                                     |
 | ----------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | `caregiver` | Cuidador/a                           | Turnos (a mano o por chat), tareas diarias, asistente, bienestar (privado), pausas, recursos, recordatorios. |
-| `admin`     | Coordinación (se crea solo por SQL)  | Da de alta cuidadores y personas cuidadas, asigna, carga medicación, libera/autoriza dispositivos, ve mails. |
+| `admin`     | Coordinación (se crea solo por SQL)  | Da de alta cuidadores y personas cuidadas, asigna, carga medicación, restablece passkeys, ve mails.          |
 | `patient`   | Persona cuidada (solo si tiene mail) | Vista de solo lectura "Hoy": quién la cuida, medicación del día, botón de emergencia.                        |
 
 Principios que atraviesan todo el diseño:
 
 - **Solo la API toca la base.** El navegador nunca habla con Postgres ni con la Data API de Supabase; Supabase se usa como Postgres + Auth.
-- **Backend sin estado.** Cada pedido trae todo lo necesario (JWT, token de dispositivo, historial del chat). Lo que tiene que sobrevivir entre pedidos (desafíos WebAuthn, cuota del asistente) va a la base.
+- **Backend sin estado.** Cada pedido trae todo lo necesario (JWT, token de dispositivo en cookie, historial del chat). Lo que tiene que sobrevivir entre pedidos (desafíos WebAuthn, cuota del asistente) va a la base.
 - **Costo de infraestructura US$0.** Vercel Hobby, Supabase Free, Groq gratis, GitHub Actions. Los límites están en [`docs/free-tier.md`](free-tier.md).
 - **Tipos de punta a punta sin codegen.** La web importa el tipo `AppType` de la API (Hono RPC).
 
@@ -129,10 +129,10 @@ flowchart LR
   CORS --> NS["Cache-Control:<br/>private, no-store"]
   NS --> D["inyecta deps<br/>(+ conexión del pool)"]
   D --> A{"prefijo"}
-  A -- "/health, /signup" --> H[handler]
+  A -- "/health, /signup, /logout" --> H[handler]
   A -- "/internal" --> CS["Bearer CRON_SECRET"] --> H
   A -- "/device" --> AU1["authenticate<br/>(sin dispositivo)"] --> H
-  A -- "resto" --> AU2["authenticate<br/>(con X-Device-Token)"] --> RR["requireRole"] --> V["validate (zod)"] --> H
+  A -- "resto" --> AU2["authenticate<br/>(con token de dispositivo)"] --> RR["requireRole"] --> V["validate (zod)"] --> H
   H --> S[services] --> DB[(Postgres)]
 ```
 
@@ -144,6 +144,7 @@ Montaje de rutas (sin prefijo `/api`: ese prefijo lo agrega y saca el rewrite de
 | `/internal`                                                   | `Bearer CRON_SECRET` (timing-safe) | –                                                              | `routes/internal.ts` |
 | `POST /signup`                                                | ninguna, límite por IP             | –                                                              | `routes/signup.ts`   |
 | `GET /content`                                                | ninguna (público, cache 30 s)      | –                                                              | `routes/content.ts`  |
+| `POST /logout`                                                | ninguna, solo `ALLOWED_ORIGINS`    | –                                                              | `app.ts`             |
 | `/device`                                                     | JWT, sin token de dispositivo      | cualquiera registrado                                          | `routes/device.ts`   |
 | `/me`                                                         | JWT + dispositivo                  | cualquiera (`/me/patients*` y `/me/medications*`: `caregiver`) | `routes/me.ts`       |
 | `/shifts`, `/tasks`, `/wellbeing`, `/reminders`, `/assistant` | JWT + dispositivo                  | `caregiver`                                                    | `routes/<nombre>.ts` |
@@ -175,7 +176,7 @@ Los handlers leen todo con `c.get("deps")`; nunca importan clientes globales. Pa
 - Siempre a través del **pooler de Supabase en modo transacción**: `max: 1`, `prepare: false`.
 - Las columnas `date` vuelven como texto `"YYYY-MM-DD"` (sin `Date` ni zonas horarias).
 - Un cliente SQL por pedido, cerrado al terminar (postgres.js abre la conexión física recién en la primera consulta); no sobrevive ninguna conexión entre pedidos, así una instancia congelada no puede reusar una conexión muerta. El `sql` global de createDeps nunca se consulta en producción (el middleware lo reemplaza) y por eso no abre conexión.
-- Consultas con _tagged templates_ (`` sql`...` ``); transacciones con `sql.begin(...)`. Ejemplos: alta de cuidador/persona cuidada (si falla el insert, se borra el usuario recién creado en Auth), registro de dispositivo, `createShifts` (bloquea la fila del cuidador con `for update` y traduce el error `23P01` de la restricción de exclusión a 409 `shift_overlap`).
+- Consultas con _tagged templates_ (`` sql`...` ``); transacciones con `sql.begin(...)`. Ejemplos: alta de cuidador/persona cuidada (si falla el insert, se borra el usuario recién creado en Auth), `createShifts` (bloquea la fila del cuidador con `for update` y traduce el error `23P01` de la restricción de exclusión a 409 `shift_overlap`).
 
 ### 3.5 Errores y validación
 
@@ -237,14 +238,14 @@ main.tsx          aplica tema · QueryClient · registra sw.js (solo web, solo p
 
 - [`src/api/client.ts`](../apps/web/src/api/client.ts): `hc<AppType>(API_URL)`. `AppType` viene del paquete `api` del workspace (`exports: ./src/app.ts`), así que cambiar una ruta en la API rompe el typecheck de la web si no coincide.
 - `API_URL` sale de `VITE_API_URL`. En producción es `/api`, que el rewrite de [`apps/web/vercel.json`](../apps/web/vercel.json) manda a la API: mismo origen, sin CORS ni preflight.
-- Cada pedido lleva `Authorization: Bearer <JWT de Supabase>`, `X-Device-Token` y un timeout de 20 s.
+- Cada pedido lleva `Authorization: Bearer <JWT de Supabase>`, `credentials: "include"` (la cookie HttpOnly del token de dispositivo) y un timeout de 20 s. La app nativa manda además `X-Device-Token`.
 - Interceptor de errores de autenticación (excepto en `/device/*`):
   - 401 → la sesión venció, se cierra.
   - 403 `device_login_required` → re-ingreso con passkey transparente y se reintenta el pedido una vez.
-  - 403 `device_unregistered` / `device_blocked` / `not_registered` → evento para la máquina de estados.
+  - 403 `device_unregistered` / `not_registered` → evento para la máquina de estados.
   - Cualquier otro 403 vuelve al llamador.
 - [`src/api/errors.ts`](../apps/web/src/api/errors.ts): `unwrap()` convierte la respuesta en datos o en `ApiError(status, code, message)`; los errores de red son `status 0`.
-- [`src/api/queries/*`](../apps/web/src/api/queries/): un archivo por dominio con los hooks de React Query (`useShifts`, `useToggleTask` optimista, `useAdminMutation` que invalida todo `["admin"]`, etc.). Los reintentos solo aplican a errores de red o 5xx.
+- [`src/api/queries/*`](../apps/web/src/api/queries/): un archivo por dominio con los hooks de React Query (`useShifts`, `useToggleTask` optimista, `useAdminMutation` que invalida todo `["admin"]`, `useSensitiveMutation` que antes pide la passkey, etc.). Los reintentos solo aplican a errores de red o 5xx.
 - La web también importa [`apps/api/src/content`](../apps/api/src/content/index.ts) (artículos y FAQ) por ruta relativa: una sola fuente para la pantalla de recursos y el contexto del asistente.
 
 ### 4.4 PWA y Android
@@ -265,9 +266,9 @@ Las preferencias (agua, estirar, relajar) se guardan en la API (`/reminders`); l
 
 ---
 
-## 5. Autenticación y dispositivo
+## 5. Autenticación y passkey
 
-Dos factores: **mail y contraseña** (Supabase Auth) y **passkey** que ata la cuenta a un único dispositivo. La API emite entonces un **token de dispositivo** (HS256, 30 días, `sub` = usuario, `cid` = credencial) que se valida en cada pedido contra la credencial vigente en `devices`. Las razones están en [`docs/decisions.md`](decisions.md) (F4 y F5b). Los cuidadores y pacientes pueden crear su cuenta en `/registro` (`POST /signup`); las cuentas sin contraseña (alta del admin) la definen con un código por mail en `/recuperar`.
+Dos factores: **mail y contraseña** (Supabase Auth) y **una passkey por cuenta**. La passkey no se ata a un equipo: sirve desde cualquiera donde esté (sincronizada en Google o iCloud, o desde el teléfono con el código QR). Al verificarla, la API emite un **token de dispositivo** (HS256, 30 días, `sub` = usuario, `cid` = credencial) que se valida en cada pedido junto con el JWT de Supabase y contra la credencial vigente en `devices`. En la web viaja solo en la cookie `__Host-cuidarte_device` (HttpOnly, Secure, SameSite=Strict); la app nativa lo recibe en el cuerpo y lo manda en `X-Device-Token`. Las razones están en [`docs/decisions.md`](decisions.md) (F6 y F5b). Los cuidadores y pacientes pueden crear su cuenta en `/registro` (`POST /signup`); las cuentas sin contraseña (alta del admin) la definen con un código por mail en `/recuperar`.
 
 ### 5.1 Primer ingreso
 
@@ -285,31 +286,44 @@ sequenceDiagram
   SA-->>W: sesión (JWT)
   W->>API: GET /device/status (Bearer JWT)
   API->>DB: users.role, devices
-  API-->>W: sin dispositivo
+  API-->>W: registered: false
   W->>API: POST /device/register/options
   API->>DB: guarda desafío (5 min)
   W->>U: crear passkey
   W->>API: POST /device/register/verify
-  API->>DB: inserta devices
-  API-->>W: device_token
-  W->>W: localStorage: token + credencial
-  W->>API: GET /me (Bearer JWT + X-Device-Token)
+  API->>DB: inserta devices y device_events
+  API-->>W: Set-Cookie __Host-cuidarte_device (HttpOnly)
+  W->>API: GET /me (Bearer JWT + cookie)
 ```
 
 ### 5.2 Casos que hay que conocer
 
-| Situación                              | Qué pasa                                                                                                                                |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Vuelve con sesión y token guardado     | Entra directo (`ready`).                                                                                                                |
-| Token de dispositivo vencido o ausente | La API responde 403 `device_login_required`; la web hace `login/options` + `login/verify` con la passkey y reintenta el pedido.         |
-| La cuenta ya tiene otro dispositivo    | 403 `device_blocked` y fila `blocked` en `device_attempts`. Un admin puede **liberar** el viejo o **autorizar** el nuevo (una vez).     |
-| El admin liberó el dispositivo         | El token viejo deja de valer al instante (su `cid` ya no coincide); el próximo ingreso registra uno nuevo.                              |
-| El mail no tiene cuenta                | Supabase responde credenciales inválidas (su registro abierto está apagado). Las cuentas las crea la API: alta del admin o `/registro`. |
+| Situación                                    | Qué pasa                                                                                                                                                                    |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vuelve con sesión en un equipo ya verificado | Entra directo (`ready`) por una pista en `localStorage` que no es una credencial; si la cookie venció, el primer pedido da 403 y se re-verifica.                            |
+| Token de dispositivo vencido o ausente       | La API responde 403 `device_login_required`; la web hace `login/options` + `login/verify` con la passkey y reintenta el pedido.                                             |
+| Otro equipo de la misma persona              | `GET /device/status` dice `registered`; se pide la passkey (sincronizada o por QR). No hay bloqueo ni autorización del admin.                                               |
+| Intenta registrar una segunda passkey        | 409 `passkey_exists` y evento `rejected`. Solo un admin puede **restablecer** la passkey; con la contraseña robada no alcanza para registrar otra.                          |
+| El admin restableció la passkey              | El token viejo deja de valer al instante (su `cid` ya no coincide); el próximo ingreso registra una nueva.                                                                  |
+| Cerrar sesión                                | La web espera `POST /logout` (borra la cookie, tope de 5 s) y `signOut` de Supabase (revoca los refresh tokens) antes de limpiar el estado local.                           |
+| Acción sensible del admin                    | Restablecer passkeys y dar de alta cuentas exigen `POST /device/reauth/*` justo antes: una aserción con verificación de usuario que deja una prueba de un solo uso (5 min). |
+| El mail no tiene cuenta                      | Supabase responde credenciales inválidas (su registro abierto está apagado). Las cuentas las crea la API: alta del admin o `/registro`.                                     |
 
-### 5.3 Piezas en el código
+### 5.3 Recuperar el acceso de un admin
 
-- **API:** [`auth/verifier.ts`](../apps/api/src/auth/verifier.ts) (JWT contra JWKS, `aud: authenticated`), [`auth/middleware.ts`](../apps/api/src/auth/middleware.ts) (`authenticate`, `requireRole`), [`auth/deviceToken.ts`](../apps/api/src/auth/deviceToken.ts), [`routes/device.ts`](../apps/api/src/routes/device.ts) (WebAuthn; los desafíos van a `webauthn_challenges` porque las funciones no guardan estado).
-- **Web:** [`auth/machine.ts`](../apps/web/src/auth/machine.ts) es un reducer puro con los estados `loading → signed-out → device-check → ready | blocked | not-registered`; sin sesión, [`auth/public.tsx`](../apps/web/src/auth/public.tsx) muestra la landing, el ingreso, el registro y la recuperación. [`auth/AuthProvider.tsx`](../apps/web/src/auth/AuthProvider.tsx) conecta la máquina con los efectos; [`auth/controller.ts`](../apps/web/src/auth/controller.ts) evita chequeos simultáneos y comparte un único re-ingreso entre pedidos concurrentes; [`auth/deviceFlow.ts`](../apps/web/src/auth/deviceFlow.ts) decide registrar o ingresar; [`auth/deviceStore.ts`](../apps/web/src/auth/deviceStore.ts) guarda en `localStorage` el token y la credencial (ligada al id de usuario).
+- Otro admin le restablece la passkey desde **Passkeys** (los admins aparecen en la lista).
+- Si no hay otro admin, en el editor SQL de Supabase (el mismo canal con que se crean los admins, ver [`supabase/seed/admin_jorge.sql`](../supabase/seed/admin_jorge.sql)):
+
+  ```sql
+  delete from devices where user_id = (select id from users where email = '<mail>' and role = 'admin');
+  ```
+
+  En el próximo ingreso registra una passkey nueva. Conviene tener al menos dos admins.
+
+### 5.4 Piezas en el código
+
+- **API:** [`auth/verifier.ts`](../apps/api/src/auth/verifier.ts) (JWT contra JWKS, `aud: authenticated`), [`auth/middleware.ts`](../apps/api/src/auth/middleware.ts) (`authenticate`, `requireRole`, `requireRecentPasskey`), [`auth/deviceToken.ts`](../apps/api/src/auth/deviceToken.ts) (firma y cookie), [`routes/device.ts`](../apps/api/src/routes/device.ts) (WebAuthn; los desafíos van a `webauthn_challenges` porque las funciones no guardan estado).
+- **Web:** [`auth/machine.ts`](../apps/web/src/auth/machine.ts) es un reducer puro con los estados `loading → signed-out → device-check → ready | not-registered`; sin sesión, [`auth/public.tsx`](../apps/web/src/auth/public.tsx) muestra la landing, el ingreso, el registro y la recuperación. [`auth/AuthProvider.tsx`](../apps/web/src/auth/AuthProvider.tsx) conecta la máquina con los efectos y expone `confirmPasskey()`; [`auth/controller.ts`](../apps/web/src/auth/controller.ts) evita chequeos simultáneos, comparte un único re-ingreso entre pedidos concurrentes y hace la reautenticación; [`auth/deviceFlow.ts`](../apps/web/src/auth/deviceFlow.ts) decide registrar o verificar según `GET /device/status`; [`auth/deviceStore.ts`](../apps/web/src/auth/deviceStore.ts) guarda solo la pista de "ya verificado" (y el token, en la app nativa).
 
 ---
 
@@ -322,8 +336,8 @@ erDiagram
   users ||--o| caregivers : "rol caregiver"
   users ||--o| admins : "rol admin"
   users ||--o| patients : "rol patient"
-  users ||--o| devices : "1 por cuenta"
-  users ||--o{ device_attempts : ""
+  users ||--o| devices : "1 passkey por cuenta"
+  users ||--o{ device_events : "auditoría"
   users ||--o{ webauthn_challenges : ""
   users ||--o{ contact_messages : ""
   caregivers ||--o{ caregiver_patients : ""
@@ -361,6 +375,9 @@ erDiagram
     text credential_id UK
     bytea public_key
     bigint sign_count
+    text device_type "singleDevice | multiDevice"
+    boolean backed_up
+    timestamptz reauth_at "prueba de un solo uso"
   }
   contact_messages {
     uuid id PK

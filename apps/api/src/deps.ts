@@ -40,7 +40,7 @@ export type Role = "caregiver" | "admin" | "patient";
 export interface AuthUser {
   id: string;
   role: Role;
-  /** credential_id del dispositivo registrado, si hay. */
+  /** credential_id de la passkey registrada, si hay. */
   credentialId: string | null;
 }
 

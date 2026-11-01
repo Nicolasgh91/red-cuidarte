@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { requireRecentPasskey } from "../auth/middleware.js";
 import type { AppEnv } from "../deps.js";
 import { badRequest, conflict, notFound } from "../errors.js";
 import { email, newCaregiver, newMedication, newPatient, uuid } from "../lib/schemas.js";
@@ -21,13 +22,10 @@ export const admin = new Hono<AppEnv>()
     const { sql, now } = c.get("deps");
     const today = nowAR(now()).date;
     const monday = addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
-    const [counts] = await sql<
-      { caregivers: number; patients: number; week_shifts: number; blocked: number }[]
-    >`
+    const [counts] = await sql<{ caregivers: number; patients: number; week_shifts: number }[]>`
       select (select count(*) from caregivers)::int as caregivers,
              (select count(*) from patients)::int as patients,
-             (select count(*) from shifts where date between ${monday} and ${addDays(monday, 6)})::int as week_shifts,
-             (select count(distinct user_id) from device_attempts where status = 'blocked')::int as blocked`;
+             (select count(*) from shifts where date between ${monday} and ${addDays(monday, 6)})::int as week_shifts`;
     const cgs = await sql<
       { first_name: string; birth_date: string }[]
     >`select first_name, birth_date from caregivers`;
@@ -45,7 +43,6 @@ export const admin = new Hono<AppEnv>()
       caregivers: counts!.caregivers,
       patients: counts!.patients,
       shifts_this_week: counts!.week_shifts,
-      blocked_attempts: counts!.blocked,
       next_birthday: nextBirthday ?? null,
     });
   })
@@ -81,7 +78,7 @@ export const admin = new Hono<AppEnv>()
       group by c.user_id order by c.first_name, c.last_names`;
     return c.json({ caregivers: rows.map((r) => ({ ...r })) });
   })
-  .post("/caregivers", validate("json", newCaregiver), async (c) => {
+  .post("/caregivers", validate("json", newCaregiver), requireRecentPasskey(), async (c) => {
     const id = await createCaregiver(c.get("deps"), c.req.valid("json"));
     return c.json({ id }, 201);
   })
@@ -134,7 +131,7 @@ export const admin = new Hono<AppEnv>()
       })),
     });
   })
-  .post("/patients", validate("json", newPatient), async (c) => {
+  .post("/patients", validate("json", newPatient), requireRecentPasskey(), async (c) => {
     return c.json({ id: await createPatient(c.get("deps"), c.req.valid("json")) }, 201);
   })
   .post(
@@ -165,15 +162,18 @@ export const admin = new Hono<AppEnv>()
         label: string | null;
         last_ip: string | null;
         last_seen_at: Date | null;
-        blocked: { label: string; ip: string | null; at: string } | null;
+        registered_at: Date | null;
+        device_type: "singleDevice" | "multiDevice" | null;
+        backed_up: boolean | null;
+        events: { kind: string; label: string | null; ip: string | null; at: string }[];
       }[]
     >`
       select u.id, u.role,
              coalesce(c.first_name || ' ' || c.last_names, a.first_name || ' ' || a.last_name, p.first_name || ' ' || p.last_name) as name,
-             d.label, d.last_ip, d.last_seen_at,
-             (select row_to_json(x) from (
-                select label, ip, at from device_attempts da
-                where da.user_id = u.id and da.status = 'blocked' order by at desc limit 1) x) as blocked
+             d.label, d.last_ip, d.last_seen_at, d.registered_at, d.device_type, d.backed_up,
+             coalesce((select json_agg(e) from (
+                select kind, label, ip, at from device_events de
+                where de.user_id = u.id order by at desc limit 5) e), '[]') as events
       from users u
         left join caregivers c on c.user_id = u.id
         left join admins a on a.user_id = u.id
@@ -182,26 +182,21 @@ export const admin = new Hono<AppEnv>()
       where u.email is not null
       order by u.role, name`;
     return c.json({
-      devices: rows.map((r) => ({ ...r, last_seen_at: r.last_seen_at?.toISOString() ?? null })),
+      devices: rows.map((r) => ({
+        ...r,
+        last_seen_at: r.last_seen_at?.toISOString() ?? null,
+        registered_at: r.registered_at?.toISOString() ?? null,
+      })),
     });
   })
-  .post("/devices/:id/release", validate("param", idParam), async (c) => {
-    // "Liberar": la cuenta queda sin dispositivo y el próximo ingreso registra uno nuevo.
-    const rows = await c.get("deps")
-      .sql`delete from devices where user_id = ${c.req.valid("param").id} returning user_id`;
-    if (!rows.length) throw notFound("Esa cuenta no tiene dispositivo registrado.");
-    return c.json({ ok: true as const });
-  })
-  .post("/devices/:id/authorize", validate("param", idParam), async (c) => {
-    // "Autorizar el nuevo": habilita registrar la credencial del intento bloqueado; reemplaza a la anterior.
+  .post("/devices/:id/release", validate("param", idParam), requireRecentPasskey(), async (c) => {
+    // "Restablecer passkey": la cuenta queda sin passkey y el próximo ingreso registra una nueva.
     const { sql } = c.get("deps");
     const id = c.req.valid("param").id;
-    const rows = await sql`
-      update device_attempts set status = 'authorized'
-      where id = (select id from device_attempts where user_id = ${id} and status = 'blocked' order by at desc limit 1)
-      returning id`;
-    if (!rows.length) throw notFound("No hay un intento bloqueado para autorizar.");
-    await sql`delete from device_attempts where user_id = ${id} and status = 'blocked'`;
+    const rows = await sql`delete from devices where user_id = ${id} returning user_id`;
+    if (!rows.length) throw notFound("Esa cuenta no tiene una passkey registrada.");
+    await sql`
+        insert into device_events (user_id, kind, actor_id) values (${id}, 'reset', ${c.get("user").id})`;
     return c.json({ ok: true as const });
   })
   .post("/mail/test", validate("json", z.object({ to: email })), async (c) => {

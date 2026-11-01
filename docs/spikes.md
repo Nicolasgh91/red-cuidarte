@@ -11,7 +11,7 @@ Estado al 2026-10-22. Los spikes que necesitan cuentas o secretos de Nico **no s
 
 ## S1 · Passkeys en Capacitor Android — ⏳
 
-**Ya hecho (servidor):** el flujo `@simplewebauthn/server` completo (registro, ingreso, bloqueo, liberar, autorizar) está implementado y probado con un autenticador por software (`apps/api/test/device.test.ts`).
+**Ya hecho (servidor):** el flujo `@simplewebauthn/server` completo (registro, ingreso, reautenticación, restablecer) está implementado y probado con un autenticador por software (`apps/api/test/device.test.ts`). Para la app nativa, la API devuelve el token en el cuerpo y lo acepta en `X-Device-Token` (`NATIVE_ORIGINS`).
 
 **Falta (cliente real):**
 
@@ -19,6 +19,7 @@ Estado al 2026-10-22. Los spikes que necesitan cuentas o secretos de Nico **no s
 2. Publicar `https://redasistir.online/.well-known/assetlinks.json` (ver `docs/assetlinks.md`) con el SHA-256 del certificado de firma.
 3. En un emulador Android con Google Play y una cuenta de Google: registrar una passkey desde la app contra la API, volver a ingresar y comprobar que el origen que llega a la API es `android:apk-key-hash:...` (debe estar en `WEBAUTHN_ORIGINS`).
 4. Repetir con la web (Chrome Android) para confirmar que ambas comparten el `rpId` `redasistir.online`.
+5. Elegir y probar el almacenamiento seguro (Keystore) para el token de dispositivo y la sesión de Supabase, enchufado en `DeviceStore` y en el `storage` de supabase-js; hoy usan `localStorage`.
 
 **Éxito:** registro + ingreso funcionan desde la app. **Resultado a anotar:** sí/no y con qué plugin. Si no hay plugin viable, alternativa a decidir con Nico: ingresar vía WebView/Custom Tab del dominio.
 

@@ -23,7 +23,7 @@ pnpm --filter web cap:sync   # build de la web + copia a android/
 pnpm --filter web cap:open   # abre Android Studio; Run en un emulador o teléfono
 ```
 
-`VITE_API_URL`, `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` se leen en el build (`apps/web/.env.local`). La API tiene que aceptar el origen de la app: `https://localhost` en `ALLOWED_ORIGINS` (el origen por defecto del WebView de Capacitor en Android).
+`VITE_API_URL`, `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` se leen en el build (`apps/web/.env.local`). La API tiene que aceptar el origen de la app: `https://localhost` en `ALLOWED_ORIGINS` (el origen por defecto del WebView de Capacitor en Android) y en `NATIVE_ORIGINS`.
 
 ## Recordatorios
 
@@ -37,7 +37,9 @@ pnpm --filter web cap:open   # abre Android Studio; Run en un emulador o teléfo
 
 El WebView de Capacitor sirve la app desde `https://localhost`, que **no coincide** con el `rpId` `redasistir.online`: el WebAuthn del WebView no sirve. Hace falta un plugin nativo (Credential Manager) + `assetlinks.json` (`docs/assetlinks.md`) + el origen `android:apk-key-hash:…` en `WEBAUTHN_ORIGINS`. Candidatos y procedimiento en `docs/spikes.md` (S1).
 
-El cliente ya está preparado: la interfaz `Passkeys` (`apps/web/src/auth/deviceFlow.ts`) es el punto de enchufe; hoy usa `@simplewebauthn/browser`. **Hasta que S1 se resuelva, en la app Android el paso de verificar el dispositivo no va a funcionar**, así que la app no es usable en producción. No se instaló ningún plugin de passkeys sin haberlo probado.
+El cliente ya está preparado: la interfaz `Passkeys` (`apps/web/src/auth/deviceFlow.ts`) es el punto de enchufe; hoy usa `@simplewebauthn/browser`. **Hasta que S1 se resuelva, en la app Android el paso de verificar la passkey no va a funcionar**, así que la app no es usable en producción. No se instaló ningún plugin de passkeys sin haberlo probado.
+
+**Token de dispositivo en la app:** el WebView llama a la API desde otro sitio, así que no usa la cookie de la web. Para los orígenes de `NATIVE_ORIGINS` la API devuelve el token también en el cuerpo y lo acepta en `X-Device-Token` (ver `docs/decisions.md`, F6). Hoy `DeviceStore` (`apps/web/src/auth/deviceStore.ts`) lo guarda en `localStorage`, igual que supabase-js guarda su sesión: **antes de publicar** hay que pasar los dos al almacenamiento seguro del sistema (Keystore). Se decide y prueba junto con S1.
 
 ## Publicar
 

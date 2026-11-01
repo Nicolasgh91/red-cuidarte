@@ -17,7 +17,6 @@ const quiet = fakeApi({
           caregivers: 0,
           patients: 0,
           shifts_this_week: 0,
-          blocked_attempts: 0,
           next_birthday: null,
         }),
       ),
@@ -51,7 +50,7 @@ describe("AppShell", () => {
       },
     );
     expect(screen.getByRole("navigation", { name: "Secciones" })).toHaveTextContent(
-      "PanelCuidadoresPacientesDispositivosCorreosContenido",
+      "PanelCuidadoresPacientesPasskeysCorreosContenido",
     );
     admin.unmount();
   });

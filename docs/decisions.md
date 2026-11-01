@@ -2,6 +2,20 @@
 
 Complementan las decisiones cerradas D1–D6 del roadmap y la spec v2 (que no se reabren). Acá van las que el roadmap delegó a cada fase y las que surgieron al implementar. Si alguna no te cierra, cambiarla ahora sale barato.
 
+## F6 · Passkey como segundo factor, token en cookie HttpOnly y reautenticación (reemplaza a F4)
+
+Una revisión del ingreso marcó dos cosas: el token de dispositivo vivía en `localStorage` (un XSS lo podía leer) y "un dispositivo por cuenta" confundía una credencial WebAuthn con un equipo físico. El servidor ataba la cuenta a **una passkey**; que fuera "este equipo" lo decidía solo el cliente, y una passkey sincronizada (Google, iCloud) sirve en varios equipos. Se decidió (2026-11-01) **exigir solo la passkey**, sin atarla a un equipo.
+
+- **Una passkey por cuenta.** Si la cuenta no tiene, se registra en el ingreso (confianza en el primer uso, como antes). Si ya tiene, `register/*` responde 409 `passkey_exists` y solo un admin la puede **restablecer**: con la contraseña robada no alcanza para registrar otra. Desde otro equipo se usa la misma passkey, sincronizada o desde el teléfono con el código QR. Se eliminan el bloqueo, «Autorizar el nuevo» y `device_attempts` (la tabla se borra en una migración posterior al deploy).
+- **Token:** sigue siendo HS256 de 30 días y se emite **solo** tras una aserción WebAuthn verificada (`register/verify`, `login/verify`); no hay renovación sin passkey. Cada pedido exige el JWT de Supabase **y** el token, del mismo `sub` y con el `cid` vigente: restablecer la passkey lo invalida al instante.
+- **Cookie:** en la web el token viaja solo en `__Host-cuidarte_device` (HttpOnly, Secure, `SameSite=Strict`, `Path=/`, sin `Domain`). Llega por el rewrite `/api`, así que es del mismo sitio. Un script no la puede leer, aunque un XSS todavía puede hacer pedidos desde la página mientras está abierta: la CSP (`apps/web/vercel.json`) y mostrar el contenido editable como texto (regla de lint contra `dangerouslySetInnerHTML`) son las otras defensas.
+- **Sin tokens anti-CSRF:** ninguna ruta acepta solo la cookie; todas exigen además `Authorization: Bearer`, que un sitio ajeno no puede agregar. `POST /logout` no pide sesión (tiene que andar con la sesión vencida) y por eso solo acepta orígenes de `ALLOWED_ORIGINS` (un POST del navegador siempre trae `Origin`).
+- **App nativa:** el WebView de Capacitor llama a otro sitio y no manda esa cookie. A los orígenes de `NATIVE_ORIGINS` la API les devuelve además el token en el cuerpo y les acepta `X-Device-Token`. `Origin` **no prueba identidad**: fuera del navegador se falsifica, pero igual hace falta el JWT y la aserción de la passkey del mismo usuario para obtener un token. Lo que garantiza el navegador es que la web nunca reciba el token en JavaScript. Dónde lo guarda la app (almacenamiento seguro del sistema) se resuelve con S1.
+- **Reautenticación del admin:** restablecer passkeys y dar de alta cuentas exigen `POST /device/reauth/*` justo antes: una aserción **con verificación de usuario** (huella o PIN) que deja `devices.reauth_at`. `requireRecentPasskey` la consume de forma atómica: un solo uso y menos de 5 minutos. No depende de cuándo se emitió el token, y el ingreso normal no la habilita. Los datos inválidos se rechazan antes de consumirla.
+- **Auditoría:** `device_events` (registro, ingreso, intento de otra passkey, reautenticación, restablecimiento con el admin que lo hizo), con IP y user agent; se borra a los 180 días en la tarea diaria. `devices` guarda `device_type` (`multiDevice` = «Sincronizable») y `backed_up` («Con respaldo»): no significan lo mismo y el admin los ve por separado.
+- **Cerrar sesión:** la web espera `POST /logout` (borra la cookie; tope de 5 s) y `signOut` de Supabase (alcance global: revoca los refresh tokens) antes de limpiar el estado, para que una navegación no corte el borrado.
+- **Fuera de alcance:** BFF (mover la sesión de Supabase a una cookie), mTLS y attestation.
+
 ## F2 · Cifrado de `medications`: en la aplicación, no con `pgcrypto`
 
 AES-256-GCM en la API, con la clave en la variable de entorno `MEDICATIONS_KEY` (Vercel). Se cifran `name` y `dose` (`bytea`); `times` queda en claro porque hace falta para armar el checklist y ordenar tomas.
@@ -14,7 +28,7 @@ AES-256-GCM en la API, con la clave en la variable de entorno `MEDICATIONS_KEY` 
 
 Se pidió una landing pública, ingreso con mail y contraseña y una página para que cada cuidador/a cree su propia cuenta (referencia visual: la pantalla de ingreso del prototipo con foto de atardecer).
 
-- **Ingreso:** `signInWithPassword` de Supabase. Después sigue igual que antes: passkey del dispositivo (F4).
+- **Ingreso:** `signInWithPassword` de Supabase. Después sigue igual que antes: la passkey (F6).
 - **Registro:** `POST /signup` en la API, público. Crea el usuario de Auth **con contraseña y ya confirmado** (service role) y la ficha de cuidador/a, sin pacientes; el admin los asigna después. Usa el mismo servicio que el alta del admin (`services/caregivers.ts`). Luego la web inicia sesión sola.
 - **Registro abierto de Supabase sigue apagado:** las altas pasan siempre por la API, que crea también la fila en `users`. Así no hay usuarios de Auth sin rol.
 - **Límite:** 5 registros por IP por hora (tabla `signup_attempts`). No hay verificación del mail: cualquiera puede crear una cuenta de cuidador/a con un mail ajeno, pero no ve nada hasta que el admin le asigna pacientes. Si se abusa, el siguiente paso es confirmar el mail con un código antes de crear la ficha.
@@ -37,7 +51,7 @@ El roadmap dejaba "mail + contraseña o enlace mágico". Se elige **código por 
 - **Dependencia:** Supabase tiene que mandar los mails por el SMTP de DonWeb (ver `docs/env.md`). Hasta que S2(c) confirme que el SMTP funciona, el ingreso real no se puede probar.
 - Las personas cuidadas sin mail son solo una ficha (no ingresan); con mail pueden ingresar y ver "Hoy".
 
-## F4 · Cómo se hace cumplir "un dispositivo por cuenta"
+## F4 · Cómo se hace cumplir "un dispositivo por cuenta" — reemplazada por F6
 
 - Tras Supabase Auth, el cliente verifica la passkey y la API devuelve un **token de dispositivo** (HS256, 30 días) con el id de usuario y la credencial. La API lo exige en el header `X-Device-Token` en todas las rutas, salvo `/device/*` y `/internal/*`.
 - Se compara contra la credencial **vigente** en `devices` en cada pedido: al "Liberar" o reemplazar el dispositivo, el token viejo deja de servir enseguida.

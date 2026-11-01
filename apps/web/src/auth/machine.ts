@@ -1,6 +1,6 @@
 /**
  * Máquina de estados del ingreso:
- *   loading → signed-out → device-check → ready | blocked | not-registered
+ *   loading → signed-out → device-check → ready | not-registered
  * El login, el registro y la recuperación de contraseña son pasos locales de cada pantalla: la
  * máquina solo se entera cuando hay sesión (signed_in). Es un reducer puro: la E/S (Supabase, WebAuthn, API) vive en AuthProvider y deviceFlow.
  */
@@ -10,22 +10,20 @@ export type AuthState =
   | { status: "loading" }
   | { status: "signed-out"; error: string | null }
   | { status: "device-check"; phase: DevicePhase; error: string | null }
-  | { status: "blocked"; message: string }
   | { status: "not-registered" }
   | { status: "ready" };
 
 export type AuthEvent =
-  /** Al abrir la app: hay sesión de Supabase (y, si hay token de dispositivo, se intenta usar). */
-  | { type: "session_restored"; hasDeviceToken: boolean }
+  /** Al abrir la app: hay sesión de Supabase (y, si este equipo ya verificó la passkey, se entra). */
+  | { type: "session_restored"; verified: boolean }
   | { type: "no_session" }
   /** Se abrió la sesión de Supabase (contraseña, registro o código de recuperación). */
   | { type: "signed_in" }
-  /** Hay que verificar el dispositivo (automático, sin pedir nada todavía). */
+  /** Hay que verificar la passkey (automático, sin pedir nada todavía). */
   | { type: "device_checking" }
   /** Hace falta un gesto del usuario (registrar o verificar la passkey). */
   | { type: "device_prompt"; phase: "register" | "login"; error: string | null }
   | { type: "device_ok" }
-  | { type: "device_blocked"; message: string }
   | { type: "not_registered" }
   | { type: "signed_out"; error?: string | null };
 
@@ -35,7 +33,7 @@ export function authReducer(state: AuthState, event: AuthEvent): AuthState {
   switch (event.type) {
     case "session_restored":
       return state.status === "loading"
-        ? event.hasDeviceToken
+        ? event.verified
           ? { status: "ready" }
           : { status: "device-check", phase: "checking", error: null }
         : state;
@@ -46,9 +44,7 @@ export function authReducer(state: AuthState, event: AuthEvent): AuthState {
         ? { status: "device-check", phase: "checking", error: null }
         : state;
     case "device_checking":
-      return state.status === "device-check" ||
-        state.status === "ready" ||
-        state.status === "blocked"
+      return state.status === "device-check" || state.status === "ready"
         ? { status: "device-check", phase: "checking", error: null }
         : state;
     case "device_prompt":
@@ -57,10 +53,6 @@ export function authReducer(state: AuthState, event: AuthEvent): AuthState {
         : state;
     case "device_ok":
       return state.status === "device-check" ? { status: "ready" } : state;
-    case "device_blocked":
-      return state.status === "device-check" || state.status === "ready"
-        ? { status: "blocked", message: event.message }
-        : state;
     case "not_registered":
       return state.status === "device-check" || state.status === "ready"
         ? { status: "not-registered" }

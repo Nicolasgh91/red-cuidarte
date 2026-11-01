@@ -1,15 +1,23 @@
 const TOKEN_KEY = "cuidarte.deviceToken";
-const CREDENTIAL_KEY = "cuidarte.credential";
-const CREDENTIAL_USER_KEY = "cuidarte.credentialUser";
+const VERIFIED_KEY = "cuidarte.verifiedUser";
+/** De la versión que guardaba el token y la credencial en la web. */
+const LEGACY_KEYS = ["cuidarte.credential", "cuidarte.credentialUser"];
 
 export interface DeviceStore {
+  /**
+   * Token de dispositivo para X-Device-Token. Solo lo tiene la app nativa: en la web vive en una
+   * cookie HttpOnly que ningún script puede leer.
+   */
   getToken(): string | null;
   setToken(token: string): void;
-  clearToken(): void;
-  /** Id de la credencial guardada en este dispositivo para ese usuario (null si es de otro usuario). */
-  getCredential(userId: string): string | null;
-  setCredential(userId: string, credentialId: string): void;
-  clearCredential(): void;
+  /**
+   * Pista (no es una credencial): este dispositivo ya verificó la passkey de ese usuario, así al
+   * abrir la app se entra directo. La API decide igual en cada pedido.
+   */
+  isVerified(userId: string): boolean;
+  setVerified(userId: string): void;
+  /** Borra el token y la pista (al cerrar sesión). */
+  clear(): void;
 }
 
 function safe<T>(fn: () => T, fallback: T): T {
@@ -24,23 +32,21 @@ function safe<T>(fn: () => T, fallback: T): T {
 export const localDeviceStore: DeviceStore = {
   getToken: () => safe(() => localStorage.getItem(TOKEN_KEY), null),
   setToken: (t) => safe(() => localStorage.setItem(TOKEN_KEY, t), undefined),
-  clearToken: () => safe(() => localStorage.removeItem(TOKEN_KEY), undefined),
-  getCredential: (userId) =>
-    safe(
-      () =>
-        localStorage.getItem(CREDENTIAL_USER_KEY) === userId
-          ? localStorage.getItem(CREDENTIAL_KEY)
-          : null,
-      null,
-    ),
-  setCredential: (userId, id) =>
+  isVerified: (userId) => safe(() => localStorage.getItem(VERIFIED_KEY) === userId, false),
+  setVerified: (userId) => safe(() => localStorage.setItem(VERIFIED_KEY, userId), undefined),
+  clear: () =>
     safe(() => {
-      localStorage.setItem(CREDENTIAL_KEY, id);
-      localStorage.setItem(CREDENTIAL_USER_KEY, userId);
-    }, undefined),
-  clearCredential: () =>
-    safe(() => {
-      localStorage.removeItem(CREDENTIAL_KEY);
-      localStorage.removeItem(CREDENTIAL_USER_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(VERIFIED_KEY);
     }, undefined),
 };
+
+/**
+ * La web ya no guarda el token ni la credencial: borra lo que dejó la versión anterior. El token
+ * viejo igual dejó de servir (la API solo lo acepta por header desde la app nativa).
+ */
+export function purgeLegacyDeviceKeys(native: boolean): void {
+  safe(() => {
+    for (const k of native ? LEGACY_KEYS : [TOKEN_KEY, ...LEGACY_KEYS]) localStorage.removeItem(k);
+  }, undefined);
+}

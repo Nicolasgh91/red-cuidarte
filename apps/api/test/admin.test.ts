@@ -20,7 +20,11 @@ describe("admin: cuidadores", () => {
   it("da de alta un cuidador/a: crea el usuario de Auth, la ficha y las asignaciones", async () => {
     const a = await h.admin();
     const p = await h.patient();
-    const r = await h.req("/admin/caregivers", { as: a, json: newCg({ patient_ids: [p] }) });
+    const r = await h.req("/admin/caregivers", {
+      as: a,
+      reauth: true,
+      json: newCg({ patient_ids: [p] }),
+    });
     expect(r.status).toBe(201);
     const { id } = (await r.json()) as { id: string };
     expect(h.authCreated).toEqual(["marta@ejemplo.org"]);
@@ -39,11 +43,14 @@ describe("admin: cuidadores", () => {
   it("rechaza mails repetidos, pacientes inexistentes y datos inválidos", async () => {
     const a = await h.admin();
     await h.caregiver({ email: "marta@ejemplo.org" });
-    expect((await h.req("/admin/caregivers", { as: a, json: newCg() })).status).toBe(409);
+    expect((await h.req("/admin/caregivers", { as: a, reauth: true, json: newCg() })).status).toBe(
+      409,
+    );
     expect(
       (
         await h.req("/admin/caregivers", {
           as: a,
+          reauth: true,
           json: newCg({
             email: "otra@ejemplo.org",
             patient_ids: ["00000000-0000-4000-8000-000000000000"],
@@ -52,10 +59,12 @@ describe("admin: cuidadores", () => {
       ).status,
     ).toBe(409);
     expect(
-      (await h.req("/admin/caregivers", { as: a, json: newCg({ email: "mal" }) })).status,
+      (await h.req("/admin/caregivers", { as: a, reauth: true, json: newCg({ email: "mal" }) }))
+        .status,
     ).toBe(400);
     expect(
-      (await h.req("/admin/caregivers", { as: a, json: newCg({ phone: "0342" }) })).status,
+      (await h.req("/admin/caregivers", { as: a, reauth: true, json: newCg({ phone: "0342" }) }))
+        .status,
     ).toBe(400);
     expect(h.authCreated).toEqual([]);
   });
@@ -64,7 +73,11 @@ describe("admin: cuidadores", () => {
     const a = await h.admin();
     await h.sql`alter table caregivers add constraint boom check (first_name <> 'Boom')`;
     try {
-      const r = await h.req("/admin/caregivers", { as: a, json: newCg({ first_name: "Boom" }) });
+      const r = await h.req("/admin/caregivers", {
+        as: a,
+        reauth: true,
+        json: newCg({ first_name: "Boom" }),
+      });
       expect(r.status).toBe(500);
       expect(h.authCreated).toHaveLength(1);
       expect(h.authDeleted).toHaveLength(1);
@@ -134,12 +147,14 @@ describe("admin: personas cuidadas y medicación", () => {
     const a = await h.admin();
     const r1 = await h.req("/admin/patients", {
       as: a,
+      reauth: true,
       json: { first_name: "Raúl", last_name: "Ejemplo" },
     });
     expect(r1.status).toBe(201);
     expect(h.authCreated).toEqual([]);
     const r2 = await h.req("/admin/patients", {
       as: a,
+      reauth: true,
       json: { first_name: "Ana", last_name: "Ejemplo", email: "ana@ejemplo.org" },
     });
     expect(r2.status).toBe(201);
@@ -196,18 +211,16 @@ describe("admin: personas cuidadas y medicación", () => {
 });
 
 describe("admin: panel", () => {
-  it("resume cuidadores, pacientes, turnos de la semana, bloqueos y próximo cumpleaños", async () => {
+  it("resume cuidadores, pacientes, turnos de la semana y próximo cumpleaños", async () => {
     const a = await h.admin();
     const c = await h.caregiver({ first_name: "Marta", birth_date: "1975-10-25" });
     const p = await h.patient();
     await h.shift(c, p, "2026-10-19", "08:00", "14:00"); // esta semana (lunes 19)
     await h.shift(c, p, "2026-10-26", "08:00", "14:00"); // la que viene
-    await h.sql`insert into device_attempts (user_id, label) values (${c}, 'Chrome · Windows')`;
     expect(await (await h.req("/admin/summary", { as: a })).json()).toMatchObject({
       caregivers: 1,
       patients: 1,
       shifts_this_week: 1,
-      blocked_attempts: 1,
       next_birthday: { first_name: "Marta", date: "2026-10-25", days: 4 },
     });
   });
@@ -221,57 +234,63 @@ describe("admin: panel", () => {
   });
 });
 
-describe("admin: dispositivos", () => {
-  it("lista el estado y el último intento bloqueado, y no incluye fichas sin ingreso", async () => {
+describe("admin: passkeys", () => {
+  it("lista la passkey, su tipo y la actividad reciente, y no incluye fichas sin ingreso", async () => {
     const a = await h.admin();
     const c = await h.caregiver({ first_name: "Marta" });
     await h.patient(); // sin mail: no entra
-    await h.sql`insert into device_attempts (user_id, label, ip) values (${c}, 'Chrome · Windows', '203.0.113.5')`;
+    await h.sql`update devices set device_type = 'multiDevice', backed_up = true where user_id = ${c}`;
+    await h.sql`insert into device_events (user_id, kind, label, ip, at)
+                values (${c}, 'registered', 'Chrome · Android', '203.0.113.5', now() - interval '1 day'),
+                       (${c}, 'verified', 'Chrome · Windows', '198.51.100.7', now())`;
     const { devices } = (await (await h.req("/admin/devices", { as: a })).json()) as {
       devices: {
         id: string;
         name: string;
         label: string | null;
-        blocked: { label: string; ip: string } | null;
+        device_type: string | null;
+        backed_up: boolean | null;
+        events: { kind: string; label: string; ip: string }[];
       }[];
     };
     expect(devices.map((d) => d.name).sort()).toEqual(["Jorge Ejemplo", "Marta Ejemplo"]);
     expect(devices.find((d) => d.id === c)).toMatchObject({
       label: "Test",
-      blocked: { label: "Chrome · Windows", ip: "203.0.113.5" },
+      device_type: "multiDevice",
+      backed_up: true,
+      events: [
+        { kind: "verified", label: "Chrome · Windows", ip: "198.51.100.7" },
+        { kind: "registered", label: "Chrome · Android", ip: "203.0.113.5" },
+      ],
     });
+    expect(devices.find((d) => d.id === a)).toMatchObject({ events: [] });
   });
 
-  it("liberar borra el dispositivo; a partir de ahí la cuenta pide registrar uno", async () => {
+  it("restablecer pide reautenticación, borra la passkey y lo deja en la auditoría", async () => {
     const a = await h.admin();
     const c = await h.caregiver();
-    expect((await h.req(`/admin/devices/${c}/release`, { as: a, method: "POST" })).status).toBe(
-      200,
-    );
-    expect((await h.req(`/admin/devices/${c}/release`, { as: a, method: "POST" })).status).toBe(
-      404,
-    );
-    const r = await h.req("/me", { as: c });
-    expect(((await r.json()) as { error: { code: string } }).error.code).toBe(
+    const reset = (reauth: boolean) =>
+      h.req(`/admin/devices/${c}/release`, { as: a, method: "POST", reauth });
+    const r = await reset(false);
+    expect(r.status).toBe(403);
+    expect(((await r.json()) as { error: { code: string } }).error.code).toBe("reauth_required");
+    expect((await reset(true)).status).toBe(200);
+    expect((await reset(true)).status).toBe(404);
+    const me = await h.req("/me", { as: c });
+    expect(((await me.json()) as { error: { code: string } }).error.code).toBe(
       "device_unregistered",
     );
+    expect(await h.sql`select kind, actor_id from device_events where user_id = ${c}`).toEqual([
+      { kind: "reset", actor_id: a },
+    ]);
   });
 
-  it("autorizar marca el intento y descarta los otros bloqueos; sin intento da 404", async () => {
+  it("«Autorizar el nuevo» ya no existe", async () => {
     const a = await h.admin();
     const c = await h.caregiver();
     expect((await h.req(`/admin/devices/${c}/authorize`, { as: a, method: "POST" })).status).toBe(
       404,
     );
-    await h.sql`insert into device_attempts (user_id, label, at) values (${c}, 'Viejo', now() - interval '1 hour'), (${c}, 'Nuevo', now())`;
-    expect((await h.req(`/admin/devices/${c}/authorize`, { as: a, method: "POST" })).status).toBe(
-      200,
-    );
-    expect(
-      await h.sql<
-        { label: string; status: string }[]
-      >`select label, status from device_attempts where user_id = ${c}`,
-    ).toEqual([{ label: "Nuevo", status: "authorized" }]);
   });
 });
 

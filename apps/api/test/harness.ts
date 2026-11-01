@@ -16,6 +16,7 @@ export const TEST_ENV = loadEnv({
   DEVICE_TOKEN_SECRET: "test-device-token-secret-0123456789abcdef",
   CRON_SECRET: "test-cron-secret-123",
   ALLOWED_ORIGINS: "https://redasistir.online,capacitor://localhost",
+  NATIVE_ORIGINS: "capacitor://localhost",
   WEBAUTHN_RP_ID: "redasistir.online",
   WEBAUTHN_ORIGINS: "https://redasistir.online",
   SUPABASE_URL: "https://test.supabase.co",
@@ -28,6 +29,9 @@ export const TEST_ENV = loadEnv({
 
 const ISSUER = "https://test.supabase.co/auth/v1";
 export const DEFAULT_CREDENTIAL = "test-credential";
+
+/** Header Cookie con el token de dispositivo, como lo manda el navegador. */
+export const deviceCookie = (token: string) => `__Host-cuidarte_device=${token}`;
 
 export interface Harness {
   sql: Sql;
@@ -50,7 +54,10 @@ export interface Harness {
   reset(): Promise<void>;
   close(): Promise<void>;
   token(sub: string): Promise<string>;
-  /** Pedido autenticado. device=false omite el token de dispositivo. */
+  /**
+   * Pedido autenticado. device=false omite el token de dispositivo (cookie). reauth=true deja
+   * antes una reautenticación con passkey vigente (para las acciones sensibles del admin).
+   */
   req(
     path: string,
     opts?: {
@@ -58,6 +65,7 @@ export interface Harness {
       method?: string;
       json?: unknown;
       device?: boolean;
+      reauth?: boolean;
       headers?: Record<string, string>;
     },
   ): Promise<Response>;
@@ -171,12 +179,16 @@ export async function createHarness(): Promise<Harness> {
       if (opts.as) {
         headers.Authorization = `Bearer ${await token(opts.as)}`;
         if (opts.device !== false) {
-          headers["X-Device-Token"] = await signDeviceToken(
-            TEST_ENV.DEVICE_TOKEN_SECRET,
-            opts.as,
-            DEFAULT_CREDENTIAL + opts.as,
+          headers.Cookie = deviceCookie(
+            await signDeviceToken(
+              TEST_ENV.DEVICE_TOKEN_SECRET,
+              opts.as,
+              DEFAULT_CREDENTIAL + opts.as,
+            ),
           );
         }
+        if (opts.reauth)
+          await sql`update devices set reauth_at = ${now} where user_id = ${opts.as}`;
       }
       if (opts.json !== undefined) headers["Content-Type"] = "application/json";
       return app.request(path, {

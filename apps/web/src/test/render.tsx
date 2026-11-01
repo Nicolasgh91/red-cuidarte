@@ -22,7 +22,11 @@ export const fakeApi = (routes: Record<string, unknown>): ApiClient =>
 
 export function renderWithApp(
   ui: ReactElement,
-  { api, route = "/" }: { api: ApiClient; route?: string },
+  {
+    api,
+    route = "/",
+    confirmPasskey = async () => undefined,
+  }: { api: ApiClient; route?: string; confirmPasskey?: () => Promise<void> },
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const noop = async () => undefined;
@@ -39,6 +43,7 @@ export function renderWithApp(
               sendRecoveryCode: noop,
               resetPassword: noop,
               checkDevice: noop,
+              confirmPasskey,
               signOut: noop,
             }}
           >

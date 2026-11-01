@@ -144,7 +144,7 @@ function DeviceCard() {
   const q = useDeviceStatus();
   return (
     <section className="group">
-      <h2 className="section">Tu dispositivo</h2>
+      <h2 className="section">Tu passkey</h2>
       <div className="card rcard" style={{ gap: 10 }}>
         <Async query={q}>
           {(d) => (
@@ -153,19 +153,20 @@ function DeviceCard() {
                 <Icon name="phone" />
               </span>
               <div>
-                <h3 style={{ fontSize: "1.1rem" }}>{d.label || "Sin dispositivo registrado"}</h3>
+                <h3 style={{ fontSize: "1.1rem" }}>{d.label || "Sin passkey registrada"}</h3>
                 <p>
                   {d.registered && d.last_seen_at
-                    ? `Último acceso ${ago(d.last_seen_at)}`
-                    : "Se registra la próxima vez que entres."}
+                    ? `Último uso ${ago(d.last_seen_at)}`
+                    : "Se crea la próxima vez que entres."}
                 </p>
               </div>
             </div>
           )}
         </Async>
         <p className="optional" style={{ margin: 0 }}>
-          Tu cuenta funciona en un solo dispositivo. Si cambiás de celular, pedile al administrador
-          que libere tu cuenta.
+          Tu cuenta se protege con una passkey. Si está guardada en Google o iCloud, funciona en tus
+          otros equipos; también podés usar tu teléfono con el código QR. Si la perdiste, pedile al
+          administrador que la restablezca.
         </p>
       </div>
     </section>

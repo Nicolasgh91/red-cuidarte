@@ -1,9 +1,12 @@
+import type { Context } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import type { CookieOptions } from "hono/utils/cookie";
 import { SignJWT, jwtVerify } from "jose";
 
 const key = (secret: string) => new TextEncoder().encode(secret);
-const TTL = "30d";
+const TTL_SECONDS = 30 * 24 * 60 * 60;
 
-/** Token que prueba que este cliente verificó la passkey del dispositivo registrado. */
+/** Token que prueba que este cliente verificó la passkey de la cuenta. */
 export async function signDeviceToken(
   secret: string,
   userId: string,
@@ -13,7 +16,7 @@ export async function signDeviceToken(
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()
-    .setExpirationTime(TTL)
+    .setExpirationTime(`${TTL_SECONDS}s`)
     .sign(key(secret));
 }
 
@@ -29,3 +32,21 @@ export async function verifyDeviceToken(
     return null;
   }
 }
+
+/**
+ * En la web el token viaja solo en esta cookie: HttpOnly (un script no la lee), __Host- (sin
+ * Domain, Path=/, Secure) y SameSite=Strict. Las mismas opciones se usan para emitirla y borrarla.
+ */
+export const DEVICE_COOKIE = "cuidarte_device";
+const COOKIE_OPTS: CookieOptions = {
+  prefix: "host",
+  httpOnly: true,
+  secure: true,
+  sameSite: "Strict",
+  path: "/",
+};
+
+export const readDeviceCookie = (c: Context) => getCookie(c, DEVICE_COOKIE, "host");
+export const setDeviceCookie = (c: Context, token: string) =>
+  setCookie(c, DEVICE_COOKIE, token, { ...COOKIE_OPTS, maxAge: TTL_SECONDS });
+export const clearDeviceCookie = (c: Context) => void deleteCookie(c, DEVICE_COOKIE, COOKIE_OPTS);

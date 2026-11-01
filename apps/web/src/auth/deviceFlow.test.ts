@@ -4,27 +4,32 @@ import { DeviceController } from "./controller";
 import { establishDevice } from "./deviceFlow";
 import type { DeviceApi, Passkeys } from "./deviceFlow";
 import type { DeviceStore } from "./deviceStore";
+import { AuthFlowError } from "./services";
 
-function memoryStore(init: { token?: string; credential?: [string, string] } = {}): DeviceStore {
-  let token = init.token ?? null;
-  let cred: [string, string] | null = init.credential ?? null;
+function memoryStore(): DeviceStore {
+  let token: string | null = null;
+  let verifiedUser: string | null = null;
   return {
     getToken: () => token,
     setToken: (t) => (token = t),
-    clearToken: () => (token = null),
-    getCredential: (u) => (cred && cred[0] === u ? cred[1] : null),
-    setCredential: (u, id) => (cred = [u, id]),
-    clearCredential: () => (cred = null),
+    isVerified: (u) => verifiedUser === u,
+    setVerified: (u) => (verifiedUser = u),
+    clear: () => {
+      token = null;
+      verifiedUser = null;
+    },
   };
 }
 
 function setup(over: Partial<DeviceApi> = {}, store = memoryStore()) {
   const api: DeviceApi = {
-    status: vi.fn(async () => ({ registered: false })),
+    status: vi.fn(async () => ({ registered: false, verified: false })),
     registerOptions: vi.fn(async () => ({ challenge: "c1" })),
-    registerVerify: vi.fn(async () => ({ device_token: "tok-reg" })),
+    registerVerify: vi.fn(async () => ({})),
     loginOptions: vi.fn(async () => ({ challenge: "c2" })),
-    loginVerify: vi.fn(async () => ({ device_token: "tok-login" })),
+    loginVerify: vi.fn(async () => ({})),
+    reauthOptions: vi.fn(async () => ({ challenge: "c3" })),
+    reauthVerify: vi.fn(async () => ({ ok: true })),
     ...over,
   };
   const passkeys: Passkeys = {
@@ -36,65 +41,39 @@ function setup(over: Partial<DeviceApi> = {}, store = memoryStore()) {
 }
 
 describe("establishDevice", () => {
-  it("cuenta sin dispositivo: registra la passkey y guarda credencial y token", async () => {
+  it("cuenta sin passkey: la registra; en la web el token queda en la cookie, no acá", async () => {
     const { deps, api, store } = setup();
     expect(await establishDevice(deps)).toEqual({ kind: "ready" });
     expect(api.registerOptions).toHaveBeenCalledWith("Chrome · Android");
     expect(api.registerVerify).toHaveBeenCalledWith({ id: "cred-1" }, "Chrome · Android");
-    expect(store.getToken()).toBe("tok-reg");
-    expect(store.getCredential("u1")).toBe("cred-1");
+    expect(store.getToken()).toBeNull();
+    expect(store.isVerified("u1")).toBe(true);
   });
 
-  it("con credencial guardada y cuenta registrada: verifica (login), no registra", async () => {
-    const store = memoryStore({ credential: ["u1", "cred-1"] });
-    const { deps, api, passkeys } = setup(
-      { status: vi.fn(async () => ({ registered: true })) },
-      store,
-    );
+  it("app nativa: guarda el token que viene en el cuerpo", async () => {
+    const { deps, store } = setup({ registerVerify: vi.fn(async () => ({ device_token: "tok" })) });
+    await establishDevice(deps);
+    expect(store.getToken()).toBe("tok");
+  });
+
+  it("cuenta con passkey: la verifica (puede estar en otro equipo), no registra otra", async () => {
+    const { deps, api, passkeys, store } = setup({
+      status: vi.fn(async () => ({ registered: true, verified: false })),
+    });
     expect(await establishDevice(deps)).toEqual({ kind: "ready" });
     expect(passkeys.login).toHaveBeenCalled();
     expect(api.registerOptions).not.toHaveBeenCalled();
-    expect(store.getToken()).toBe("tok-login");
+    expect(store.isVerified("u1")).toBe(true);
   });
 
-  it("cuenta registrada en otro dispositivo (sin credencial acá): intenta registrar y queda bloqueado", async () => {
-    const blocked = new ApiError(
-      403,
-      "device_blocked",
-      "Tu cuenta ya está registrada en otro dispositivo.",
-    );
-    const { deps, store } = setup({
-      status: vi.fn(async () => ({ registered: true })),
-      registerOptions: vi.fn(async () => {
-        throw blocked;
-      }),
+  it("con el token vigente no pide la passkey", async () => {
+    const { deps, passkeys, store } = setup({
+      status: vi.fn(async () => ({ registered: true, verified: true })),
     });
-    expect(await establishDevice(deps)).toEqual({ kind: "blocked", message: blocked.message });
-    expect(store.getToken()).toBeNull();
-  });
-
-  it("el admin liberó la cuenta: la credencial local se descarta y se registra de nuevo", async () => {
-    const store = memoryStore({ credential: ["u1", "vieja"] });
-    const { deps, api } = setup(
-      {
-        status: vi.fn(async () => ({ registered: true })),
-        loginOptions: vi.fn(async () => {
-          throw new ApiError(404, "device_unregistered", "sin dispositivo");
-        }),
-      },
-      store,
-    );
     expect(await establishDevice(deps)).toEqual({ kind: "ready" });
-    expect(api.registerVerify).toHaveBeenCalled();
-    expect(store.getCredential("u1")).toBe("cred-1");
-  });
-
-  it("la credencial de otro usuario en este navegador no se usa", async () => {
-    const store = memoryStore({ credential: ["otro", "cred-x"] });
-    const { deps, passkeys } = setup({ status: vi.fn(async () => ({ registered: false })) }, store);
-    await establishDevice(deps);
     expect(passkeys.login).not.toHaveBeenCalled();
-    expect(passkeys.register).toHaveBeenCalled();
+    expect(passkeys.register).not.toHaveBeenCalled();
+    expect(store.isVerified("u1")).toBe(true);
   });
 
   it("not_registered de la API", async () => {
@@ -107,11 +86,12 @@ describe("establishDevice", () => {
   });
 
   it("otros errores (p. ej. el usuario cancela la passkey) se propagan", async () => {
-    const { deps, passkeys } = setup();
+    const { deps, passkeys, store } = setup();
     vi.mocked(passkeys.register).mockRejectedValue(
       Object.assign(new Error("cancelado"), { name: "NotAllowedError" }),
     );
     await expect(establishDevice(deps)).rejects.toThrow("cancelado");
+    expect(store.isVerified("u1")).toBe(false);
   });
 });
 
@@ -148,6 +128,32 @@ describe("DeviceController", () => {
     expect((manual as { error: string }).error).toMatch(/No se completó/);
   });
 
+  it("si no se completa el ingreso, sugiere el QR del teléfono o pedir al admin", async () => {
+    const { ctl, passkeys } = controller({
+      status: vi.fn(async () => ({ registered: true, verified: false })),
+    });
+    vi.mocked(passkeys.login).mockRejectedValue(
+      Object.assign(new Error("x"), { name: "NotAllowedError" }),
+    );
+    const r = (await ctl.check({ interactive: true })) as { phase: string; error: string };
+    expect(r.phase).toBe("login");
+    expect(r.error).toMatch(/código QR/);
+    expect(r.error).toMatch(/administrador/);
+  });
+
+  it("la cuenta ya tiene passkey (409): muestra el mensaje del servidor", async () => {
+    const { ctl } = controller({
+      registerOptions: vi.fn(async () => {
+        throw new ApiError(409, "passkey_exists", "Tu cuenta ya tiene una passkey.");
+      }),
+    });
+    expect(await ctl.check({ interactive: true })).toEqual({
+      type: "device_prompt",
+      phase: "register",
+      error: "Tu cuenta ya tiene una passkey.",
+    });
+  });
+
   it("no corre dos verificaciones a la vez", async () => {
     const { ctl } = controller();
     const [a, b] = await Promise.all([
@@ -164,5 +170,28 @@ describe("DeviceController", () => {
     expect(api.loginOptions).toHaveBeenCalledTimes(1);
     vi.mocked(passkeys.login).mockRejectedValue(new Error("no"));
     expect(await ctl.relogin()).toBe(false);
+  });
+
+  it("reauth pide la passkey siempre, aunque el token siga vigente", async () => {
+    const { ctl, api, passkeys } = controller({
+      status: vi.fn(async () => ({ registered: true, verified: true })),
+    });
+    await ctl.reauth();
+    await ctl.reauth();
+    expect(passkeys.login).toHaveBeenCalledTimes(2);
+    expect(api.reauthVerify).toHaveBeenCalledTimes(2);
+    expect(api.status).not.toHaveBeenCalled();
+    expect(api.loginVerify).not.toHaveBeenCalled();
+  });
+
+  it("reauth cancelada: lanza AuthFlowError con el mensaje y no llama a la API", async () => {
+    const { ctl, api, passkeys } = controller();
+    vi.mocked(passkeys.login).mockRejectedValue(
+      Object.assign(new Error("x"), { name: "NotAllowedError" }),
+    );
+    const err = await ctl.reauth().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AuthFlowError);
+    expect((err as Error).message).toMatch(/No se completó/);
+    expect(api.reauthVerify).not.toHaveBeenCalled();
   });
 });
