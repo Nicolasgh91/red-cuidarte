@@ -100,7 +100,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       return <Splash />;
     case "signed-out":
       return <PublicRoutes error={state.error} />;
-    case "device-check":
+    case "passkey":
       return <DeviceScreen phase={state.phase} error={state.error} />;
     case "not-registered":
       return <NotRegisteredScreen />;

@@ -61,7 +61,7 @@ describe("Contacto", () => {
     [
       502,
       "mail_failed",
-      "No pudimos enviar tu mensaje ahora. Quedó guardado; probá de nuevo en un rato.",
+      "No pudimos enviar tu mensaje ahora. Probá de nuevo en un rato.",
     ],
   ])(
     "error %i: muestra el mensaje del servidor y conserva lo escrito",

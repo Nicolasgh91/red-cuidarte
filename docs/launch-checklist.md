@@ -14,7 +14,7 @@ Todo lo de esta lista es 👤 o depende de cuentas/servicios reales: no se ejecu
 - [ ] Variables de entorno separadas Preview/Production (`docs/env.md`); ninguna en el repo.
 - [ ] Región de la función = región de Supabase (`docs/free-tier.md`).
 - [ ] Supabase: registro abierto de Auth apagado, SMTP propio, plantilla con `{{ .Token }}`.
-- [ ] Migraciones aplicadas a producción solo desde `migrate.yml`. Admin Jorge cargado con `supabase/seed/admin_jorge.sql`.
+- [ ] Migraciones de `supabase/migrations/` ejecutadas en orden en el editor SQL de Supabase. Admin Jorge cargado con `supabase/seed/admin_jorge.sql`.
 - [ ] Prueba de la RLS contra producción: un pedido con la anon key a `/rest/v1/<tabla>` no devuelve filas ni expone nada.
 
 ## Operación

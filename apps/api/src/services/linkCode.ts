@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import type { Sql } from "../db.js";
-import { HttpError, notFound } from "../errors.js";
+import { notFound } from "../errors.js";
+import { hit } from "../lib/rateLimit.js";
 
 /** Sin 0/O ni 1/I/L: el código se dicta o se copia a mano. */
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -12,7 +13,7 @@ const newCode = (): string =>
   Array.from({ length: LENGTH }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
 
 /** Lo que se muestra y se escribe: mayúsculas, sin espacios ni guiones. */
-export const normalizeCode = (raw: string): string => raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+const normalizeCode = (raw: string): string => raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 /**
  * Código vigente del paciente; si no hay o venció (o se pide `renew`), genera uno nuevo.
@@ -55,22 +56,12 @@ export async function redeemLinkCode(
   now: Date,
 ): Promise<string> {
   const code = normalizeCode(rawCode);
-  const since = new Date(now.getTime() - 3_600_000);
-  // El intento se confirma antes de buscar el código: si fallara dentro de la misma transacción,
-  // se revertiría y el límite no contaría los códigos inválidos.
-  await sql.begin(async (tx) => {
-    await tx`select pg_advisory_xact_lock(hashtext(${"link:" + caregiverId}))`;
-    const [counted] = await tx<{ n: number }[]>`
-      select count(*)::int as n from link_attempts
-      where caregiver_id = ${caregiverId} and at > ${since}`;
-    if ((counted?.n ?? 0) >= LINK_ATTEMPT_LIMIT) {
-      throw new HttpError(
-        429,
-        "rate_limited",
-        "Hubo muchos intentos seguidos. Probá de nuevo en una hora.",
-      );
-    }
-    await tx`insert into link_attempts (caregiver_id, at) values (${caregiverId}, ${now})`;
+  // El intento se cuenta antes de buscar el código: así también cuentan los códigos inválidos.
+  await hit(sql, `link:${caregiverId}`, {
+    limit: LINK_ATTEMPT_LIMIT,
+    windowMs: 3_600_000,
+    now,
+    message: "Hubo muchos intentos seguidos. Probá de nuevo en una hora.",
   });
   return sql.begin(async (tx) => {
     const [p] = await tx<{ user_id: string }[]>`

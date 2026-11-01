@@ -1,4 +1,3 @@
-import { DEFAULT_QUOTES } from "../content";
 import type { Role } from "../api/types";
 
 export const MOODS = ["Muy bajo", "Bajo", "Neutral", "Bien", "Muy bien"] as const;
@@ -29,9 +28,8 @@ export const indexToLabel = (labels: Scale, idx: number): string =>
 
 export const freqLabel = (f: number): string => (FREQS.find((x) => x[0] === f) ?? FREQS[1]!)[1];
 
-/** Frases originales; las vigentes (que edita el admin) vienen de `useContent().quotes`. */
-export const QUOTES = DEFAULT_QUOTES;
-export const quoteOfDay = (now: Date = new Date(), quotes: readonly string[] = QUOTES): string =>
+/** Frase del día entre las vigentes (`useContent().quotes`, que edita el admin). */
+export const quoteOfDay = (now: Date, quotes: readonly string[]): string =>
   quotes[
     Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 864e5) %
       quotes.length

@@ -1,6 +1,7 @@
 import postgres from "postgres";
 
 export type Sql = postgres.Sql<{ date: string }>;
+export type Tx = postgres.TransactionSql<{ date: string }>;
 
 /**
  * Siempre por el pooler de Supabase (cada invocación puede abrir una conexión nueva).

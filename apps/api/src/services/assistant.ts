@@ -3,17 +3,14 @@ import type { Article } from "../content/index.js";
 import { HttpError } from "../errors.js";
 import { addDays, isHHMM, isIsoDate, longDate, nowAR } from "../lib/time.js";
 import type { ChatMessage, ToolCall, ToolDef } from "./llm.js";
-import { LlmError, LlmRateLimitError } from "./llm.js";
+import { LlmError } from "./llm.js";
 import { loadContent } from "./content.js";
 import { listMedications } from "./medications.js";
 import { createShifts, listShifts, type Shift } from "./shifts.js";
 
-export const DAILY_LIMIT = 20;
+const DAILY_LIMIT = 20;
 const MAX_TOOL_ROUNDS = 4;
 const SAME_DEFAULT = "107";
-
-export class AssistantLimitError extends Error {}
-export class AssistantBusyError extends Error {}
 
 interface Patient {
   id: string;
@@ -24,7 +21,7 @@ interface Patient {
 const fullName = (p: { first_name: string; last_name: string }) =>
   `${p.first_name} ${p.last_name}`.trim();
 
-export const TOOLS: ToolDef[] = [
+const TOOLS: ToolDef[] = [
   {
     type: "function",
     function: {
@@ -70,7 +67,7 @@ export const TOOLS: ToolDef[] = [
   },
 ];
 
-export function buildSystemPrompt(opts: {
+function buildSystemPrompt(opts: {
   now: Date;
   caregiverName: string;
   patients: Patient[];
@@ -116,13 +113,19 @@ ${resources}`;
 }
 
 /** Reserva un mensaje del cupo diario. El control vive en la base: no hay memoria entre invocaciones. */
-export async function reserveMessage(deps: Deps, caregiverId: string, date: string): Promise<void> {
+async function reserveMessage(deps: Deps, caregiverId: string, date: string): Promise<void> {
   const rows = await deps.sql`
     insert into assistant_usage (caregiver_id, date, messages) values (${caregiverId}, ${date}, 1)
     on conflict (caregiver_id, date) do update set messages = assistant_usage.messages + 1
     where assistant_usage.messages < ${DAILY_LIMIT}
     returning messages`;
-  if (!rows.length) throw new AssistantLimitError();
+  if (!rows.length) {
+    throw new HttpError(
+      429,
+      "assistant_limit",
+      `Llegaste al límite de ${DAILY_LIMIT} mensajes de hoy. Mañana podés seguir.`,
+    );
+  }
 }
 
 const refundMessage = (deps: Deps, caregiverId: string, date: string) =>
@@ -149,13 +152,10 @@ export async function runAssistant(
       first_name: p.first_name,
       last_name: p.last_name,
     }));
-    const meds = await listMedications(
+    const medsByPatient = await listMedications(
       sql,
       env.MEDICATIONS_KEY,
       patients.map((p) => p.id),
-    );
-    const medsByPatient = new Map(
-      patients.map((p) => [p.id, meds.filter((m) => m.patient_id === p.id)]),
     );
 
     const { articles, faq } = (await loadContent(sql)).content;
@@ -195,9 +195,13 @@ export async function runAssistant(
     };
   } catch (e) {
     await refundMessage(deps, caregiverId, today);
-    if (e instanceof LlmRateLimitError) throw new AssistantBusyError();
-    if (e instanceof LlmError || (e as Error).name === "TimeoutError")
-      throw new AssistantBusyError();
+    if (e instanceof LlmError || (e as Error).name === "TimeoutError") {
+      throw new HttpError(
+        429,
+        "assistant_busy",
+        "Hay muchas consultas seguidas. Probá de nuevo en un rato.",
+      );
+    }
     throw e;
   }
 }

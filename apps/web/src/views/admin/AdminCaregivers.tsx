@@ -67,7 +67,7 @@ function AssignCell({
 
 type Errors = Partial<Record<"first" | "last" | "phone" | "email" | "birth" | "form", string>>;
 
-export function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
+function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
   const add = useAddCaregiver();
   const { toast } = useToast();
   const [first, setFirst] = useState("");

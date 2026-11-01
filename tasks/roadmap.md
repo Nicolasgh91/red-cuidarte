@@ -14,7 +14,7 @@ Plan de ejecución para Claude Cowork. La fuente de verdad funcional es `claude/
 - **Evidencia**: antes de afirmar algo sobre el código (archivo, símbolo, contrato), verificarlo con grep en la misma sesión.
 - **Sin alcance extra**: no arreglar temas vecinos dentro de una tarea; anotarlos como pendiente.
 - **Secretos**: nunca en el repo. Van en GitHub Secrets y en las variables de entorno de Vercel.
-- **Base de producción**: el agente nunca escribe en `cuidarte-prod` por MCP. Los cambios de esquema llegan a producción solo por migraciones aplicadas desde CI.
+- **Base de producción**: el agente nunca escribe en `cuidarte-prod` por MCP. Los cambios de esquema se generan como SQL y Nico los ejecuta a mano en el editor SQL de Supabase (reemplaza la aplicación desde CI, 2026-11-01).
 - **👤 = tarea de Nico**: crear cuentas, pagar, aceptar términos, cargar tarjetas y secretos. El agente no lo hace.
 - Idioma: código, identificadores, rutas y commits en inglés; documentación y textos de la app en español rioplatense.
 
@@ -57,7 +57,7 @@ red-cuidarte/
   apps/api/        Hono + TypeScript, Vercel Functions
   apps/web/        React + Vite + TS + Capacitor (android/; ios/ en F9b)
   supabase/        migrations/ (SQL), config.toml
-  .github/workflows/  ci.yml, migrate.yml, backup.yml
+  .github/workflows/  ci.yml, backup.yml
   docs/            spec, decisiones, límites de capas gratuitas
 ```
 
@@ -110,7 +110,7 @@ Agente (pruebas cortas, en ramas `spike/`):
 - [ ] RLS activado en todas las tablas del esquema público, sin políticas, para que la Data API de Supabase no exponga nada.
 - [ ] Cifrado de `medications` (decidir en esta fase entre `pgcrypto` y cifrado en la aplicación con la clave en Vercel; dejarlo en `docs/decisions.md`).
 - [ ] Script SQL de carga del admin Jorge (los datos reales los completa Nico).
-- [ ] `migrate.yml`: aplica migraciones a producción solo desde CI. Antes se prueban en `cuidarte-dev` vía MCP.
+- [ ] ~~`migrate.yml`: aplica migraciones a producción solo desde CI.~~ Reemplazado (2026-11-01): Nico ejecuta los SQL a mano en el editor SQL de Supabase; se borró `migrate.yml`.
 
 **Aceptación**: las migraciones corren limpias en local, dev y prod. Un pedido con la anon key a la Data API no devuelve filas.
 

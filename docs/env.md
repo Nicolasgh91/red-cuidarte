@@ -41,15 +41,12 @@ Para desarrollo local, `DATABASE_URL` puede apuntar al Postgres de `docker-compo
 
 ## GitHub Secrets (Actions)
 
-| Secret                      | Usado por                                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `SUPABASE_ACCESS_TOKEN`     | `migrate.yml` (token personal de Supabase)                                                                          |
-| `SUPABASE_PROJECT_REF_PROD` | `migrate.yml`                                                                                                       |
-| `SUPABASE_DB_PASSWORD_PROD` | `migrate.yml`                                                                                                       |
-| `BACKUP_DATABASE_URL`       | `backup.yml` (conexión directa o por _session pooler_, **no** transaction pooler, porque `pg_dump` necesita sesión) |
-| `BACKUP_PASSPHRASE`         | `backup.yml` (cifra el volcado; guardarla también fuera de GitHub)                                                  |
+| Secret                | Usado por                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `BACKUP_DATABASE_URL` | `backup.yml` (conexión directa o por _session pooler_, **no** transaction pooler, porque `pg_dump` necesita sesión) |
+| `BACKUP_PASSPHRASE`   | `backup.yml` (cifra el volcado; guardarla también fuera de GitHub)                                                  |
 
-Crear el Environment `production` en GitHub (Settings › Environments) para `migrate.yml` y `backup.yml`.
+Crear el Environment `production` en GitHub (Settings › Environments) para `backup.yml`. Las migraciones no pasan por GitHub: se ejecutan a mano en el editor SQL de Supabase.
 
 ## Tests
 

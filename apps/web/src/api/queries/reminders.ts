@@ -4,12 +4,11 @@ import { call } from "../rpc";
 import { useApi } from "../../auth/AuthProvider";
 import type { ReminderSettings } from "../types";
 
-export function useReminders(enabled = true) {
+export function useReminders() {
   const api = useApi();
   return useQuery({
     queryKey: ["reminders"],
     queryFn: () => unwrap(api.reminders.$get()) as unknown as Promise<ReminderSettings>,
-    enabled,
   });
 }
 

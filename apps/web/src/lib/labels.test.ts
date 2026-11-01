@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ENERGY, MOODS, STRESS, indexToLabel, labelToIndex, quoteOfDay, QUOTES } from "./labels";
+import { ENERGY, MOODS, STRESS, indexToLabel, labelToIndex, quoteOfDay } from "./labels";
+import { DEFAULT_QUOTES } from "../content";
 
 describe("escalas de bienestar (etiqueta ↔ índice 0–4)", () => {
   it("cada etiqueta mapea a su posición", () => {
@@ -23,6 +24,6 @@ describe("escalas de bienestar (etiqueta ↔ índice 0–4)", () => {
     expect(indexToLabel(MOODS, 9)).toBe("Muy bien");
   });
   it("la frase del día es una de las frases", () => {
-    expect(QUOTES).toContain(quoteOfDay(new Date(2026, 9, 22)));
+    expect(DEFAULT_QUOTES).toContain(quoteOfDay(new Date(2026, 9, 22), DEFAULT_QUOTES));
   });
 });

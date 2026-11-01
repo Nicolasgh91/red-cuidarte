@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireRecentPasskey } from "../auth/middleware.js";
 import type { AppEnv } from "../deps.js";
 import { badRequest, conflict, notFound } from "../errors.js";
 import { email, newCaregiver, newMedication, newPatient, uuid } from "../lib/schemas.js";
@@ -8,10 +7,9 @@ import { addDays, dayNum, nowAR } from "../lib/time.js";
 import { validate } from "../lib/validate.js";
 import { contentSchemas } from "../content/schemas.js";
 import { CONTENT_KEYS } from "../content/site.js";
-import { createCaregiver } from "../services/caregivers.js";
+import { createCaregiver, createPatient } from "../services/accounts.js";
 import { loadContent } from "../services/content.js";
-import { createPatient } from "../services/patients.js";
-import { addMedication, listMedications } from "../services/medications.js";
+import { addMedication, listMedications, removeMedication } from "../services/medications.js";
 import { sendLogged } from "../services/mail.js";
 
 const idParam = z.object({ id: uuid });
@@ -78,7 +76,7 @@ export const admin = new Hono<AppEnv>()
       group by c.user_id order by c.first_name, c.last_names`;
     return c.json({ caregivers: rows.map((r) => ({ ...r })) });
   })
-  .post("/caregivers", validate("json", newCaregiver), requireRecentPasskey(), async (c) => {
+  .post("/caregivers", validate("json", newCaregiver), async (c) => {
     const id = await createCaregiver(c.get("deps"), c.req.valid("json"));
     return c.json({ id }, 201);
   })
@@ -125,13 +123,11 @@ export const admin = new Hono<AppEnv>()
       patients: rows.map((r) => ({
         ...r,
         caregiver_ids: links.filter((l) => l.patient_id === r.id).map((l) => l.caregiver_id),
-        medications: meds
-          .filter((m) => m.patient_id === r.id)
-          .map(({ id, name, dose, times }) => ({ id, name, dose, times })),
+        medications: meds.get(r.id) ?? [],
       })),
     });
   })
-  .post("/patients", validate("json", newPatient), requireRecentPasskey(), async (c) => {
+  .post("/patients", validate("json", newPatient), async (c) => {
     return c.json({ id: await createPatient(c.get("deps"), c.req.valid("json")) }, 201);
   })
   .post(
@@ -140,17 +136,18 @@ export const admin = new Hono<AppEnv>()
     validate("json", newMedication),
     async (c) => {
       const { sql, env } = c.get("deps");
-      const { id } = c.req.valid("param");
-      if (!(await sql`select 1 from patients where user_id = ${id}`).length)
-        throw notFound("No encontramos a esa persona.");
-      const med = await addMedication(sql, env.MEDICATIONS_KEY, id, c.req.valid("json"));
-      return c.json({ id: med.id, name: med.name, dose: med.dose, times: med.times }, 201);
+      const med = await addMedication(
+        sql,
+        env.MEDICATIONS_KEY,
+        c.get("user"),
+        c.req.valid("param").id,
+        c.req.valid("json"),
+      );
+      return c.json(med, 201);
     },
   )
   .delete("/medications/:id", validate("param", idParam), async (c) => {
-    const rows = await c.get("deps")
-      .sql`delete from medications where id = ${c.req.valid("param").id} returning id`;
-    if (!rows.length) throw notFound("No encontramos ese medicamento.");
+    await removeMedication(c.get("deps").sql, c.get("user"), c.req.valid("param").id);
     return c.json({ ok: true as const });
   })
   .get("/devices", async (c) => {
@@ -165,15 +162,11 @@ export const admin = new Hono<AppEnv>()
         registered_at: Date | null;
         device_type: "singleDevice" | "multiDevice" | null;
         backed_up: boolean | null;
-        events: { kind: string; label: string | null; ip: string | null; at: string }[];
       }[]
     >`
       select u.id, u.role,
              coalesce(c.first_name || ' ' || c.last_names, a.first_name || ' ' || a.last_name, p.first_name || ' ' || p.last_name) as name,
-             d.label, d.last_ip, d.last_seen_at, d.registered_at, d.device_type, d.backed_up,
-             coalesce((select json_agg(e) from (
-                select kind, label, ip, at from device_events de
-                where de.user_id = u.id order by at desc limit 5) e), '[]') as events
+             d.label, d.last_ip, d.last_seen_at, d.registered_at, d.device_type, d.backed_up
       from users u
         left join caregivers c on c.user_id = u.id
         left join admins a on a.user_id = u.id
@@ -189,14 +182,11 @@ export const admin = new Hono<AppEnv>()
       })),
     });
   })
-  .post("/devices/:id/release", validate("param", idParam), requireRecentPasskey(), async (c) => {
+  .post("/devices/:id/release", validate("param", idParam), async (c) => {
     // "Restablecer passkey": la cuenta queda sin passkey y el próximo ingreso registra una nueva.
-    const { sql } = c.get("deps");
-    const id = c.req.valid("param").id;
-    const rows = await sql`delete from devices where user_id = ${id} returning user_id`;
+    const rows = await c.get("deps").sql`
+      delete from devices where user_id = ${c.req.valid("param").id} returning user_id`;
     if (!rows.length) throw notFound("Esa cuenta no tiene una passkey registrada.");
-    await sql`
-        insert into device_events (user_id, kind, actor_id) values (${id}, 'reset', ${c.get("user").id})`;
     return c.json({ ok: true as const });
   })
   .post("/mail/test", validate("json", z.object({ to: email })), async (c) => {

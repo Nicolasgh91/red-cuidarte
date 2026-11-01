@@ -18,8 +18,6 @@ export const toMin = (t: string): number => {
   const [h, m] = t.split(":");
   return Number(h) * 60 + Number(m);
 };
-export const fromMin = (n: number): string =>
-  `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
 export const hhmm = (t: string): string => t.slice(0, 5);
 
 /** Duración en minutos; un turno que termina a la misma hora o antes cruza la medianoche. */

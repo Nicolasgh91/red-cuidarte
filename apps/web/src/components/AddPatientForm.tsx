@@ -6,14 +6,14 @@ import { Field } from "./common";
 import { Icon } from "./icons";
 import { useToast } from "./Toasts";
 
-export interface NewPatientInput {
+interface NewPatientInput {
   first_name: string;
   last_name: string;
   email?: string;
 }
 
 /** Lo mínimo que necesita el formulario de una mutación de TanStack Query. */
-export interface NewPatientMutation {
+interface NewPatientMutation {
   mutateAsync(input: NewPatientInput): Promise<unknown>;
   isPending: boolean;
 }

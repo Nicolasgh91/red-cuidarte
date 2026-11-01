@@ -85,6 +85,22 @@ describe("cliente de la API", () => {
     });
   });
 
+  it("si el reintento vuelve a dar 403, avisa y no intenta otro re-ingreso (sin bucle)", async () => {
+    const relogin = vi.fn(async () => true);
+    const denied = () =>
+      json(403, { error: { code: "device_login_required", message: "Verificá" } });
+    const { api, fetchImpl, hooks } = setup([denied(), denied()], { relogin });
+    const res = await api.me.$get();
+    expect(res.status).toBe(403);
+    expect(relogin).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(hooks.onAuthIssue).toHaveBeenCalledTimes(1);
+    expect(hooks.onAuthIssue).toHaveBeenCalledWith({
+      code: "device_login_required",
+      message: "Verificá",
+    });
+  });
+
   it.each(["device_unregistered", "not_registered"] as const)(
     "403 %s cambia el estado de la sesión",
     async (code) => {

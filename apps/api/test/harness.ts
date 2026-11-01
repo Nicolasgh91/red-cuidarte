@@ -28,7 +28,7 @@ export const TEST_ENV = loadEnv({
 });
 
 const ISSUER = "https://test.supabase.co/auth/v1";
-export const DEFAULT_CREDENTIAL = "test-credential";
+const DEFAULT_CREDENTIAL = "test-credential";
 
 /** Header Cookie con el token de dispositivo, como lo manda el navegador. */
 export const deviceCookie = (token: string) => `__Host-cuidarte_device=${token}`;
@@ -55,8 +55,7 @@ export interface Harness {
   close(): Promise<void>;
   token(sub: string): Promise<string>;
   /**
-   * Pedido autenticado. device=false omite el token de dispositivo (cookie). reauth=true deja
-   * antes una reautenticación con passkey vigente (para las acciones sensibles del admin).
+   * Pedido autenticado. device=false omite el token de dispositivo (cookie).
    */
   req(
     path: string,
@@ -65,7 +64,6 @@ export interface Harness {
       method?: string;
       json?: unknown;
       device?: boolean;
-      reauth?: boolean;
       headers?: Record<string, string>;
     },
   ): Promise<Response>;
@@ -86,8 +84,6 @@ export interface Harness {
     start: string,
     end: string,
   ): Promise<string>;
-  /** Registra un dispositivo "ya vinculado" para el usuario (para poder pasar el control de dispositivo). */
-  bindDevice(userId: string, credentialId?: string): Promise<void>;
 }
 
 export async function createHarness(): Promise<Harness> {
@@ -160,7 +156,7 @@ export async function createHarness(): Promise<Harness> {
     failMail: (on) => void (mailFails = on),
     token,
     async reset() {
-      await sql`truncate users, mail_log, signup_attempts cascade`;
+      await sql`truncate users, mail_log, rate_hits cascade`;
       sent.length =
         authCreated.length =
         authPasswords.length =
@@ -187,8 +183,6 @@ export async function createHarness(): Promise<Harness> {
             ),
           );
         }
-        if (opts.reauth)
-          await sql`update devices set reauth_at = ${now} where user_id = ${opts.as}`;
       }
       if (opts.json !== undefined) headers["Content-Type"] = "application/json";
       return app.request(path, {
@@ -233,10 +227,6 @@ export async function createHarness(): Promise<Harness> {
       const [r] = await sql<{ id: string }[]>`
         insert into shifts (caregiver_id, patient_id, date, start_time, end_time) values (${c}, ${p}, ${date}, ${start}, ${end}) returning id`;
       return r!.id;
-    },
-    async bindDevice(userId, credentialId = DEFAULT_CREDENTIAL + userId) {
-      await sql`insert into devices (user_id, credential_id, public_key, label) values (${userId}, ${credentialId}, '\\x00', 'Test')
-                on conflict (user_id) do update set credential_id = excluded.credential_id`;
     },
   };
 }

@@ -1,6 +1,6 @@
 -- La passkey es el segundo factor y deja de atarse a un equipo (docs/decisions.md, F6).
--- Aditiva: device_attempts se borra en una migración posterior, cuando la API nueva ya esté
--- desplegada (la anterior la sigue usando).
+-- Aditiva: se ejecuta ANTES del deploy de la API nueva. device_attempts se borra después, con
+-- 20261101130000_drop_device_attempts.sql (la API anterior la sigue usando).
 
 -- Tipo de credencial que informa WebAuthn: multiDevice = sincronizable; backed_up = con respaldo.
 -- reauth_at: prueba de reautenticación pendiente (un solo uso) para acciones sensibles del admin.

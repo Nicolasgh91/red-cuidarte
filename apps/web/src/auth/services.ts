@@ -1,19 +1,6 @@
+// Supabase Auth: lo único que la web le pide a Supabase (la base la toca solo la API).
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-/** Lo que el front necesita de Supabase Auth (se reemplaza en los tests). */
-export interface AuthServices {
-  getSession(): Promise<{ userId: string } | null>;
-  /** Avisa si la sesión se pierde (vencida, cerrada en otra pestaña). Devuelve cómo dejar de escuchar. */
-  onSignedOut(cb: () => void): () => void;
-  signIn(email: string, password: string): Promise<{ userId: string }>;
-  /** Manda el código de 6 dígitos para definir o cambiar la contraseña. */
-  sendRecoveryCode(email: string): Promise<void>;
-  /** Valida el código, abre la sesión y guarda la contraseña nueva. */
-  resetPassword(email: string, code: string, password: string): Promise<{ userId: string }>;
-  signOut(): Promise<void>;
-  getAccessToken(): Promise<string | null>;
-}
 
 /** Error con mensaje listo para mostrar. */
 export class AuthFlowError extends Error {}
@@ -39,63 +26,72 @@ function supabase(): SupabaseClient {
   return client;
 }
 
-export const supabaseServices: AuthServices = {
-  async getSession() {
-    const { data } = await supabase().auth.getSession();
-    return data.session ? { userId: data.session.user.id } : null;
-  },
-  onSignedOut(cb) {
-    const { data } = supabase().auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") cb();
-    });
-    return () => data.subscription.unsubscribe();
-  },
-  async signIn(email, password) {
-    const { data, error } = await supabase().auth.signInWithPassword({ email, password });
-    if (error || !data.session) {
-      if (error && tooMany(error)) throw new AuthFlowError(TOO_MANY_MESSAGE);
-      if (error?.code === "email_not_confirmed")
-        throw new AuthFlowError(
-          "Tu mail todavía no está confirmado. Pedile ayuda al administrador.",
-        );
-      throw new AuthFlowError(
-        error?.status === 400 || error?.code === "invalid_credentials"
-          ? "Mail o contraseña incorrectos. Si es tu primera vez, definí tu contraseña con «¿Primera vez?»."
-          : "No pudimos iniciar sesión. Probá de nuevo en un rato.",
-      );
-    }
-    return { userId: data.session.user.id };
-  },
-  async sendRecoveryCode(email) {
-    const { error } = await supabase().auth.resetPasswordForEmail(email);
-    if (!error) return;
-    if (tooMany(error)) throw new AuthFlowError(TOO_MANY_MESSAGE);
-    throw new AuthFlowError("No pudimos mandar el código. Probá de nuevo en un rato.");
-  },
-  async resetPassword(email, code, password) {
-    const { data, error } = await supabase().auth.verifyOtp({
-      email,
-      token: code,
-      type: "recovery",
-    });
-    if (error || !data.session) {
-      throw new AuthFlowError("El código no es correcto o venció. Pedí uno nuevo.");
-    }
-    const updated = await supabase().auth.updateUser({ password });
-    if (updated.error) {
-      throw new AuthFlowError(
-        updated.error.code === "weak_password"
-          ? "Esa contraseña es muy débil. Probá con una más larga."
-          : "No pudimos guardar la contraseña. Probá de nuevo.",
-      );
-    }
-    return { userId: data.session.user.id };
-  },
-  async signOut() {
-    await supabase().auth.signOut();
-  },
-  async getAccessToken() {
-    const { data } = await supabase().auth.getSession();
-    return data.session?.access_token ?? null;
-  },
-};
+export async function getSession(): Promise<{ userId: string } | null> {
+  const { data } = await supabase().auth.getSession();
+  return data.session ? { userId: data.session.user.id } : null;
+}
+
+/** Avisa si la sesión se pierde (vencida, cerrada en otra pestaña). Devuelve cómo dejar de escuchar. */
+export function onSignedOut(cb: () => void): () => void {
+  const { data } = supabase().auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") cb();
+  });
+  return () => data.subscription.unsubscribe();
+}
+
+export async function signIn(email: string, password: string): Promise<{ userId: string }> {
+  const { data, error } = await supabase().auth.signInWithPassword({ email, password });
+  if (error || !data.session) {
+    if (error && tooMany(error)) throw new AuthFlowError(TOO_MANY_MESSAGE);
+    if (error?.code === "email_not_confirmed")
+      throw new AuthFlowError("Tu mail todavía no está confirmado. Pedile ayuda al administrador.");
+    throw new AuthFlowError(
+      error?.status === 400 || error?.code === "invalid_credentials"
+        ? "Mail o contraseña incorrectos. Si es tu primera vez, definí tu contraseña con «¿Primera vez?»."
+        : "No pudimos iniciar sesión. Probá de nuevo en un rato.",
+    );
+  }
+  return { userId: data.session.user.id };
+}
+
+/** Manda el código de 6 dígitos para definir o cambiar la contraseña. */
+export async function sendRecoveryCode(email: string): Promise<void> {
+  const { error } = await supabase().auth.resetPasswordForEmail(email);
+  if (!error) return;
+  if (tooMany(error)) throw new AuthFlowError(TOO_MANY_MESSAGE);
+  throw new AuthFlowError("No pudimos mandar el código. Probá de nuevo en un rato.");
+}
+
+/** Valida el código, abre la sesión y guarda la contraseña nueva. */
+export async function resetPassword(
+  email: string,
+  code: string,
+  password: string,
+): Promise<{ userId: string }> {
+  const { data, error } = await supabase().auth.verifyOtp({
+    email,
+    token: code,
+    type: "recovery",
+  });
+  if (error || !data.session) {
+    throw new AuthFlowError("El código no es correcto o venció. Pedí uno nuevo.");
+  }
+  const updated = await supabase().auth.updateUser({ password });
+  if (updated.error) {
+    throw new AuthFlowError(
+      updated.error.code === "weak_password"
+        ? "Esa contraseña es muy débil. Probá con una más larga."
+        : "No pudimos guardar la contraseña. Probá de nuevo.",
+    );
+  }
+  return { userId: data.session.user.id };
+}
+
+export async function signOut(): Promise<void> {
+  await supabase().auth.signOut();
+}
+
+export async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase().auth.getSession();
+  return data.session?.access_token ?? null;
+}

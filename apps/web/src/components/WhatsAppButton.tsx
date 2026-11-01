@@ -1,7 +1,7 @@
 import type { Role } from "../api/types";
 
 // +54 9 11 3042-8741, formato internacional sin + ni separadores, como lo pide wa.me
-export const WHATSAPP_NUMBER = "5491130428741";
+const WHATSAPP_NUMBER = "5491130428741";
 export const WHATSAPP_GREETING = "Hola, te escribo desde Cuidarte+.";
 
 /** Botón flotante de contacto por WhatsApp; solo para cuidadores y pacientes. */

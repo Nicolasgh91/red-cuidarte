@@ -5,9 +5,9 @@ import { requireRole } from "../auth/middleware.js";
 import { conflict, notFound } from "../errors.js";
 import { caregiverProfile, linkCode, newMedication, newPatient, uuid } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
-import { addMedication, listMedications } from "../services/medications.js";
+import { addMedication, listMedications, removeMedication } from "../services/medications.js";
 import { redeemLinkCode } from "../services/linkCode.js";
-import { createPatient } from "../services/patients.js";
+import { createPatient } from "../services/accounts.js";
 
 const idParam = z.object({ id: uuid });
 
@@ -53,9 +53,7 @@ export const me = new Hono<AppEnv>()
         id: r.user_id,
         first_name: r.first_name,
         last_name: r.last_name,
-        medications: meds
-          .filter((m) => m.patient_id === r.user_id)
-          .map(({ id, name, dose, times }) => ({ id, name, dose, times })),
+        medications: meds.get(r.user_id) ?? [],
       })),
     });
   })
@@ -81,21 +79,18 @@ export const me = new Hono<AppEnv>()
     async (c) => {
       // Solo para pacientes asignados a este cuidador/a: es un dato de salud.
       const { sql, env } = c.get("deps");
-      const { id } = c.req.valid("param");
-      const mine = await sql`
-        select 1 from caregiver_patients where caregiver_id = ${c.get("user").id} and patient_id = ${id}`;
-      if (!mine.length) throw notFound("No encontramos a esa persona.");
-      const med = await addMedication(sql, env.MEDICATIONS_KEY, id, c.req.valid("json"));
-      return c.json({ id: med.id, name: med.name, dose: med.dose, times: med.times }, 201);
+      const med = await addMedication(
+        sql,
+        env.MEDICATIONS_KEY,
+        c.get("user"),
+        c.req.valid("param").id,
+        c.req.valid("json"),
+      );
+      return c.json(med, 201);
     },
   )
   .delete("/medications/:id", requireRole("caregiver"), validate("param", idParam), async (c) => {
-    const rows = await c.get("deps").sql`
-      delete from medications m using caregiver_patients cp
-      where m.id = ${c.req.valid("param").id} and cp.patient_id = m.patient_id
-        and cp.caregiver_id = ${c.get("user").id}
-      returning m.id`;
-    if (!rows.length) throw notFound("No encontramos ese medicamento.");
+    await removeMedication(c.get("deps").sql, c.get("user"), c.req.valid("param").id);
     return c.json({ ok: true as const });
   })
   .delete("/", requireRole("caregiver"), async (c) => {

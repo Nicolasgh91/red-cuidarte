@@ -45,7 +45,10 @@ export class SoftAuthenticator {
     return b64u(this.credentialId);
   }
 
-  register(options: { challenge: string }, over: { origin?: string; challenge?: string } = {}) {
+  register(
+    options: { challenge: string },
+    over: { origin?: string; challenge?: string; noUserVerification?: boolean } = {},
+  ) {
     const clientDataJSON = Buffer.from(
       JSON.stringify({
         type: "webauthn.create",
@@ -67,7 +70,8 @@ export class SoftAuthenticator {
     idLen.writeUInt16BE(this.credentialId.length);
     const authData = Buffer.concat([
       sha256(this.rpId),
-      Buffer.from([0x45 | (this.synced ? 0x18 : 0)]),
+      // UP, AT, UV (salvo noUserVerification) y BE/BS si es sincronizable.
+      Buffer.from([(over.noUserVerification ? 0x41 : 0x45) | (this.synced ? 0x18 : 0)]),
       Buffer.alloc(4),
       Buffer.alloc(16),
       idLen,

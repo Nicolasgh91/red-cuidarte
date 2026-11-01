@@ -7,14 +7,6 @@ import { useToast } from "../../components/Toasts";
 import { ago } from "../../lib/dates";
 import { ROLES } from "../../lib/labels";
 
-const EVENTS: Record<string, string> = {
-  registered: "Registró la passkey",
-  verified: "Ingresó",
-  rejected: "Intentó registrar otra",
-  reauth: "Confirmó una acción",
-  reset: "Passkey restablecida",
-};
-
 function PasskeyRow({ d }: { d: AdminDevice }) {
   const reset = useResetPasskey();
   const { toast } = useToast();
@@ -44,20 +36,6 @@ function PasskeyRow({ d }: { d: AdminDevice }) {
           <span className="pill ok">Activa</span>
         ) : (
           <span className="pill warn">Sin passkey</span>
-        )}
-      </td>
-      <td>
-        {d.events.length ? (
-          <ul className="optional" style={{ margin: 0, paddingLeft: "1em" }}>
-            {d.events.map((e) => (
-              <li key={`${e.kind}-${e.at}`}>
-                {EVENTS[e.kind] ?? e.kind} · {ago(e.at)}
-                {e.ip ? ` · IP ${e.ip}` : ""}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          "—"
         )}
       </td>
       <td>
@@ -102,7 +80,6 @@ export function AdminDispositivos() {
                   <th>Última IP</th>
                   <th>Último uso</th>
                   <th>Estado</th>
-                  <th>Actividad reciente</th>
                   <th></th>
                 </tr>
               </thead>
@@ -122,7 +99,7 @@ export function AdminDispositivos() {
           pantalla. Si está guardada en Google o iCloud («Sincronizable») sirve en los otros equipos
           de esa persona; también puede usar su teléfono con el código QR. La IP se guarda solo como
           registro. «Restablecer passkey» deja la cuenta lista para registrar una nueva en el
-          próximo ingreso; te pide confirmar con tu propia passkey.
+          próximo ingreso.
         </p>
       </div>
     </div>

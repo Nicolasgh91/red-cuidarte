@@ -83,6 +83,15 @@ describe("vincular paciente y cuidador con un código", () => {
     expect(await mine(c)).toEqual([p]);
   });
 
+  it("intentos simultáneos tampoco pasan el límite", async () => {
+    const c = await h.caregiver();
+    const results = await Promise.all(
+      Array.from({ length: LINK_ATTEMPT_LIMIT + 5 }, () => redeem(c, "ZZZZZZZZ")),
+    );
+    expect(results.filter((r) => r.status === 404)).toHaveLength(LINK_ATTEMPT_LIMIT);
+    expect(results.filter((r) => r.status === 429)).toHaveLength(5);
+  });
+
   it("solo el paciente pide código y solo el cuidador lo canjea", async () => {
     const c = await h.caregiver();
     const a = await h.admin();

@@ -4,8 +4,6 @@ import type { AppEnv, Role } from "../deps.js";
 import { forbidden, unauthorized } from "../errors.js";
 import { readDeviceCookie, verifyDeviceToken } from "./deviceToken.js";
 
-const REAUTH_TTL_MS = 5 * 60_000;
-
 /** El pedido viene de la app nativa (Capacitor). Lo decide el navegador; no prueba identidad. */
 export const isNativeOrigin = (c: Context<AppEnv>) =>
   c.get("deps").env.NATIVE_ORIGINS.includes(c.req.header("Origin") ?? "");
@@ -64,20 +62,5 @@ export const authenticate = (opts: { requireDevice: boolean }) =>
 export const requireRole = (...roles: Role[]) =>
   createMiddleware<AppEnv>(async (c, next) => {
     if (!roles.includes(c.get("user").role)) throw forbidden();
-    await next();
-  });
-
-/**
- * Acciones sensibles: exige una reautenticación con passkey (POST /device/reauth/verify) de
- * hace menos de 5 minutos y la consume, así cada acción pide una prueba nueva.
- */
-export const requireRecentPasskey = () =>
-  createMiddleware<AppEnv>(async (c, next) => {
-    const { sql, now } = c.get("deps");
-    const rows = await sql`
-      update devices set reauth_at = null
-      where user_id = ${c.get("user").id} and reauth_at > ${new Date(now().getTime() - REAUTH_TTL_MS)}
-      returning user_id`;
-    if (!rows.length) throw forbidden("Confirmá con tu passkey para continuar.", "reauth_required");
     await next();
   });

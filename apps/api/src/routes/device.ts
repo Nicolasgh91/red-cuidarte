@@ -15,8 +15,7 @@ import { badRequest, conflict, notFound } from "../errors.js";
 import { clientIp } from "../lib/clientIp.js";
 import { validate } from "../lib/validate.js";
 
-type Purpose = "register" | "login" | "reauth";
-type EventKind = "registered" | "verified" | "rejected" | "reauth";
+type Purpose = "register" | "login";
 
 const CHALLENGE_TTL_MS = 5 * 60_000;
 const PASSKEY_EXISTS_MSG =
@@ -46,12 +45,6 @@ async function takeChallenge(c: Context<AppEnv>, purpose: Purpose): Promise<stri
   return row.challenge;
 }
 
-async function logDeviceEvent(c: Context<AppEnv>, kind: EventKind, label?: string) {
-  await c.get("deps").sql`
-    insert into device_events (user_id, kind, label, ip)
-    values (${c.get("user").id}, ${kind}, ${labelOf(c, label)}, ${clientIp(c)})`;
-}
-
 /** Emite el token: en la cookie siempre; en el cuerpo, solo para la app nativa. */
 async function issueDeviceToken(c: Context<AppEnv>, credentialId: string) {
   const token = await signDeviceToken(
@@ -63,7 +56,7 @@ async function issueDeviceToken(c: Context<AppEnv>, credentialId: string) {
   return c.json({ ok: true as const, ...(isNativeOrigin(c) ? { device_token: token } : {}) });
 }
 
-async function assertionOptions(c: Context<AppEnv>, purpose: "login" | "reauth") {
+async function assertionOptions(c: Context<AppEnv>) {
   const { sql, env } = c.get("deps");
   const [d] = await sql<
     { credential_id: string }[]
@@ -72,24 +65,20 @@ async function assertionOptions(c: Context<AppEnv>, purpose: "login" | "reauth")
   const options = await generateAuthenticationOptions({
     rpID: env.WEBAUTHN_RP_ID,
     allowCredentials: [{ id: d.credential_id }],
-    // La reautenticación pide huella o PIN: es la prueba para una acción sensible.
-    userVerification: purpose === "reauth" ? "required" : "preferred",
+    // Segundo factor: la passkey se usa con huella, rostro o PIN, no solo con tenerla.
+    userVerification: "required",
   });
-  await saveChallenge(c, purpose, options.challenge);
+  await saveChallenge(c, "login", options.challenge);
   return options;
 }
 
 /** Verifica la aserción contra la passkey registrada y consume el desafío. */
-async function verifyAssertion(
-  c: Context<AppEnv>,
-  purpose: "login" | "reauth",
-  response: AuthenticationResponseJSON,
-) {
+async function verifyAssertion(c: Context<AppEnv>, response: AuthenticationResponseJSON) {
   const { sql, env } = c.get("deps");
   const [d] = await sql<{ credential_id: string; public_key: Buffer; sign_count: string }[]>`
     select credential_id, public_key, sign_count from devices where user_id = ${c.get("user").id}`;
   if (!d) throw notFound(UNREGISTERED_MSG, "device_unregistered");
-  const expectedChallenge = await takeChallenge(c, purpose);
+  const expectedChallenge = await takeChallenge(c, "login");
   if (response.id !== d.credential_id)
     throw badRequest("Esa passkey no es la de tu cuenta.", "webauthn_failed");
   let info;
@@ -104,10 +93,10 @@ async function verifyAssertion(
         publicKey: new Uint8Array(d.public_key),
         counter: Number(d.sign_count),
       },
-      requireUserVerification: purpose === "reauth",
+      requireUserVerification: true,
     });
   } catch (e) {
-    console.error(`[webauthn] ${purpose}/verify`, e);
+    console.error("[webauthn] login/verify", e);
     throw badRequest("No pudimos verificar tu passkey. Probá de nuevo.", "webauthn_failed");
   }
   if (!info.verified) throw badRequest("No pudimos verificar tu passkey.", "webauthn_failed");
@@ -143,17 +132,14 @@ export const device = new Hono<AppEnv>()
     async (c) => {
       const { env } = c.get("deps");
       const user = c.get("user");
-      if (user.credentialId) {
-        await logDeviceEvent(c, "rejected", c.req.valid("json").label);
-        throw conflict(PASSKEY_EXISTS_MSG, "passkey_exists");
-      }
+      if (user.credentialId) throw conflict(PASSKEY_EXISTS_MSG, "passkey_exists");
       const options = await generateRegistrationOptions({
         rpName: env.WEBAUTHN_RP_NAME,
         rpID: env.WEBAUTHN_RP_ID,
         userName: user.id,
         userID: new TextEncoder().encode(user.id),
         attestationType: "none",
-        authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" },
+        authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
       });
       await saveChallenge(c, "register", options.challenge);
       return c.json(options);
@@ -172,7 +158,7 @@ export const device = new Hono<AppEnv>()
         expectedChallenge,
         expectedOrigin: env.WEBAUTHN_ORIGINS,
         expectedRPID: env.WEBAUTHN_RP_ID,
-        requireUserVerification: false,
+        requireUserVerification: true,
       });
     } catch (e) {
       console.error("[webauthn] register/verify", e);
@@ -195,29 +181,14 @@ export const device = new Hono<AppEnv>()
         throw badRequest("Esa credencial ya está registrada.", "credential_taken");
       throw e;
     }
-    await logDeviceEvent(c, "registered", body.label);
     return issueDeviceToken(c, cred.id);
   })
-  .post("/login/options", async (c) => c.json(await assertionOptions(c, "login")))
+  .post("/login/options", async (c) => c.json(await assertionOptions(c)))
   .post("/login/verify", validate("json", assertionBody), async (c) => {
-    const { credentialId, info } = await verifyAssertion(c, "login", c.req.valid("json").response);
+    const { credentialId, info } = await verifyAssertion(c, c.req.valid("json").response);
     await c.get("deps").sql`
       update devices set sign_count = ${info.newCounter}, backed_up = ${info.credentialBackedUp},
         last_ip = ${clientIp(c)}, last_seen_at = now()
       where user_id = ${c.get("user").id}`;
-    await logDeviceEvent(c, "verified");
     return issueDeviceToken(c, credentialId);
-  })
-  // Reautenticación para acciones sensibles: deja una prueba de un solo uso (ver
-  // requireRecentPasskey). No emite token: el ingreso normal no habilita estas acciones.
-  .post("/reauth/options", async (c) => c.json(await assertionOptions(c, "reauth")))
-  .post("/reauth/verify", validate("json", assertionBody), async (c) => {
-    const { sql, now } = c.get("deps");
-    const { info } = await verifyAssertion(c, "reauth", c.req.valid("json").response);
-    await sql`
-      update devices set sign_count = ${info.newCounter}, backed_up = ${info.credentialBackedUp},
-        reauth_at = ${now()}
-      where user_id = ${c.get("user").id}`;
-    await logDeviceEvent(c, "reauth");
-    return c.json({ ok: true as const });
   });

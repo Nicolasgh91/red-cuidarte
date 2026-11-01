@@ -30,7 +30,11 @@ export interface ApiHooks {
 /** Ningún pedido queda colgado: pasado este tiempo falla y la consulta muestra «Reintentar». */
 export const REQUEST_TIMEOUT_MS = 20_000;
 
-const AUTH_CODES = new Set<string>(["device_unregistered", "not_registered"]);
+const AUTH_CODES = new Set<string>([
+  "device_unregistered",
+  "not_registered",
+  "device_login_required",
+]);
 
 async function errorBody(res: Response): Promise<{ code?: string; message?: string }> {
   try {
@@ -67,27 +71,28 @@ export function createApiClient(
 
   const apiFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     let res = await send(input, init);
-    // Las rutas /device/* emiten el token: sus errores los maneja el flujo de dispositivo.
+    // Las rutas /device/* emiten el token: sus errores los maneja el flujo de la passkey.
     if (String(input instanceof Request ? input.url : input).startsWith(devicePrefix)) return res;
 
+    // Token vencido: un solo re-ingreso con passkey y un solo reintento por pedido. Si el
+    // reintento vuelve a dar 403, se avisa como cualquier otro (sin otro re-ingreso: no hay bucle).
+    if (
+      res.status === 403 &&
+      (await errorBody(res)).code === "device_login_required" &&
+      (await hooks.relogin())
+    ) {
+      res = await send(input, init);
+    }
     if (res.status === 401) {
       const b = await errorBody(res);
       hooks.onAuthIssue({
         code: "unauthorized",
         message: b.message ?? "Tenés que iniciar sesión.",
       });
-      return res;
-    }
-    if (res.status === 403) {
+    } else if (res.status === 403) {
       const b = await errorBody(res);
-      if (b.code === "device_login_required" && (await hooks.relogin())) {
-        res = await send(input, init);
-        return res;
-      }
       if (b.code && AUTH_CODES.has(b.code)) {
         hooks.onAuthIssue({ code: b.code as AuthIssue["code"], message: b.message ?? "" });
-      } else if (b.code === "device_login_required") {
-        hooks.onAuthIssue({ code: "device_login_required", message: b.message ?? "" });
       }
     }
     return res;

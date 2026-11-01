@@ -22,7 +22,7 @@ import { Tareas } from "./views/caregiver/Tareas";
 import { Turnos } from "./views/caregiver/Turnos";
 import { Hoy } from "./views/patient/Hoy";
 
-export interface NavItem {
+interface NavItem {
   path: string;
   label: string;
   icon: IconName;

@@ -46,7 +46,7 @@ function Seg({
   );
 }
 
-export function DailyRecords({ records }: { records: WellbeingRecord[] }) {
+function DailyRecords({ records }: { records: WellbeingRecord[] }) {
   return (
     <div className="records">
       {records.map((r) => (
@@ -76,7 +76,7 @@ function Meter({ label, v, opts, inv }: { label: string; v: number; opts: Scale;
   );
 }
 
-export function WeeklyRecords({ weeks }: { weeks: WeeklyRow[] }) {
+function WeeklyRecords({ weeks }: { weeks: WeeklyRow[] }) {
   return (
     <div className="records">
       {weeks.map((w) => {

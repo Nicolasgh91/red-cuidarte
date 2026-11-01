@@ -10,7 +10,7 @@ export const birthdayMail = (firstName: string) => ({
 });
 
 /** Dirección de un remitente/destino con formato "Nombre <dir>" (o la misma cadena si no lo tiene). */
-export const addressOf = (s: string): string => /<([^>]+)>/.exec(s)?.[1] ?? s;
+const addressOf = (s: string): string => /<([^>]+)>/.exec(s)?.[1] ?? s;
 
 /**
  * Registra el envío en mail_log (queda pending → sent/failed).

@@ -53,20 +53,6 @@ async function loginPasskey(
   return post(who, "/login/verify", { response: auth.authenticate(opts) }, headers);
 }
 
-async function reauth(
-  who: string,
-  auth: SoftAuthenticator,
-  over: Parameters<SoftAuthenticator["authenticate"]>[1] = {},
-) {
-  const opts = (await (await post(who, "/reauth/options")).json()) as Opts;
-  return post(who, "/reauth/verify", { response: auth.authenticate(opts, over) });
-}
-
-const events = (who: string) =>
-  h.sql<
-    { kind: string }[]
-  >`select kind from device_events where user_id = ${who} order by at, kind`;
-
 describe("passkey de la cuenta (F6)", () => {
   it("primer ingreso: registra la passkey y deja el token en una cookie HttpOnly, no en el cuerpo", async () => {
     const c = await withoutPasskey();
@@ -100,7 +86,6 @@ describe("passkey de la cuenta (F6)", () => {
       verified: true,
       label: "Chrome · Android",
     });
-    expect(await events(c)).toEqual([{ kind: "registered" }]);
   });
 
   it("la app nativa recibe además el token en el cuerpo y lo usa en X-Device-Token", async () => {
@@ -135,7 +120,6 @@ describe("passkey de la cuenta (F6)", () => {
     expect(await h.sql`select sign_count::int, last_ip from devices where user_id = ${c}`).toEqual([
       { sign_count: 1, last_ip: "198.51.100.7" },
     ]);
-    expect(await events(c)).toEqual([{ kind: "registered" }, { kind: "verified" }]);
   });
 
   it("una passkey sincronizada sirve desde otro equipo y queda marcada como sincronizable", async () => {
@@ -155,7 +139,7 @@ describe("passkey de la cuenta (F6)", () => {
     expect((await withCookie(c, tokenOf(r)!)).status).toBe(200);
   });
 
-  it("si la cuenta ya tiene passkey no se puede registrar otra (409) y queda el intento", async () => {
+  it("si la cuenta ya tiene passkey no se puede registrar otra (409)", async () => {
     const c = await withoutPasskey();
     await registerPasskey(c, new SoftAuthenticator());
     const r = await post(c, "/register/options", { label: "Chrome · Windows" });
@@ -169,7 +153,31 @@ describe("passkey de la cuenta (F6)", () => {
         await post(c, "/register/verify", { response: other.register({ challenge: "x" }) }),
       ),
     ).toBe("passkey_exists");
-    expect(await events(c)).toEqual([{ kind: "registered" }, { kind: "rejected" }]);
+  });
+
+  it("exige verificación de usuario (huella, rostro o PIN) al registrar y al ingresar", async () => {
+    const c = await withoutPasskey();
+    const auth = new SoftAuthenticator();
+    const ro = (await (await post(c, "/register/options")).json()) as Opts & {
+      authenticatorSelection: { userVerification: string };
+    };
+    expect(ro.authenticatorSelection.userVerification).toBe("required");
+    const bad = await post(c, "/register/verify", {
+      response: auth.register(ro, { noUserVerification: true }),
+    });
+    expect(await code(bad)).toBe("webauthn_failed");
+    expect(tokenOf(bad)).toBeNull();
+
+    expect((await registerPasskey(c, auth)).status).toBe(200);
+    const lo = (await (await post(c, "/login/options")).json()) as Opts & {
+      userVerification: string;
+    };
+    expect(lo.userVerification).toBe("required");
+    const r = await post(c, "/login/verify", {
+      response: auth.authenticate(lo, { noUserVerification: true }),
+    });
+    expect(await code(r)).toBe("webauthn_failed");
+    expect(tokenOf(r)).toBeNull();
   });
 
   it("ingresar con otra credencial no emite token", async () => {
@@ -188,9 +196,9 @@ describe("passkey de la cuenta (F6)", () => {
     const oldToken = tokenOf(await registerPasskey(c, first))!;
     expect((await withCookie(c, oldToken)).status).toBe(200);
 
-    expect(
-      (await h.req(`/admin/devices/${c}/release`, { as: a, method: "POST", reauth: true })).status,
-    ).toBe(200);
+    expect((await h.req(`/admin/devices/${c}/release`, { as: a, method: "POST" })).status).toBe(
+      200,
+    );
     const r = await withCookie(c, oldToken);
     expect(r.status).toBe(403);
     expect(await code(r)).toBe("device_unregistered");
@@ -282,95 +290,5 @@ describe("passkey de la cuenta (F6)", () => {
 
   it("las rutas /device exigen sesión", async () => {
     expect((await h.req("/device/status")).status).toBe(401);
-  });
-});
-
-describe("reautenticación con passkey en acciones del admin", () => {
-  /** Admin con passkey real (autenticador por software) y su cookie de sesión. */
-  async function adminWithPasskey() {
-    const a = await withoutPasskey(() => h.admin());
-    const auth = new SoftAuthenticator();
-    const token = tokenOf(await registerPasskey(a, auth))!;
-    const as = (path: string, json: unknown = {}) => withCookie(a, token, path, { json });
-    return { a, auth, as };
-  }
-
-  it("cada acción exige una prueba nueva, de un solo uso y de menos de 5 minutos", async () => {
-    const { a, auth, as } = await adminWithPasskey();
-    const c1 = await h.caregiver();
-    const c2 = await h.caregiver();
-    const reset = (c: string) => as(`/admin/devices/${c}/release`);
-
-    // sin reautenticación: no
-    const r = await reset(c1);
-    expect(r.status).toBe(403);
-    expect(await code(r)).toBe("reauth_required");
-
-    // el ingreso normal con passkey no la habilita
-    expect((await loginPasskey(a, auth)).status).toBe(200);
-    expect(await code(await reset(c1))).toBe("reauth_required");
-
-    // una aserción inválida o sin verificación de usuario tampoco
-    expect((await reauth(a, auth, { badSignature: true })).status).toBe(400);
-    expect((await reauth(a, auth, { noUserVerification: true })).status).toBe(400);
-    expect(await h.sql`select reauth_at from devices where user_id = ${a}`).toEqual([
-      { reauth_at: null },
-    ]);
-    expect(await code(await reset(c1))).toBe("reauth_required");
-
-    // un desafío de login no sirve para reautenticar
-    const lo = (await (await post(a, "/login/options")).json()) as Opts;
-    expect(await code(await post(a, "/reauth/verify", { response: auth.authenticate(lo) }))).toBe(
-      "challenge_expired",
-    );
-
-    // con la ceremonia: sí, una vez
-    expect((await reauth(a, auth)).status).toBe(200);
-    expect((await reset(c1)).status).toBe(200);
-    expect(await code(await reset(c2))).toBe("reauth_required");
-
-    // vencida a los 5 minutos
-    expect((await reauth(a, auth)).status).toBe(200);
-    h.setNow(new Date(h.deps.now().getTime() + 6 * 60_000));
-    expect(await code(await reset(c2))).toBe("reauth_required");
-    h.setNow(new Date("2026-10-21T15:00:00Z"));
-
-    expect(await h.sql`select kind, actor_id from device_events where user_id = ${c1}`).toEqual([
-      { kind: "reset", actor_id: a },
-    ]);
-    expect(
-      await h.sql`select kind from device_events where user_id = ${a} and kind = 'reauth'`,
-    ).toHaveLength(2);
-  });
-
-  it("también la piden las altas de cuidadores y personas cuidadas", async () => {
-    const { a, auth, as } = await adminWithPasskey();
-    const cg = {
-      first_name: "Marta",
-      last_names: "Ejemplo",
-      phone: "342 155 222222",
-      email: "marta@ejemplo.org",
-      birth_date: "1975-10-22",
-      patient_ids: [],
-    };
-    const pt = { first_name: "Raúl", last_name: "Ejemplo" };
-    expect(await code(await as("/admin/caregivers", cg))).toBe("reauth_required");
-    expect(await code(await as("/admin/patients", pt))).toBe("reauth_required");
-    expect(h.authCreated).toEqual([]);
-
-    expect((await reauth(a, auth)).status).toBe(200);
-    expect((await as("/admin/caregivers", cg)).status).toBe(201);
-    expect(await code(await as("/admin/patients", pt))).toBe("reauth_required");
-    expect((await reauth(a, auth)).status).toBe(200);
-    expect((await as("/admin/patients", pt)).status).toBe(201);
-  });
-
-  it("los datos inválidos se rechazan sin gastar la prueba", async () => {
-    const { a, auth, as } = await adminWithPasskey();
-    expect((await reauth(a, auth)).status).toBe(200);
-    expect((await as("/admin/patients", { first_name: "" })).status).toBe(400);
-    expect((await as("/admin/patients", { first_name: "Raúl", last_name: "Ejemplo" })).status).toBe(
-      201,
-    );
   });
 });

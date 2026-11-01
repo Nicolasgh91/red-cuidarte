@@ -94,6 +94,16 @@ describe("autorregistro", () => {
     expect((await signup(body({ email: "otra-ip@ejemplo.org" }), "200.2.2.2")).status).toBe(201);
   });
 
+  it("registros simultáneos desde la misma IP tampoco pasan el límite", async () => {
+    const results = await Promise.all(
+      Array.from({ length: SIGNUP_LIMIT + 3 }, (_, i) =>
+        signup(body({ email: `simul${i}@ejemplo.org` })),
+      ),
+    );
+    expect(results.filter((r) => r.status === 201)).toHaveLength(SIGNUP_LIMIT);
+    expect(results.filter((r) => r.status === 429)).toHaveLength(3);
+  });
+
   it("crea la cuenta de paciente con contraseña y sin cuidadores", async () => {
     const r = await signup(patientBody());
     expect(r.status).toBe(201);

@@ -25,8 +25,7 @@ export interface LlmClient {
   complete(input: { messages: ChatMessage[]; tools: ToolDef[] }): Promise<LlmResult>;
 }
 
-/** Groq respondió 429 (límite del free tier). */
-export class LlmRateLimitError extends Error {}
+/** Groq falló o respondió 429 (límite del free tier): el asistente responde «ocupado». */
 export class LlmError extends Error {}
 
 export function createGroqClient(apiKey: string, model: string, timeoutMs = 60_000): LlmClient {
@@ -45,7 +44,6 @@ export function createGroqClient(apiKey: string, model: string, timeoutMs = 60_0
         }),
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (res.status === 429) throw new LlmRateLimitError("Groq: límite alcanzado");
       if (!res.ok) throw new LlmError(`Groq respondió ${res.status}`);
       const body = (await res.json()) as {
         choices: { message: { content: string | null; tool_calls?: ToolCall[] } }[];

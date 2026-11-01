@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 /** Tabla de trazos de los íconos del prototipo (viewBox 24x24). */
-export const ICON_PATHS = {
+const ICON_PATHS = {
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   pause: '<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
@@ -47,7 +47,6 @@ export const ICON_PATHS = {
   eyeOff:
     '<path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.6 3.5M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/>',
   arrowR: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;

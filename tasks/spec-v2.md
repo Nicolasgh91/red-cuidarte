@@ -12,7 +12,7 @@ Web	Vercel (plan Hobby) → redasistir.online, instalable como PWA
 Back	TypeScript + Hono sobre Vercel Functions (Node.js), proyecto Vercel aparte → api.redasistir.online. Sin Java ni servidores propios
 Base de datos y auth	Supabase (Postgres + Auth): cuidarte-prod y cuidarte-dev. La API accede por el pooler
 Acceso a datos	postgres (postgres.js), SQL escrito a mano, validación con Zod
-Migraciones	Supabase CLI (supabase/migrations), aplicadas a producción solo desde CI
+Migraciones	SQL en supabase/migrations, aplicadas a mano en el editor SQL de Supabase (sin CI)
 WebAuthn	@simplewebauthn/server
 LLM del asistente	Groq (free tier)
 Mails	Nodemailer con el SMTP de la casilla info@redasistir.online en DonWeb

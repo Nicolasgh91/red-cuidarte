@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { unwrap } from "../errors";
 import { call } from "../rpc";
 import { useApi } from "../../auth/AuthProvider";
@@ -11,6 +12,13 @@ export function useMe() {
     queryFn: () => unwrap(api.me.$get()) as Promise<Me>,
   });
 }
+
+/** Cambió un paciente o su medicación: también cambia el checklist del día. */
+const invalidatePatients = (qc: QueryClient) =>
+  Promise.all([
+    qc.invalidateQueries({ queryKey: ["my-patients"] }),
+    qc.invalidateQueries({ queryKey: ["tasks"] }),
+  ]);
 
 /** Pacientes asignados al cuidador (con su medicación). */
 export function useMyPatients() {
@@ -28,11 +36,7 @@ export function useAddMyPatient() {
   return useMutation({
     mutationFn: (json: { first_name: string; last_name: string; email?: string }) =>
       unwrap(call(api.me.patients.$post, { json })),
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: ["my-patients"] }),
-        qc.invalidateQueries({ queryKey: ["tasks"] }),
-      ]),
+    onSuccess: () => invalidatePatients(qc),
   });
 }
 
@@ -42,11 +46,7 @@ export function useLinkPatient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (code: string) => unwrap(call(api.me.patients.link.$post, { json: { code } })),
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: ["my-patients"] }),
-        qc.invalidateQueries({ queryKey: ["tasks"] }),
-      ]),
+    onSuccess: () => invalidatePatients(qc),
   });
 }
 
@@ -62,11 +62,7 @@ export function useAddMyMedication() {
           json: { name: v.name, dose: v.dose, times: v.times } as never,
         }),
       ),
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: ["my-patients"] }),
-        qc.invalidateQueries({ queryKey: ["tasks"] }),
-      ]),
+    onSuccess: () => invalidatePatients(qc),
   });
 }
 
@@ -75,11 +71,7 @@ export function useRemoveMyMedication() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => unwrap(call(api.me.medications[":id"].$delete, { param: { id } })),
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: ["my-patients"] }),
-        qc.invalidateQueries({ queryKey: ["tasks"] }),
-      ]),
+    onSuccess: () => invalidatePatients(qc),
   });
 }
 

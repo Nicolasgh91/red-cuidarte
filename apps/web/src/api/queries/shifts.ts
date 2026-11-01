@@ -3,7 +3,7 @@ import { unwrap } from "../errors";
 import { call } from "../rpc";
 import { useApi } from "../../auth/AuthProvider";
 
-export interface NewShiftInput {
+interface NewShiftInput {
   patient_id: string;
   date: string;
   start: string;

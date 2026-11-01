@@ -66,7 +66,7 @@ function ShiftRow({
   );
 }
 
-export function AddShiftForm({
+function AddShiftForm({
   patients,
   defaultDate,
 }: {

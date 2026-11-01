@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { unwrap } from "../errors";
 import { call } from "../rpc";
-import { useApi, useAuth } from "../../auth/AuthProvider";
+import { useApi } from "../../auth/AuthProvider";
 import type { ContentKey, SiteContent } from "../../content";
 import type { CaregiverProfile } from "../types";
 
@@ -57,21 +57,9 @@ function useAdminMutation<V, R>(fn: (v: V) => Promise<R>) {
   });
 }
 
-/**
- * Acción sensible (altas, restablecer passkey): antes pide la passkey, porque la API exige una
- * reautenticación de un solo uso. Si se cancela, la mutación falla con el mensaje para mostrar.
- */
-function useSensitiveMutation<V, R>(fn: (v: V) => Promise<R>) {
-  const { confirmPasskey } = useAuth();
-  return useAdminMutation(async (v: V) => {
-    await confirmPasskey();
-    return fn(v);
-  });
-}
-
 export function useAddCaregiver() {
   const api = useApi();
-  return useSensitiveMutation((json: CaregiverProfile & { patient_ids: string[] }) =>
+  return useAdminMutation((json: CaregiverProfile & { patient_ids: string[] }) =>
     unwrap(call(api.admin.caregivers.$post, { json })),
   );
 }
@@ -88,7 +76,7 @@ export function useAssignPatients() {
 }
 export function useAddPatient() {
   const api = useApi();
-  return useSensitiveMutation((json: { first_name: string; last_name: string; email?: string }) =>
+  return useAdminMutation((json: { first_name: string; last_name: string; email?: string }) =>
     unwrap(call(api.admin.patients.$post, { json })),
   );
 }
@@ -111,7 +99,7 @@ export function useRemoveMedication() {
 }
 export function useResetPasskey() {
   const api = useApi();
-  return useSensitiveMutation((id: string) =>
+  return useAdminMutation((id: string) =>
     unwrap(call(api.admin.devices[":id"].release.$post, { param: { id } })),
   );
 }

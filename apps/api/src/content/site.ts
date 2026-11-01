@@ -40,7 +40,7 @@ export interface PageContent {
   blocks: Block[];
 }
 
-export const PAGE_KEYS = ["terminos", "privacidad", "acerca"] as const;
+const PAGE_KEYS = ["terminos", "privacidad", "acerca"] as const;
 export type PageKey = (typeof PAGE_KEYS)[number];
 
 export interface SiteContent {

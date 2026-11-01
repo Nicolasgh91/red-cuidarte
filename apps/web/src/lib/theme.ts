@@ -1,5 +1,5 @@
 export type Theme = "light" | "dark" | "system";
-export const THEME_KEY = "cuidarte.theme";
+const THEME_KEY = "cuidarte.theme";
 export const THEMES: readonly (readonly [Theme, string])[] = [
   ["light", "Claro"],
   ["dark", "Oscuro"],

@@ -11,7 +11,7 @@ const errorOf = async (r: Response) =>
   ((await r.json()) as { error: { code: string; message: string } }).error;
 
 describe("POST /contact", () => {
-  it("guarda el mensaje, lo manda a SMTP_FROM con Reply-To y lo registra en mail_log", async () => {
+  it("manda el mensaje a SMTP_FROM con Reply-To y lo registra en mail_log", async () => {
     const c = await h.caregiver({
       first_name: "Sofía",
       last_names: "Pérez",
@@ -32,17 +32,6 @@ describe("POST /contact", () => {
     expect(h.sent[0]!.text).toContain(`Usuario: ${c}`);
     expect(h.sent[0]!.text).toContain("Hola, necesito ayuda.\nGracias");
 
-    expect(
-      await h.sql`select user_id, subject, message, status, error from contact_messages`,
-    ).toEqual([
-      {
-        user_id: c,
-        subject: "Una consulta",
-        message: "Hola, necesito ayuda.\nGracias",
-        status: "sent",
-        error: null,
-      },
-    ]);
     // En mail_log queda solo la dirección y un asunto genérico (el admin lo ve en Correos).
     expect(await h.sql`select to_email, subject, kind, status from mail_log`).toEqual([
       {
@@ -68,7 +57,7 @@ describe("POST /contact", () => {
     expect(h.sent[1]!.replyTo).toBe("elena@example.org");
   });
 
-  it("rechaza datos inválidos con 400 y no guarda nada", async () => {
+  it("rechaza datos inválidos con 400 y no manda nada", async () => {
     const c = await h.caregiver();
     const cases: [unknown, string][] = [
       [{ message: "" }, "Escribí tu mensaje."],
@@ -87,10 +76,10 @@ describe("POST /contact", () => {
       expect(e.code).toBe("invalid_input");
       if (message) expect(e.message).toBe(message);
     }
+    expect(h.sent).toHaveLength(0);
     expect((await send(c, { subject: "a".repeat(100), message: "a".repeat(2000) })).status).toBe(
       200,
     );
-    expect(await h.sql`select 1 from contact_messages`).toHaveLength(1);
   });
 
   it("el asunto sale en una sola línea: sin saltos ni caracteres de control (no inyecta cabeceras)", async () => {
@@ -101,10 +90,6 @@ describe("POST /contact", () => {
     expect(h.sent[0]!.subject).toBe("[Contacto] Hola Bcc: x@evil.org fin");
     expect(h.sent[0]!.subject).not.toMatch(control);
     expect(h.sent[1]!.subject).toBe("[Contacto] Sin asunto");
-    const rows = await h.sql<
-      { subject: string }[]
-    >`select subject from contact_messages order by created_at`;
-    expect(rows.map((r) => r.subject)).toEqual(["Hola Bcc: x@evil.org fin", ""]);
   });
 
   it("limita a 3 mensajes por usuario en 24 horas móviles", async () => {
@@ -120,14 +105,13 @@ describe("POST /contact", () => {
       message: "Ya mandaste 3 mensajes en las últimas 24 horas. Probá de nuevo más tarde.",
     });
     expect(h.sent).toHaveLength(3);
-    expect(await h.sql`select 1 from contact_messages where user_id = ${c}`).toHaveLength(3);
 
     // Otro usuario no se ve afectado.
     expect((await send(other, { message: "hola" })).status).toBe(200);
 
     // Al salir el más viejo de la ventana de 24 h, se puede volver a escribir.
-    await h.sql`update contact_messages set created_at = now() - interval '25 hours'
-                where id = (select id from contact_messages where user_id = ${c} order by created_at limit 1)`;
+    await h.sql`update rate_hits set at = at - interval '25 hours'
+                where ctid = (select ctid from rate_hits where key = ${"contact:" + c} limit 1)`;
     expect((await send(c, { message: "ahora sí" })).status).toBe(200);
   });
 
@@ -138,21 +122,18 @@ describe("POST /contact", () => {
     );
     expect(results.filter((r) => r.status === 200)).toHaveLength(3);
     expect(results.filter((r) => r.status === 429)).toHaveLength(3);
-    expect(await h.sql`select 1 from contact_messages`).toHaveLength(3);
+    expect(h.sent).toHaveLength(3);
   });
 
-  it("si el SMTP falla responde 502, guarda el mensaje como failed y lo deja en mail_log", async () => {
+  it("si el SMTP falla responde 502 y lo deja como failed en mail_log", async () => {
     const c = await h.caregiver();
     h.failMail(true);
     const r = await send(c, { subject: "Asunto privado", message: "Texto del mensaje" });
     expect(r.status).toBe(502);
     expect(await errorOf(r)).toEqual({
       code: "mail_failed",
-      message: "No pudimos enviar tu mensaje ahora. Quedó guardado; probá de nuevo en un rato.",
+      message: "No pudimos enviar tu mensaje ahora. Probá de nuevo en un rato.",
     });
-    expect(await h.sql`select message, status, error from contact_messages`).toEqual([
-      { message: "Texto del mensaje", status: "failed", error: "No se llegó a enviar" },
-    ]);
     expect(await h.sql`select kind, status, subject from mail_log`).toEqual([
       { kind: "contact", status: "failed", subject: "Mensaje de contacto" },
     ]);
@@ -182,6 +163,6 @@ describe("POST /contact", () => {
     const r2 = await h.req("/contact", { as: c, device: false, json: { message: "hola" } });
     expect(r2.status).toBe(403);
     expect(h.sent).toHaveLength(0);
-    expect(await h.sql`select 1 from contact_messages`).toHaveLength(0);
+    expect(await h.sql`select 1 from rate_hits`).toHaveLength(0);
   });
 });

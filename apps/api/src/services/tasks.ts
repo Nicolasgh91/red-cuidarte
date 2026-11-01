@@ -11,7 +11,7 @@ export interface TaskItem {
   done: boolean;
 }
 
-export const medKey = (medicationId: string, time: string) => `med-${medicationId}-${time}`;
+const medKey = (medicationId: string, time: string) => `med-${medicationId}-${time}`;
 
 /** Checklist del día de un paciente: plantillas + tomas de medicación, ordenado por horario. */
 export async function checklist(

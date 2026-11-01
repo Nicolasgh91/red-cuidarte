@@ -4,10 +4,10 @@ import { toMin } from "../lib/dates";
 import { MESSAGES } from "./messages";
 import type { ReminderScheduler, ReminderType } from "./scheduler";
 
-export const CHANNEL_ID = "recordatorios";
+const CHANNEL_ID = "recordatorios";
 
 /** Un aviso que se repite todos los días a esta hora. */
-export interface DailyReminder {
+interface DailyReminder {
   type: ReminderType;
   hour: number;
   minute: number;

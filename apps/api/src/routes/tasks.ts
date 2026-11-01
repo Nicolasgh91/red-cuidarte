@@ -25,12 +25,7 @@ export const tasks = new Hono<AppEnv>()
     for (const p of patients) {
       out.push({
         patient: { id: p.user_id, first_name: p.first_name, last_name: p.last_name },
-        tasks: await checklist(
-          sql,
-          p.user_id,
-          date,
-          meds.filter((m) => m.patient_id === p.user_id),
-        ),
+        tasks: await checklist(sql, p.user_id, date, meds.get(p.user_id) ?? []),
       });
     }
     return c.json({ date, patients: out });
@@ -53,7 +48,7 @@ export const tasks = new Hono<AppEnv>()
       await assertAssigned(sql, caregiverId, b.patient_id);
       if (b.done) {
         const meds = await listMedications(sql, env.MEDICATIONS_KEY, [b.patient_id]);
-        await assertTaskKey(sql, b.patient_id, b.task_key, meds);
+        await assertTaskKey(sql, b.patient_id, b.task_key, meds.get(b.patient_id) ?? []);
         await sql`insert into task_completions (date, patient_id, task_key, caregiver_id)
                   values (${b.date}, ${b.patient_id}, ${b.task_key}, ${caregiverId})
                   on conflict (date, patient_id, task_key) do nothing`;

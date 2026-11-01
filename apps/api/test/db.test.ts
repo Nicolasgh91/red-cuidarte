@@ -11,7 +11,7 @@ describe("esquema (F2)", () => {
     const rows = await h.sql<
       { tablename: string; rowsecurity: boolean }[]
     >`select tablename, rowsecurity from pg_tables where schemaname = 'public'`;
-    expect(rows.length).toBe(21);
+    expect(rows.length).toBe(17);
     expect(rows.filter((r) => !r.rowsecurity)).toEqual([]);
   });
 
@@ -29,9 +29,7 @@ describe("esquema (F2)", () => {
       "medications",
       "wellbeing_records",
       "devices",
-      "device_events",
-      "contact_messages",
-      "signup_attempts",
+      "rate_hits",
     ]) {
       await expect(
         h.sql.begin(async (tx) => {
@@ -78,18 +76,6 @@ describe("esquema (F2)", () => {
     await ins();
     await ins();
     expect(await h.sql`select 1 from mail_log where kind = 'contact'`).toHaveLength(2);
-  });
-
-  it("contact_messages: valida largos y se borra con el usuario", async () => {
-    const c = await h.caregiver();
-    const ins = (subject: string, message: string) =>
-      h.sql`insert into contact_messages (user_id, subject, message, status) values (${c}, ${subject}, ${message}, 'sent')`;
-    await ins("a".repeat(100), "b".repeat(2000));
-    await expect(ins("a".repeat(101), "hola")).rejects.toMatchObject({ code: "23514" });
-    await expect(ins("", "")).rejects.toMatchObject({ code: "23514" });
-    await expect(ins("", "b".repeat(2001))).rejects.toMatchObject({ code: "23514" });
-    await h.sql`delete from users where id = ${c}`;
-    expect(await h.sql`select 1 from contact_messages`).toHaveLength(0);
   });
 
   it("borrar un usuario borra todo lo suyo", async () => {

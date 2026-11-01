@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { LlmRateLimitError, type LlmResult, type ToolCall } from "../src/services/llm.js";
+import { LlmError, type LlmResult, type ToolCall } from "../src/services/llm.js";
 import { createHarness, type Harness } from "./harness.js";
 
 let h: Harness;
@@ -208,7 +208,7 @@ describe("asistente (F8)", () => {
   it("si Groq devuelve límite alcanzado: mensaje claro y no se descuenta del cupo", async () => {
     const { c } = await setup();
     h.setLlm(() => {
-      throw new LlmRateLimitError("429");
+      throw new LlmError("Groq respondió 429");
     });
     const r = await chat(c);
     expect(r.status).toBe(429);

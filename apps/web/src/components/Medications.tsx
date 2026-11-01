@@ -6,14 +6,14 @@ import { Field } from "./common";
 import { Icon } from "./icons";
 import { useToast } from "./Toasts";
 
-export interface MedicationItem {
+interface MedicationItem {
   id: string;
   name: string;
   dose: string;
   times: string[];
 }
 
-export interface AddMedicationInput {
+interface AddMedicationInput {
   patientId: string;
   name: string;
   dose: string;
@@ -21,7 +21,7 @@ export interface AddMedicationInput {
 }
 
 /** Lo mínimo que necesita el componente de una mutación de TanStack Query. */
-export interface MedicationMutations {
+interface MedicationMutations {
   add: { mutateAsync(v: AddMedicationInput): Promise<unknown>; isPending: boolean };
   remove: { mutate(id: string, o: { onError: (e: unknown) => void }): void };
 }

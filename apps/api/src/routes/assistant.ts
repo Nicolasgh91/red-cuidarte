@@ -1,16 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../deps.js";
-import { HttpError } from "../errors.js";
 import { uuid } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
-import {
-  AssistantBusyError,
-  AssistantLimitError,
-  DAILY_LIMIT,
-  runAssistant,
-  undoAssistantShifts,
-} from "../services/assistant.js";
+import { runAssistant, undoAssistantShifts } from "../services/assistant.js";
 
 const chatBody = z.object({
   messages: z
@@ -21,29 +14,9 @@ const chatBody = z.object({
 });
 
 export const assistant = new Hono<AppEnv>()
-  .post("/chat", validate("json", chatBody), async (c) => {
-    try {
-      return c.json(
-        await runAssistant(c.get("deps"), c.get("user").id, c.req.valid("json").messages),
-      );
-    } catch (e) {
-      if (e instanceof AssistantLimitError) {
-        throw new HttpError(
-          429,
-          "assistant_limit",
-          `Llegaste al límite de ${DAILY_LIMIT} mensajes de hoy. Mañana podés seguir.`,
-        );
-      }
-      if (e instanceof AssistantBusyError) {
-        throw new HttpError(
-          429,
-          "assistant_busy",
-          "Hay muchas consultas seguidas. Probá de nuevo en un rato.",
-        );
-      }
-      throw e;
-    }
-  })
+  .post("/chat", validate("json", chatBody), async (c) =>
+    c.json(await runAssistant(c.get("deps"), c.get("user").id, c.req.valid("json").messages)),
+  )
   .post(
     "/undo",
     validate("json", z.object({ shift_ids: z.array(uuid).min(1).max(40) })),

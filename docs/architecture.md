@@ -98,7 +98,7 @@ apps/web/          React 19 + Vite (PWA) y Capacitor (android/)
   src/styles/        CSS plano con tokens
 supabase/          migrations/ (única fuente del esquema), seed/, config.toml
 scripts/           migración local y restauración de backups
-.github/workflows/ ci.yml, migrate.yml, backup.yml
+.github/workflows/ ci.yml, backup.yml
 docs/              esta documentación
 tasks/             spec, roadmap, progreso, prototipo HTML
 ```
@@ -464,18 +464,16 @@ Pasos y variables por proyecto: [`docs/vercel-setup.md`](vercel-setup.md), [`doc
 
 ### GitHub Actions
 
-| Workflow                                          | Disparador                                              | Qué hace                                                                                                            |
-| ------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`ci.yml`](../.github/workflows/ci.yml)           | PR y push a `main`                                      | Postgres de servicio → `format:check`, `lint`, `typecheck`, `test`, build de la web.                                |
-| [`migrate.yml`](../.github/workflows/migrate.yml) | push a `main` que toca `supabase/migrations/**`, manual | Entorno `production`: `supabase link` → `db push --dry-run` → `db push`. Única vía para cambiar el esquema de prod. |
-| [`backup.yml`](../.github/workflows/backup.yml)   | domingos 06:00 UTC, manual                              | `pg_dump` cifrado con GPG (AES256), subido como artefacto por 21 días. Se restaura con `scripts/restore-backup.sh`. |
+| Workflow                                        | Disparador                 | Qué hace                                                                                                            |
+| ----------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| [`ci.yml`](../.github/workflows/ci.yml)         | PR y push a `main`         | Postgres de servicio → `format:check`, `lint`, `typecheck`, `test`, build de la web.                                |
+| [`backup.yml`](../.github/workflows/backup.yml) | domingos 06:00 UTC, manual | `pg_dump` cifrado con GPG (AES256), subido como artefacto por 21 días. Se restaura con `scripts/restore-backup.sh`. |
 
 ### Flujo de un cambio de esquema
 
 1. Nueva migración en `supabase/migrations/<timestamp>_<nombre>.sql`.
 2. Local: `pnpm db:migrate` (aplica con [`scripts/migrate-local.mjs`](../scripts/migrate-local.mjs)) y `pnpm test` (los tests aplican todas las migraciones sobre `cuidarte_test`).
-3. Probar en `cuidarte-dev`.
-4. Merge a `main` → `migrate.yml` la aplica en producción.
+3. Nico ejecuta el SQL a mano en el editor SQL de Supabase, en orden y antes del deploy de la API que lo necesita. No hay migraciones automáticas desde CI.
 
 ---
 

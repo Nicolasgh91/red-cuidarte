@@ -3,28 +3,28 @@ import { unwrap } from "../errors";
 import { call } from "../rpc";
 import { useApi } from "../../auth/AuthProvider";
 
-export interface NewWellbeing {
+interface NewWellbeing {
   mood: number;
   energy: number;
   stress: number;
   note: string;
 }
 
-export function useWellbeingDaily(limit = 100) {
+/** Últimos 100 registros (el valor por defecto de la API). */
+export function useWellbeingDaily() {
   const api = useApi();
   return useQuery({
-    queryKey: ["wellbeing", "daily", limit],
-    queryFn: async () =>
-      (await unwrap(call(api.wellbeing.$get, { query: { limit: String(limit) } }))).records,
+    queryKey: ["wellbeing", "daily"],
+    queryFn: async () => (await unwrap(call(api.wellbeing.$get, {}))).records,
   });
 }
 
-export function useWellbeingWeekly(weeks = 12) {
+/** Promedios de las últimas 12 semanas (el valor por defecto de la API). */
+export function useWellbeingWeekly() {
   const api = useApi();
   return useQuery({
-    queryKey: ["wellbeing", "weekly", weeks],
-    queryFn: async () =>
-      (await unwrap(call(api.wellbeing.weekly.$get, { query: { weeks: String(weeks) } }))).weeks,
+    queryKey: ["wellbeing", "weekly"],
+    queryFn: async () => (await unwrap(call(api.wellbeing.weekly.$get, {}))).weeks,
   });
 }
 

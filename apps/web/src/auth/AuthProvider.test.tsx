@@ -2,46 +2,55 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, fakeApi, ok } from "../test/render";
-import { AuthProvider, useAuth } from "./AuthProvider";
-import type { DeviceStore } from "./deviceStore";
-import type { Passkeys } from "./deviceFlow";
+import { AuthProvider } from "./AuthProvider";
+import { deviceStore } from "./deviceStore";
+import * as svc from "./services";
 import { AuthFlowError } from "./services";
-import type { AuthServices } from "./services";
 import { AuthGate } from "./screens";
 
-function memoryStore(): DeviceStore {
-  let token: string | null = null;
-  let verifiedUser: string | null = null;
-  return {
-    getToken: () => token,
-    setToken: (t) => (token = t),
-    isVerified: (u) => verifiedUser === u,
-    setVerified: (u) => (verifiedUser = u),
-    clear: () => {
-      token = null;
-      verifiedUser = null;
-    },
-  };
-}
+vi.mock("./services", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./services")>()),
+  getSession: vi.fn(),
+  onSignedOut: vi.fn(),
+  signIn: vi.fn(),
+  sendRecoveryCode: vi.fn(),
+  resetPassword: vi.fn(),
+  signOut: vi.fn(),
+  getAccessToken: vi.fn(),
+}));
+vi.mock("@simplewebauthn/browser", () => ({
+  browserSupportsWebAuthn: () => true,
+  startRegistration: vi.fn(),
+  startAuthentication: vi.fn(),
+}));
 
-function services(over: Partial<AuthServices> = {}): AuthServices {
-  return {
-    getSession: vi.fn(async () => null),
-    onSignedOut: vi.fn(() => () => undefined),
-    signIn: vi.fn(async () => ({ userId: "u1" })),
-    sendRecoveryCode: vi.fn(async () => undefined),
-    resetPassword: vi.fn(async () => ({ userId: "u1" })),
-    signOut: vi.fn(async () => undefined),
-    getAccessToken: vi.fn(async () => "jwt"),
+type Services = Omit<typeof svc, "AuthFlowError">;
+
+/** Supabase simulado: sin sesión salvo que el test diga otra cosa. */
+function services(over: Partial<{ [K in keyof Services]: Services[K] }> = {}): typeof svc {
+  const impl: { [K in keyof Services]: Services[K] } = {
+    getSession: async () => null,
+    onSignedOut: () => () => undefined,
+    signIn: async () => ({ userId: "u1" }),
+    sendRecoveryCode: async () => undefined,
+    resetPassword: async () => ({ userId: "u1" }),
+    signOut: async () => undefined,
+    getAccessToken: async () => "jwt",
     ...over,
   };
+  for (const [k, fn] of Object.entries(impl)) {
+    vi.mocked(svc[k as keyof Services]).mockImplementation(fn as never);
+  }
+  return svc;
 }
 
-const passkeys: Passkeys = {
-  register: vi.fn(async () => ({ id: "cred-1" })),
-  login: vi.fn(async () => ({ id: "cred-1" })),
+/** Las ceremonias del navegador (@simplewebauthn/browser). */
+const passkeys = {
+  register: vi.mocked(startRegistration),
+  login: vi.mocked(startAuthentication),
 };
 
 const status = (registered: boolean, verified: boolean) =>
@@ -63,20 +72,17 @@ function deviceApi(
         options: { $post: vi.fn(async () => ok({ challenge: "c" })) },
         verify: { $post: vi.fn(async () => ok({ ok: true })) },
       },
-      reauth: {
-        options: { $post: vi.fn(async () => ok({ challenge: "r" })) },
-        verify: { $post: vi.fn(async () => ok({ ok: true })) },
-      },
     },
   });
 }
 
-function mount(svc: AuthServices, api = deviceApi(), store = memoryStore(), route = "/ingresar") {
+// `services()` ya dejó configurado Supabase: se recibe solo para que cada test lo lea en orden.
+function mount(_svc: typeof svc, api = deviceApi(), route = "/ingresar") {
   const client = new QueryClient();
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
-        <AuthProvider services={svc} store={store} passkeys={passkeys} apiOverride={api}>
+        <AuthProvider apiOverride={api}>
           <AuthGate>
             <p>App lista</p>
           </AuthGate>
@@ -84,7 +90,6 @@ function mount(svc: AuthServices, api = deviceApi(), store = memoryStore(), rout
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return { store };
 }
 
 /** Completa el formulario de registro con datos válidos (salvo lo que se pise). */
@@ -114,19 +119,20 @@ async function fillRegister(
 describe("ingreso con mail y contraseña + passkey", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("PublicKeyCredential", class {});
+    localStorage.clear();
+    passkeys.register.mockResolvedValue({ id: "cred-1" } as never);
+    passkeys.login.mockResolvedValue({ id: "cred-1" } as never);
   });
-  afterEach(() => vi.unstubAllGlobals());
 
   it("la landing es la bienvenida y solo ofrece ingresar", async () => {
-    mount(services(), deviceApi(), memoryStore(), "/");
+    mount(services(), deviceApi(), "/");
     expect(await screen.findByRole("heading", { level: 1, name: "Cuidarte+" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Ingresar/ })).toHaveAttribute("href", "/ingresar");
     expect(screen.queryByRole("link", { name: /Crear cuenta/ })).not.toBeInTheDocument();
   });
 
   it("el ingreso ofrece crear una cuenta", async () => {
-    mount(services(), deviceApi(), memoryStore(), "/ingresar");
+    mount(services(), deviceApi(), "/ingresar");
     expect(await screen.findByRole("link", { name: /No tenés cuenta/ })).toHaveAttribute(
       "href",
       "/registro",
@@ -134,13 +140,13 @@ describe("ingreso con mail y contraseña + passkey", () => {
   });
 
   it("sin sesión, una ruta de la app lleva a ingresar", async () => {
-    mount(services(), deviceApi(), memoryStore(), "/turnos");
+    mount(services(), deviceApi(), "/turnos");
     expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
   });
 
   it("mail + contraseña → registra la passkey → app", async () => {
     const svc = services();
-    const { store } = mount(svc);
+    mount(svc);
     const user = userEvent.setup();
 
     expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
@@ -155,8 +161,8 @@ describe("ingreso con mail y contraseña + passkey", () => {
 
     expect(await screen.findByText("App lista")).toBeInTheDocument();
     // en la web el token queda en la cookie HttpOnly: acá solo la pista
-    expect(store.getToken()).toBeNull();
-    expect(store.isVerified("u1")).toBe(true);
+    expect(deviceStore.getToken()).toBeNull();
+    expect(deviceStore.isVerified("u1")).toBe(true);
   });
 
   it("muestra u oculta la contraseña", async () => {
@@ -200,7 +206,7 @@ describe("ingreso con mail y contraseña + passkey", () => {
   it("registro: crea la cuenta en la API, inicia sesión y registra la passkey", async () => {
     const svc = services();
     const signup = vi.fn(async () => ok({ id: "u1" }));
-    mount(svc, deviceApi({ signup }), memoryStore(), "/registro");
+    mount(svc, deviceApi({ signup }), "/registro");
     const user = userEvent.setup();
     await fillRegister(user);
     await user.click(screen.getByRole("checkbox"));
@@ -224,7 +230,7 @@ describe("ingreso con mail y contraseña + passkey", () => {
   it("registro de paciente: pide menos datos y manda el rol", async () => {
     const svc = services();
     const signup = vi.fn(async () => ok({ id: "u1" }));
-    mount(svc, deviceApi({ signup }), memoryStore(), "/registro");
+    mount(svc, deviceApi({ signup }), "/registro");
     const user = userEvent.setup();
     await fillRegister(user, { role: "patient" });
     expect(screen.queryByLabelText("Celular")).not.toBeInTheDocument();
@@ -245,7 +251,7 @@ describe("ingreso con mail y contraseña + passkey", () => {
 
   it("registro: hay que elegir un rol", async () => {
     const signup = vi.fn(async () => ok({ id: "u1" }));
-    mount(services(), deviceApi({ signup }), memoryStore(), "/registro");
+    mount(services(), deviceApi({ signup }), "/registro");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Crear cuenta" }));
     expect(screen.getByText("Elegí cómo vas a usar Cuidarte+.")).toBeInTheDocument();
@@ -255,7 +261,7 @@ describe("ingreso con mail y contraseña + passkey", () => {
   it("registro: valida en el cliente y muestra el error de la API", async () => {
     const svc = services();
     const signup = vi.fn(async () => fail(409, "email_taken", "Ya hay una cuenta con ese mail."));
-    mount(svc, deviceApi({ signup }), memoryStore(), "/registro");
+    mount(svc, deviceApi({ signup }), "/registro");
     const user = userEvent.setup();
     await fillRegister(user, { pass2: "otra-clave" });
     await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
@@ -273,7 +279,7 @@ describe("ingreso con mail y contraseña + passkey", () => {
 
   it("primera vez / olvidé la contraseña: código por mail → contraseña nueva → passkey", async () => {
     const svc = services();
-    mount(svc, deviceApi(), memoryStore(), "/recuperar");
+    mount(svc, deviceApi(), "/recuperar");
     const user = userEvent.setup();
     expect(
       await screen.findByRole("heading", { name: "Definí tu contraseña" }),
@@ -301,7 +307,7 @@ describe("ingreso con mail y contraseña + passkey", () => {
         throw new AuthFlowError("El código no es correcto o venció. Pedí uno nuevo.");
       }),
     });
-    mount(svc, deviceApi(), memoryStore(), "/recuperar");
+    mount(svc, deviceApi(), "/recuperar");
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Correo electrónico"), "sofia@ejemplo.org");
     await user.click(screen.getByRole("button", { name: /Enviarme el código/ }));
@@ -328,20 +334,19 @@ describe("ingreso con mail y contraseña + passkey", () => {
 
   it("sesión abierta y passkey ya verificada en este equipo: entra directo", async () => {
     const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
-    const store = memoryStore();
-    store.setVerified("u1");
+    deviceStore.setVerified("u1");
     const api = deviceApi();
-    mount(svc, api, store);
+    mount(svc, api);
     expect(await screen.findByText("App lista")).toBeInTheDocument();
     expect(api.device.status.$get).not.toHaveBeenCalled();
   });
 
   it("sin la pista pero con la cookie vigente: entra sin pedir la passkey", async () => {
     const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
-    const { store } = mount(svc, deviceApi({ status: status(true, true) }));
+    mount(svc, deviceApi({ status: status(true, true) }));
     expect(await screen.findByText("App lista")).toBeInTheDocument();
     expect(passkeys.login).not.toHaveBeenCalled();
-    expect(store.isVerified("u1")).toBe(true);
+    expect(deviceStore.isVerified("u1")).toBe(true);
   });
 
   it("si el navegador pide un gesto, ofrece el botón para verificar", async () => {
@@ -363,18 +368,17 @@ describe("ingreso con mail y contraseña + passkey", () => {
     );
     let done!: (v: unknown) => void;
     const logout = vi.fn(() => new Promise((r) => (done = r)));
-    const store = memoryStore();
-    store.setToken("nativo");
-    mount(svc, deviceApi({ logout }), store);
+    deviceStore.setToken("nativo");
+    mount(svc, deviceApi({ logout }));
     await userEvent.setup().click(await screen.findByRole("button", { name: "Cerrar sesión" }));
     expect(svc.signOut).toHaveBeenCalled();
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
     // mientras la API no confirma, la sesión local sigue
     expect(screen.queryByRole("heading", { name: "Ingresar" })).not.toBeInTheDocument();
-    expect(store.getToken()).toBe("nativo");
+    expect(deviceStore.getToken()).toBe("nativo");
     done(ok({ ok: true }));
     expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
-    expect(store.getToken()).toBeNull();
+    expect(deviceStore.getToken()).toBeNull();
   });
 
   it("si la API no responde al cerrar sesión, igual se cierra la sesión local", async () => {
@@ -385,34 +389,5 @@ describe("ingreso con mail y contraseña + passkey", () => {
     mount(svc, deviceApi({ logout: vi.fn(async () => Promise.reject(new TypeError("red"))) }));
     await userEvent.setup().click(await screen.findByRole("button", { name: "Cerrar sesión" }));
     expect(await screen.findByRole("heading", { name: "Ingresar" })).toBeInTheDocument();
-  });
-
-  it("confirmPasskey pide la passkey aunque la sesión esté verificada", async () => {
-    function Sensitive() {
-      const { confirmPasskey } = useAuth();
-      return (
-        <button type="button" onClick={() => void confirmPasskey()}>
-          Acción sensible
-        </button>
-      );
-    }
-    const svc = services({ getSession: vi.fn(async () => ({ userId: "u1" })) });
-    const store = memoryStore();
-    store.setVerified("u1");
-    const api = deviceApi();
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <AuthProvider services={svc} store={store} passkeys={passkeys} apiOverride={api}>
-            <AuthGate>
-              <Sensitive />
-            </AuthGate>
-          </AuthProvider>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Acción sensible" }));
-    await waitFor(() => expect(api.device.reauth.verify.$post).toHaveBeenCalledTimes(1));
-    expect(passkeys.login).toHaveBeenCalledWith({ challenge: "r" });
   });
 });

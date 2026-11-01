@@ -37,7 +37,7 @@ export async function verifyDeviceToken(
  * En la web el token viaja solo en esta cookie: HttpOnly (un script no la lee), __Host- (sin
  * Domain, Path=/, Secure) y SameSite=Strict. Las mismas opciones se usan para emitirla y borrarla.
  */
-export const DEVICE_COOKIE = "cuidarte_device";
+const DEVICE_COOKIE = "cuidarte_device";
 const COOKIE_OPTS: CookieOptions = {
   prefix: "host",
   httpOnly: true,

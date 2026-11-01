@@ -8,7 +8,7 @@ Actualizado el 2026-10-22. Nada está commiteado: los cambios están en el árbo
 |---|---|---|---|
 | F0 | ⏳ Parcial | S4 hecho (`docs/free-tier.md`); S1–S3 documentados con procedimiento en `docs/spikes.md` | 👤 todas las cuentas, MCP, claves; correr S1–S3 |
 | F1 | ✅ Local | `pnpm format:check && lint && typecheck && test` y `build` en verde; `ci.yml` escrito | Ver que corra en GitHub y el preview de Vercel (👤) |
-| F2 | ✅ Local | Migración limpia en Postgres 16 local; RLS en las 16 tablas, sin políticas, `anon`/`authenticated` sin acceso; escalas 0–4; sin superposición de turnos | Aplicar en `cuidarte-dev` (MCP) y prod (`migrate.yml`); cargar el admin Jorge (👤) |
+| F2 | ✅ Local | Migración limpia en Postgres 16 local; RLS en las 16 tablas, sin políticas, `anon`/`authenticated` sin acceso; escalas 0–4; sin superposición de turnos | Aplicar a mano en el editor SQL de Supabase (👤; `migrate.yml` se borró el 2026-11-01); cargar el admin Jorge (👤) |
 | F3 | ✅ Local | 92 tests de integración de la API; aislamiento entre cuidadores, roles, CORS | Deploy en `api.redasistir.online` (👤) |
 | F4 | ✅ Servidor | Passkeys probadas con un autenticador por software: bloqueo del 2.º dispositivo, liberar, autorizar | S1: passkeys reales en Android (plugin) |
 | F5 | ✅ Local | 107 tests del front; build; navegador headless a 360 px sin scroll horizontal en las 22 rutas, con API y Supabase simulados | Probar contra Supabase/API reales; iPhone real; dominio |

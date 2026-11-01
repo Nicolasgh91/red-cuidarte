@@ -11,7 +11,7 @@ export const phone = z
   .trim()
   .regex(/^[1-9][\d ]{7,14}$/, "Revisá el teléfono: con código de área, sin el 0 ni el 15.");
 export const email = z.string().trim().toLowerCase().pipe(z.email("Revisá el mail."));
-export const birthDate = isoDate.refine(
+const birthDate = isoDate.refine(
   (d) => d > "1900-01-01" && d < new Date().toISOString().slice(0, 10),
   "Revisá la fecha de nacimiento.",
 );
@@ -54,7 +54,7 @@ export const linkCode = z.object({
 });
 
 export const newCaregiver = caregiverProfile.extend({ patient_ids: z.array(uuid).default([]) });
-export const patientProfile = z.object({
+const patientProfile = z.object({
   first_name: name("el nombre"),
   last_name: name("el apellido"),
 });

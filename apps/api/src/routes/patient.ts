@@ -44,7 +44,7 @@ export const patient = new Hono<AppEnv>()
     const n = nowAbs(now());
     const current = shifts.find((s) => span(s)[0] <= n && span(s)[1] > n) ?? null;
     const next = shifts.find((s) => span(s)[0] > n) ?? null;
-    const meds = await listMedications(sql, env.MEDICATIONS_KEY, [id]);
+    const meds = (await listMedications(sql, env.MEDICATIONS_KEY, [id])).get(id) ?? [];
     const doses = meds
       .flatMap((m) => m.times.map((t) => ({ time: t, name: m.name, dose: m.dose })))
       .sort((a, b) => toMin(a.time) - toMin(b.time) || a.name.localeCompare(b.name));
