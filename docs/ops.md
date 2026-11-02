@@ -88,14 +88,14 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 
 **Si el correo falla** (mail de prueba, Contacto o cumpleaños): el motivo queda en el historial de Admin › Correos (columna Estado) y en los logs de Vercel como `mail` (`kind`, `code`, `host`, `port`; nunca el mensaje ni la clave). El mail de prueba responde 502 `mail_failed` con qué revisar.
 
-| `kind`     | Causa                                         | Qué tocar                                                                                         |
-| ---------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `dns`      | El host no se resuelve (`ENOTFOUND`, `EBUSY`) | `SMTP_HOST` (p. ej. un valor de ejemplo como `demo` en vez del servidor de DonWeb); redeploy      |
-| `connect`  | Rechazó o cortó la conexión                   | `SMTP_PORT` (465 o 587) y que DonWeb permita salida desde Vercel                                  |
-| `timeout`  | No respondió a tiempo                         | Reintentar; si sigue, estado de DonWeb                                                            |
-| `tls`      | Falló el cifrado                              | `SMTP_PORT`: 465 es TLS directo, 587 es STARTTLS                                                  |
-| `auth`     | Usuario o clave rechazados                    | `SMTP_USER` y `SMTP_PASS` (la casilla completa, `info@redasistir.online`)                         |
-| `rejected` | El servidor rechazó el mensaje                | Dirección de destino y `SMTP_FROM`                                                                |
+| `kind`     | Causa                                         | Qué tocar                                                                                    |
+| ---------- | --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `dns`      | El host no se resuelve (`ENOTFOUND`, `EBUSY`) | `SMTP_HOST` (p. ej. un valor de ejemplo como `demo` en vez del servidor de DonWeb); redeploy |
+| `connect`  | Rechazó o cortó la conexión                   | `SMTP_PORT` (465 o 587) y que DonWeb permita salida desde Vercel                             |
+| `timeout`  | No respondió a tiempo                         | Reintentar; si sigue, estado de DonWeb                                                       |
+| `tls`      | Falló el cifrado                              | `SMTP_PORT`: 465 es TLS directo, 587 es STARTTLS                                             |
+| `auth`     | Usuario o clave rechazados                    | `SMTP_USER` y `SMTP_PASS` (la casilla completa, `info@redasistir.online`)                    |
+| `rejected` | El servidor rechazó el mensaje                | Dirección de destino y `SMTP_FROM`                                                           |
 
 `EBUSY`, `EAI_AGAIN` y `ETIMEDOUT` se reintentan una vez. Contacto responde 503 `mail_unavailable` ante `dns`, `tls` y `auth` (reintentar no sirve) y 502 `mail_failed` en el resto. El cron suma `failed_by_kind` a su respuesta. Los códigos de recuperación de contraseña salen por el SMTP de Supabase Auth, que se configura aparte: si «Mandar código» falla, revisar el host también ahí.
 
