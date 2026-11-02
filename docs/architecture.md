@@ -133,7 +133,7 @@ El esquema vive en [`supabase/migrations/`](../supabase/migrations/); el modelo 
 - **`users` no tiene FK a `auth.users`:** una persona cuidada sin mail es solo una ficha con UUID propio.
 - **Turnos sin superposición:** además del chequeo en el servicio, la restricción `shifts_no_overlap` (`EXCLUDE USING gist`) lo garantiza ante pedidos simultáneos. Un turno con fin menor que inicio cruza la medianoche.
 - **`task_completions`:** PK `(date, patient_id, task_key)`; `task_key` es el id de la plantilla o `med-<id>-<HH:MM>`.
-- **`mail_log`:** se registra `pending` antes de enviar y `sent`/`failed` después (si el SMTP confirma pero falla la escritura, no se reenvía). Índice único parcial: un mail de cumpleaños por año.
+- **`mail_log`:** se registra `pending` antes de enviar y `sent`/`failed` después (si el SMTP confirma pero falla la escritura, no se reenvía). `mailer.ts` clasifica la falla (`MailError.kind`: dns, connect, timeout, tls, auth, rejected, unknown) y `mail_log.error` guarda un texto legible; ver «Si el correo falla» en [`ops.md`](ops.md). Índice único parcial: un mail de cumpleaños por año.
 - **RLS activado en todas las tablas, sin políticas**, y `REVOKE ALL` para `anon` y `authenticated` (también por defecto para tablas futuras): la Data API no expone nada. `test/db.test.ts` lo verifica. **Una tabla nueva tiene que hacer `enable row level security`.**
 - **Bienestar privado:** solo lo lee quien lo cargó; ni el admin ni el asistente.
 - Todas las respuestas salen con `Cache-Control: private, no-store`.
@@ -164,7 +164,7 @@ El esquema vive en [`supabase/migrations/`](../supabase/migrations/); el modelo 
 - **Sin tokens anti-CSRF:** ninguna ruta acepta solo la cookie, todas exigen además `Authorization: Bearer`. `POST /logout` no pide sesión y por eso solo acepta orígenes de `ALLOWED_ORIGINS`.
 - **App nativa:** a los orígenes de `NATIVE_ORIGINS` se les devuelve el token en el cuerpo y se les acepta `X-Device-Token`. `Origin` no prueba identidad, pero igual hacen falta el JWT y la passkey del mismo usuario.
 - **Se quitaron (2026-11-01):** la reautenticación con passkey para acciones del admin y la auditoría de eventos (`device_events`). `devices` conserva la última IP, el último uso y la fecha de registro.
-- **Medicación cifrada en la aplicación (AES-256-GCM), no con `pgcrypto`:** con `pgcrypto` la clave viajaría en cada consulta y quedaría en logs. `times` queda en claro (hace falta para el checklist). Sin rotación de clave: perderla es perder la medicación.
+- **Medicación cifrada en la aplicación (AES-256-GCM), no con `pgcrypto`:** con `pgcrypto` la clave viajaría en cada consulta y quedaría en logs. `times` queda en claro (hace falta para el checklist). Sin rotación de clave: su pérdida impide descifrar la medicación.
 - **Ingreso con mail y contraseña, autorregistro con rol:** `POST /signup` crea la cuenta ya confirmada (el registro abierto de Supabase está apagado: no hay usuarios de Auth sin rol). Las cuentas del admin definen su contraseña con un código de 6 dígitos (`verifyOtp` de recuperación), que funciona igual en PWA y Capacitor, sin _deep links_. No se verifica el mail del autorregistro: una cuenta nueva no ve nada hasta que la asignan.
 - **Vincular paciente con código:** un paciente que se registra solo comparte un código de un solo uso (48 h); nadie se asigna a una persona por su mail sin que ella lo sepa.
 - **Contacto:** se manda a la casilla de `SMTP_FROM` con `Reply-To` de quien escribe; no se guarda el mensaje en la base (si el SMTP falla, la pantalla conserva lo escrito). El asunto se limpia de saltos de línea y caracteres de control (evita inyectar cabeceras) y no se copia a `mail_log`.
@@ -187,7 +187,7 @@ El esquema vive en [`supabase/migrations/`](../supabase/migrations/); el modelo 
 
 - **Idempotencia del asistente:** si la respuesta se pierde después de cargar turnos (se corta la red o se cierra la app) y la persona lo pide de nuevo con otras palabras, el modelo puede resolver fechas distintas que no se pisan y cargarlas. Se ven en Turnos y se pueden borrar. Una garantía estricta necesita una clave por mensaje guardada en la base (columna `shifts.request_id` con índice único y un `request_id` del cliente): es una migración, para cuando aparezcan casos reales.
 - **Pruebas con servicios reales sin hacer:** passkeys en Android, API en Vercel (SMTP, JWKS real, cron, arranque en frío) y calidad de Groq con herramientas ([`ops.md`](ops.md#pruebas-pendientes-con-servicios-reales)).
-- **Dominios:** se habla de `api.redasistir.online`, pero hoy la web reescribe a `red-cuidarte.vercel.app`; los dominios propios no están configurados.
+- **Dominios:** la configuración prevista está en [`dns.md`](dns.md), pero aún no se aplicó: hoy la web reescribe a `red-cuidarte.vercel.app` y `api.redasistir.online` no está configurado.
 - **Versiones de Postgres:** Docker local y CI usan 16; Supabase y el backup, 17.
 - **Build de Vercel sin `strict`:** el build de la API no lee el `tsconfig` base, por eso `pnpm typecheck` compila también con `--strict false` y los tipos de entrada salen de los esquemas de zod.
 - Sin rotación de `MEDICATIONS_KEY`; términos y privacidad provisorios hasta la revisión legal.

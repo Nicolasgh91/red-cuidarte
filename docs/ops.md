@@ -69,9 +69,9 @@ Crear el Environment `production` en GitHub (Settings › Environments) para `ba
 ## Correo (DonWeb)
 
 1. Crear la casilla `info@redasistir.online` en el panel de DonWeb y cargar sus datos en `SMTP_*`.
-2. Configurar SPF, DKIM y DMARC ([`dns.md`](dns.md)) para que no caiga en spam.
+2. Configurar SPF, DKIM y DMARC para mejorar la entregabilidad (procedimiento en [`dns.md`](dns.md#correo-inforedasistironline)).
 3. Configurar la misma casilla como SMTP de Supabase Auth (códigos de recuperación).
-4. Desde **Admin › Correos**, «Enviar mail de prueba» y revisar que llegue a la bandeja de entrada.
+4. Desde **Admin › Correos**, enviar un mail de prueba y comprobar que llegue a la bandeja de entrada ([`dns.md`](dns.md#verificación-del-correo)).
 
 ## Límites de los planes gratuitos
 
@@ -86,6 +86,19 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 
 **Si el asistente falla:** buscar `assistant llm` en los logs de Vercel (se guardan 1 hora): trae el status, el código de Groq y, en un 429, qué tope se alcanzó (`limit`: `TPM`, `TPD`, `RPM` o `RPD`). 401 → rotar `GROQ_API_KEY`; 404 o `model_decommissioned` → cambiar `GROQ_MODEL`; 429 `TPM` o 413 frecuentes → tope de tokens por minuto de la cuenta; 429 `TPD` o `RPD` → se acabó el cupo del día. Los 429 cortos y los 5xx se reintentan una vez si entran en el plazo de 17 s.
 
+**Si el correo falla** (mail de prueba, Contacto o cumpleaños): el motivo queda en el historial de Admin › Correos (columna Estado) y en los logs de Vercel como `mail` (`kind`, `code`, `host`, `port`; nunca el mensaje ni la clave). El mail de prueba responde 502 `mail_failed` con qué revisar.
+
+| `kind`     | Causa                                         | Qué tocar                                                                                         |
+| ---------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `dns`      | El host no se resuelve (`ENOTFOUND`, `EBUSY`) | `SMTP_HOST` (p. ej. un valor de ejemplo como `demo` en vez del servidor de DonWeb); redeploy      |
+| `connect`  | Rechazó o cortó la conexión                   | `SMTP_PORT` (465 o 587) y que DonWeb permita salida desde Vercel                                  |
+| `timeout`  | No respondió a tiempo                         | Reintentar; si sigue, estado de DonWeb                                                            |
+| `tls`      | Falló el cifrado                              | `SMTP_PORT`: 465 es TLS directo, 587 es STARTTLS                                                  |
+| `auth`     | Usuario o clave rechazados                    | `SMTP_USER` y `SMTP_PASS` (la casilla completa, `info@redasistir.online`)                         |
+| `rejected` | El servidor rechazó el mensaje                | Dirección de destino y `SMTP_FROM`                                                                |
+
+`EBUSY`, `EAI_AGAIN` y `ETIMEDOUT` se reintentan una vez. Contacto responde 503 `mail_unavailable` ante `dns`, `tls` y `auth` (reintentar no sirve) y 502 `mail_failed` en el resto. El cron suma `failed_by_kind` a su respuesta. Los códigos de recuperación de contraseña salen por el SMTP de Supabase Auth, que se configura aparte: si «Mandar código» falla, revisar el host también ahí.
+
 **Consumo del asistente:** cada consulta deja en los logs una línea `assistant usage`, sin texto ni datos personales:
 
 - `path`: `emergency` (respondida sin Groq), `llm`, `tool_rendered` (respuesta armada por la API con el resultado de una herramienta) o `error`.
@@ -96,9 +109,9 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 
 ## Pruebas pendientes con servicios reales
 
-- **Passkeys en Android (S1):** ver [`android.md`](android.md#passkeys-y-assetlinksjson). Hasta resolverlo, la app Android no se puede usar en producción.
-- **API en Vercel (S2):** validar el JWT contra el JWKS real de Supabase (`iss`/`aud`), SMTP saliente a DonWeb por 465 y 587 (si falla, es bloqueante), que el cron llegue con el header, y la latencia de arranque en frío (10 pedidos tras 15 min de inactividad).
-- **Groq con herramientas (S3):** `GROQ_API_KEY=… pnpm --filter api eval:assistant 5` corre cada caso 5 veces contra la base de pruebas local (la recrea; nunca toca datos reales): cargar turnos con las fechas correctas, listar, preguntar si falta el paciente, urgencia activa e hipotética, no cambiar dosis, responder con los recursos e historial largo. Muestra por caso aciertos, tokens efectivos (primera corrida y resto, para ver el caché), llamadas, latencia, 429 y motivo de fin. Correrlo con `openai/gpt-oss-120b`, `openai/gpt-oss-20b` y `qwen/qwen3.8-27b` (`GROQ_MODEL=…`) y anotar acá los números. Gasta cupo de la cuenta.
+- **Passkeys en Android:** ver [`android.md`](android.md#passkeys-y-assetlinksjson). Hasta resolverlo, la app Android no se puede usar en producción.
+- **API en Vercel:** validar el JWT contra el JWKS real de Supabase (`iss`/`aud`), SMTP saliente a DonWeb por 465 y 587 (si falla, es bloqueante), que el cron llegue con el header, y la latencia de arranque en frío (10 pedidos tras 15 min de inactividad).
+- **Groq con herramientas:** `GROQ_API_KEY=… pnpm --filter api eval:assistant 5` corre cada caso 5 veces contra la base de pruebas local (la recrea; nunca toca datos reales): cargar turnos con las fechas correctas, listar, preguntar si falta el paciente, urgencia activa e hipotética, no cambiar dosis, responder con los recursos e historial largo. Muestra por caso aciertos, tokens efectivos (primera corrida y resto, para ver el caché), llamadas, latencia, 429 y motivo de fin. Correrlo con `openai/gpt-oss-120b`, `openai/gpt-oss-20b` y `qwen/qwen3.8-27b` (`GROQ_MODEL=…`) y anotar acá los números. Gasta cupo de la cuenta.
 
 ## Checklist de lanzamiento
 
@@ -127,8 +140,8 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 **Android** ([`android.md`](android.md))
 
 - [ ] Build firmado en un Android real; recordatorios sonando con la app cerrada.
-- [ ] `assetlinks.json` publicado con las huellas de debug y de Play App Signing; S1 resuelto.
+- [ ] `assetlinks.json` publicado con las huellas de debug y de Play App Signing; passkeys en Android resueltas.
 - [ ] Formulario de seguridad de datos ([`play-data-safety.md`](play-data-safety.md)) y política en `https://redasistir.online/privacidad`.
 - [ ] Prueba interna en Google Play y envío a revisión.
 
-**iOS** (en espera del pago de Apple Developer): Capacitor iOS, passkeys (repetir S1), TestFlight y formulario de privacidad de App Store.
+**iOS** (en espera del pago de Apple Developer): Capacitor iOS, passkeys (repetir la validación hecha en Android), TestFlight y formulario de privacidad de App Store.

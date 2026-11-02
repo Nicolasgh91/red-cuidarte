@@ -4,16 +4,16 @@
 
 ## Estado (2026-11-01)
 
-| Pieza                                                                                             | Estado                                                                  |
-| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Proyecto Android generado, íconos (adaptativo vectorial + PNG para API 24–25), `ic_stat_cuidarte` | ✅ En el repo                                                           |
-| Recordatorios con notificaciones locales (`apps/web/src/reminders/native.ts`)                     | ✅ Código y tests con el plugin simulado. **No probado en un teléfono** |
-| Botón de urgencia (`tel:`)                                                                        | ✅ Ya estaba en la web (`Layer.tsx`)                                    |
-| `/privacidad` pública                                                                             | ✅ Borrador (revisión legal pendiente)                                  |
-| [`play-data-safety.md`](play-data-safety.md)                                                      | ✅ Borrador                                                             |
-| Passkeys en la app                                                                                | ⛔ **Bloqueado** (ver abajo)                                            |
-| Compilar el APK/AAB                                                                               | ⛔ **Nunca se compiló**                                                 |
-| Prueba en un Android real, Play Console, prueba interna                                           | 👤 Pendiente                                                            |
+| Pieza                                                                                             | Estado                                                               |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Proyecto Android generado, íconos (adaptativo vectorial + PNG para API 24–25), `ic_stat_cuidarte` | Listo, en el repo                                                    |
+| Recordatorios con notificaciones locales (`apps/web/src/reminders/native.ts`)                     | Código y tests con el plugin simulado. **No probado en un teléfono** |
+| Botón de urgencia (`tel:`)                                                                        | Listo, compartido con la web (`Layer.tsx`)                           |
+| `/privacidad` pública                                                                             | Borrador (revisión legal pendiente)                                  |
+| [`play-data-safety.md`](play-data-safety.md)                                                      | Borrador                                                             |
+| Passkeys en la app                                                                                | **Bloqueado** (ver [Passkeys](#passkeys-y-assetlinksjson))           |
+| Compilar el APK/AAB                                                                               | **Pendiente**: nunca se compiló                                      |
+| Prueba en un Android real, Play Console, prueba interna                                           | Pendiente                                                            |
 
 ## Compilar (con Android Studio)
 
@@ -37,7 +37,7 @@ pnpm --filter web cap:open   # abre Android Studio; Run en un emulador o teléfo
 
 El WebView de Capacitor sirve la app desde `https://localhost`, que **no coincide** con el `rpId` `redasistir.online`: el WebAuthn del WebView no sirve. **Hasta resolverlo, el paso de la passkey no funciona en Android y la app no se puede usar en producción.**
 
-Qué falta (spike S1):
+Qué falta para habilitar passkeys en Android:
 
 1. Elegir un plugin de passkeys para Capacitor 8 sobre Credential Manager. Candidatos encontrados (ninguno probado): `@capgo/capacitor-passkey`, `capacitor-webauthn`, `@capawesome/capacitor-passkeys`. Revisar licencia, código y soporte de `rpId` propio. Si ninguno anda, un plugin propio mínimo sobre `androidx.credentials`. Se enchufa en `apps/web/src/auth/passkeys.ts` (`registerPasskey` y `loginWithPasskey`).
 2. Publicar `https://redasistir.online/.well-known/assetlinks.json` desde `apps/web/public/.well-known/` (con `Content-Type: application/json`, sin redirecciones):
@@ -58,14 +58,14 @@ Qué falta (spike S1):
    ]
    ```
 
-   Cargar **las dos** huellas: la de _debug_ y la de **App Signing de Google Play** (Play Console › Integridad de la app), que es la que vale en producción. No inventar el hash.
+   Cargar **las dos** huellas: la de _debug_ y la de **App Signing de Google Play** (Play Console › Integridad de la app), que es la que vale en producción. Usar siempre las huellas reales de los certificados.
 
 3. Agregar a `WEBAUTHN_ORIGINS` el origen que manda la app: `android:apk-key-hash:<base64url del SHA-256>`. Conversión: `echo "AA:BB:..." | tr -d ':' | xxd -r -p | basenc --base64url | tr -d '='`.
 4. En un emulador con Google Play: registrar una passkey desde la app, volver a ingresar y repetir desde Chrome Android (comparten el `rpId`).
 
 Verificación del archivo: https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://redasistir.online&relation=delegate_permission/common.get_login_creds
 
-**Token de dispositivo en la app:** el WebView llama a la API desde otro sitio y no usa la cookie de la web. Para los orígenes de `NATIVE_ORIGINS` la API devuelve el token también en el cuerpo y lo acepta en `X-Device-Token`. Hoy se guarda en `localStorage` (`auth/deviceStore.ts`), igual que la sesión de supabase-js: **antes de publicar** hay que pasar los dos al almacenamiento seguro del sistema (Keystore), junto con S1.
+**Token de dispositivo en la app:** el WebView llama a la API desde otro sitio y no usa la cookie de la web. Para los orígenes de `NATIVE_ORIGINS` la API devuelve el token también en el cuerpo y lo acepta en `X-Device-Token`. Hoy se guarda en `localStorage` (`auth/deviceStore.ts`), igual que la sesión de supabase-js: **antes de publicar** hay que pasar los dos al almacenamiento seguro del sistema (Keystore), junto con la resolución de las passkeys.
 
 **iOS** (cuando se pague Apple Developer): `/.well-known/apple-app-site-association` con `webcredentials` y `<TeamID>.<bundle id>`.
 

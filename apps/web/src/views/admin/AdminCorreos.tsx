@@ -53,9 +53,12 @@ function LogTable({ log }: { log: MailLogRow[] }) {
                 <td>{l.subject}</td>
                 <td>{KIND[l.kind] ?? l.kind}</td>
                 <td>
-                  <span className={`pill ${st.cls}`} title={l.error ?? undefined}>
-                    {st.label}
-                  </span>
+                  <span className={`pill ${st.cls}`}>{st.label}</span>
+                  {l.status === "failed" && l.error && (
+                    <small className="optional" style={{ display: "block" }}>
+                      {l.error}
+                    </small>
+                  )}
                 </td>
               </tr>
             );
@@ -80,13 +83,8 @@ function TestMail() {
     if (!okMail(addr)) return setErr(MSG.mail);
     setErr(null);
     try {
-      const r = await send.mutateAsync(addr);
-      toast(
-        r.status === "sent"
-          ? `Mail de prueba enviado a ${addr}.`
-          : "No se pudo enviar el mail de prueba. Revisá la configuración del correo.",
-        6000,
-      );
+      await send.mutateAsync(addr);
+      toast(`Mail de prueba enviado a ${addr}.`, 6000);
     } catch (e2) {
       setErr(errorMessage(e2));
     }

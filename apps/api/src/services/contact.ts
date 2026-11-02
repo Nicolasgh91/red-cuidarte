@@ -2,7 +2,7 @@ import type { AuthUser, Deps, Role } from "../deps.js";
 import { HttpError } from "../errors.js";
 import { hit } from "../lib/rateLimit.js";
 import { nowAR } from "../lib/time.js";
-import { sendLogged } from "./mail.js";
+import { addressOf, isMailConfigFailure, sendLogged } from "./mail.js";
 
 const CONTACT_LIMIT = 3;
 
@@ -53,7 +53,7 @@ export async function sendContact(
     input.message,
   ].join("\n");
 
-  const status = await sendLogged(
+  const { status, failure } = await sendLogged(
     deps,
     {
       to: env.SMTP_FROM,
@@ -67,6 +67,14 @@ export async function sendContact(
   );
 
   if (status !== "sent") {
+    // Configuración (host, clave, TLS): reintentar no sirve, que escriba por otro lado.
+    if (failure && isMailConfigFailure(failure.kind)) {
+      throw new HttpError(
+        503,
+        "mail_unavailable",
+        `El envío de mensajes no está disponible por ahora. Escribinos a ${addressOf(env.SMTP_FROM)}.`,
+      );
+    }
     throw new HttpError(
       502,
       "mail_failed",

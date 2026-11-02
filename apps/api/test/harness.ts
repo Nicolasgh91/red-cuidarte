@@ -50,7 +50,9 @@ export interface Harness {
       input: Parameters<LlmClient["complete"]>[0],
     ) => LlmResult | Promise<LlmResult>,
   ): void;
-  failMail(on: boolean): void;
+  /** `true`: falla con un Error genérico; un Error: falla con ese. */
+  failMail(on: boolean | Error): void;
+  failAuthDelete(on: boolean): void;
   reset(): Promise<void>;
   close(): Promise<void>;
   token(sub: string): Promise<string>;
@@ -93,16 +95,17 @@ export async function createHarness(): Promise<Harness> {
   const verifier = createJwtVerifier(createLocalJWKSet({ keys: [jwk] }), ISSUER);
 
   const sent: Harness["sent"] = [];
-  let mailFails = false;
+  let mailFails: boolean | Error = false;
   const mailer: Mailer = {
     async send(m) {
-      if (mailFails) throw new Error("SMTP caído");
+      if (mailFails) throw mailFails === true ? new Error("SMTP caído") : mailFails;
       sent.push(m);
     },
   };
   const authCreated: string[] = [];
   const authPasswords: (string | undefined)[] = [];
   const authDeleted: string[] = [];
+  let authDeleteFails = false;
   const authAdmin: AuthAdmin = {
     async createUser(email, password) {
       authCreated.push(email);
@@ -110,6 +113,7 @@ export async function createHarness(): Promise<Harness> {
       return randomUUID();
     },
     async deleteUser(id) {
+      if (authDeleteFails) throw new Error("Auth caído");
       authDeleted.push(id);
     },
   };
@@ -154,6 +158,7 @@ export async function createHarness(): Promise<Harness> {
     setNow: (d) => void (now = d),
     setLlm: (fn) => void (llmFn = fn),
     failMail: (on) => void (mailFails = on),
+    failAuthDelete: (on) => void (authDeleteFails = on),
     token,
     async reset() {
       await sql`truncate users, mail_log, rate_hits cascade`;
@@ -164,6 +169,7 @@ export async function createHarness(): Promise<Harness> {
         llmCalls.length =
           0;
       mailFails = false;
+      authDeleteFails = false;
       now = new Date("2026-10-21T15:00:00Z");
       llmFn = () => ({ content: "Hola.", tool_calls: [] });
     },

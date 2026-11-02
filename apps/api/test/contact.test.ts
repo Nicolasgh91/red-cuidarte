@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { MailError } from "../src/services/mailer.js";
 import { TEST_ENV, createHarness, type Harness } from "./harness.js";
 
 let h: Harness;
@@ -123,6 +124,21 @@ describe("POST /contact", () => {
     expect(results.filter((r) => r.status === 200)).toHaveLength(3);
     expect(results.filter((r) => r.status === 429)).toHaveLength(3);
     expect(h.sent).toHaveLength(3);
+  });
+
+  it("si el host o la clave SMTP están mal responde 503: reintentar no sirve", async () => {
+    const c = await h.caregiver();
+    h.failMail(new MailError("auth", "auth: el servidor rechazó SMTP_USER o SMTP_PASS"));
+    const r = await send(c, { message: "Hola" });
+    expect(r.status).toBe(503);
+    expect(await errorOf(r)).toEqual({
+      code: "mail_unavailable",
+      message:
+        "El envío de mensajes no está disponible por ahora. Escribinos a info@redasistir.online.",
+    });
+    expect(await h.sql`select kind, status from mail_log`).toEqual([
+      { kind: "contact", status: "failed" },
+    ]);
   });
 
   it("si el SMTP falla responde 502 y lo deja como failed en mail_log", async () => {

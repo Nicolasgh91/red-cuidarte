@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import { createMiddleware } from "hono/factory";
 import { clearDeviceCookie } from "./auth/deviceToken.js";
 import { authenticate, requireRole } from "./auth/middleware.js";
@@ -18,6 +19,22 @@ import { content } from "./routes/content.js";
 import { signup } from "./routes/signup.js";
 import { tasks } from "./routes/tasks.js";
 import { wellbeing } from "./routes/wellbeing.js";
+
+/** La base no contestó (conexión, timeout, pooler lleno): no es un bug del pedido. */
+const DB_DOWN = new Set([
+  "CONNECT_TIMEOUT",
+  "CONNECTION_CLOSED",
+  "CONNECTION_ENDED",
+  "CONNECTION_DESTROYED",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ETIMEDOUT",
+  "57P01", // admin_shutdown
+  "53300", // too_many_connections
+]);
+const isDbUnavailable = (e: unknown) => DB_DOWN.has(String((e as { code?: unknown })?.code));
 
 /**
  * Un único handler para toda la API (Vercel Function). Las dependencias se inyectan:
@@ -92,7 +109,8 @@ export function createApp(deps: Deps) {
     // Cierra la sesión del dispositivo: borra la cookie del token. No pide sesión (puede haber
     // vencido); contra CSRF solo acepta orígenes conocidos (un POST del navegador siempre trae Origin).
     .post("/logout", (c) => {
-      if (!deps.env.ALLOWED_ORIGINS.includes(c.req.header("Origin") ?? "")) throw forbidden();
+      if (!deps.env.ALLOWED_ORIGINS.includes(c.req.header("Origin") ?? ""))
+        throw forbidden("No se puede cerrar la sesión desde este sitio.", "bad_origin");
       clearDeviceCookie(c);
       return c.json({ ok: true as const });
     })
@@ -106,7 +124,29 @@ export function createApp(deps: Deps) {
     if (err instanceof HttpError) {
       return c.json({ error: { code: err.code, message: err.message } }, err.status);
     }
-    console.error("unhandled", err);
+    // Hono lanza esto, por ejemplo, con un JSON mal formado.
+    if (err instanceof HTTPException && err.status === 400) {
+      return c.json(
+        { error: { code: "bad_request", message: "No pudimos leer los datos enviados." } },
+        400,
+      );
+    }
+    // Con qué pedido y quién: sin esto un 500 en producción no se puede rastrear.
+    const user = c.get("user") as { id: string; role: string } | undefined;
+    const where = { method: c.req.method, path: c.req.path, user: user?.id, role: user?.role };
+    if (isDbUnavailable(err)) {
+      console.error("db unavailable", where, err);
+      return c.json(
+        {
+          error: {
+            code: "db_unavailable",
+            message: "No pudimos acceder a los datos ahora. Probá de nuevo en un momento.",
+          },
+        },
+        503,
+      );
+    }
+    console.error("unhandled", where, err);
     return c.json(
       { error: { code: "internal", message: "Algo salió mal de nuestro lado. Probá de nuevo." } },
       500,

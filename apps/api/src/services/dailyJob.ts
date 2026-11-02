@@ -1,6 +1,7 @@
 import type { Deps } from "../deps.js";
 import { nowAR } from "../lib/time.js";
 import { birthdayMail, sendLogged } from "./mail.js";
+import type { MailFailureKind } from "./mailer.js";
 
 const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 
@@ -22,15 +23,25 @@ export async function runDailyJob(deps: Deps) {
     select first_name, email from caregivers
     where (extract(month from birth_date) = ${t.month} and extract(day from birth_date) = ${t.day})
        or (${feb29Today} and extract(month from birth_date) = 2 and extract(day from birth_date) = 29)`;
-  const result = { date: t.date, birthdays: rows.length, sent: 0, skipped: 0, failed: 0 };
+  const result = {
+    date: t.date,
+    birthdays: rows.length,
+    sent: 0,
+    skipped: 0,
+    failed: 0,
+    failed_by_kind: {} as Partial<Record<MailFailureKind, number>>,
+  };
   for (const r of rows) {
-    const status = await sendLogged(
+    const { status, failure } = await sendLogged(
       deps,
       { to: r.email, ...birthdayMail(r.first_name) },
       "birthday",
       t.year,
     );
     result[status === "sent" ? "sent" : status === "skipped" ? "skipped" : "failed"]++;
+    if (failure)
+      result.failed_by_kind[failure.kind] = (result.failed_by_kind[failure.kind] ?? 0) + 1;
   }
+  if (result.failed) console.error("daily job: mails fallidos", result.failed_by_kind);
   return result;
 }

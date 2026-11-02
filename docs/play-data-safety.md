@@ -1,6 +1,6 @@
 # Google Play — formulario «Seguridad de los datos» (borrador)
 
-Borrador para completar en Play Console, armado a partir del modelo de datos (`docs/spec.md`). **Requiere revisión legal (F10)**; no declarar nada que la revisión no confirme.
+Borrador para completar en Play Console, armado a partir del modelo de datos (`docs/spec.md`). **Requiere revisión legal**; no declarar nada que la revisión no confirme.
 
 ## Recopilación y uso compartido
 
@@ -28,5 +28,5 @@ Borrador para completar en Play Console, armado a partir del modelo de datos (`d
 
 ## Otras declaraciones
 
-- La app declara datos de salud: Play puede pedir la **declaración de apps de salud** (Políticas › Contenido de la app › Aplicaciones de salud). La app no es un dispositivo médico ni da diagnósticos; el texto de aviso del prototipo («no reemplaza el consejo médico profesional») debe figurar en la ficha.
+- La app declara datos de salud: Play puede pedir la **declaración de apps de salud** (Políticas › Contenido de la app › Aplicaciones de salud). La app no es un dispositivo médico ni da diagnósticos; el aviso vigente en la app («no reemplaza el consejo médico profesional») debe figurar en la ficha.
 - Público objetivo: adultos (cuidadores).

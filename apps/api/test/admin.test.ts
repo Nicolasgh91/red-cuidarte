@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { MailError } from "../src/services/mailer.js";
 import { createHarness, type Harness } from "./harness.js";
 
 let h: Harness;
@@ -293,14 +294,32 @@ describe("admin: correo de prueba (F6)", () => {
     expect(log[0]).toMatchObject({ kind: "test", status: "sent" });
   });
 
-  it("si el SMTP falla, queda registrado como fallido con el error", async () => {
+  it("si el SMTP falla responde 502 con el motivo y queda registrado como fallido", async () => {
     const a = await h.admin();
     h.failMail(true);
-    expect(
-      await (await h.req("/admin/mail/test", { as: a, json: { to: "x@example.org" } })).json(),
-    ).toEqual({ status: "failed" });
+    const r = await h.req("/admin/mail/test", { as: a, json: { to: "x@example.org" } });
+    expect(r.status).toBe(502);
+    expect(await r.json()).toEqual({
+      error: {
+        code: "mail_failed",
+        message: expect.stringContaining("No se pudo enviar el mail"),
+      },
+    });
     expect(await h.sql`select status, error from mail_log`).toEqual([
       { status: "failed", error: "SMTP caído" },
+    ]);
+  });
+
+  it("si el host SMTP no existe, el mensaje dice que hay que revisar SMTP_HOST", async () => {
+    const a = await h.admin();
+    h.failMail(new MailError("dns", "dns: no se pudo resolver «demo» (revisá SMTP_HOST) [EBUSY]"));
+    const r = await h.req("/admin/mail/test", { as: a, json: { to: "x@example.org" } });
+    expect(r.status).toBe(502);
+    expect(((await r.json()) as { error: { message: string } }).error.message).toContain(
+      "SMTP_HOST",
+    );
+    expect(await h.sql`select status, error from mail_log`).toEqual([
+      { status: "failed", error: expect.stringContaining("«demo»") },
     ]);
   });
 });

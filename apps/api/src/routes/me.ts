@@ -2,12 +2,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../deps.js";
 import { requireRole } from "../auth/middleware.js";
-import { conflict, notFound } from "../errors.js";
+import { HttpError, conflict, notFound } from "../errors.js";
 import { caregiverProfile, linkCode, newMedication, newPatient, uuid } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
 import { addMedication, listMedications, removeMedication } from "../services/medications.js";
 import { redeemLinkCode } from "../services/linkCode.js";
 import { createPatient } from "../services/accounts.js";
+import { addressOf } from "../services/mail.js";
 
 const idParam = z.object({ id: uuid });
 
@@ -98,7 +99,20 @@ export const me = new Hono<AppEnv>()
     const deps = c.get("deps");
     const id = c.get("user").id;
     const rows = await deps.sql`delete from users where id = ${id} returning id`;
-    if (!rows.length) throw notFound();
-    await deps.authAdmin.deleteUser(id);
+    if (!rows.length) throw notFound("No encontramos tu cuenta. Puede que ya la hayas eliminado.");
+    try {
+      await deps.authAdmin.deleteUser(id);
+    } catch (e) {
+      // Los datos ya se borraron: sin ellos no puede entrar, pero el acceso de Auth sigue existiendo.
+      console.error("account delete: quedó el usuario de Auth", {
+        id,
+        error: (e as Error).message,
+      });
+      throw new HttpError(
+        502,
+        "account_delete_incomplete",
+        `Borramos tus datos, pero no pudimos dar de baja tu acceso. Escribinos a ${addressOf(deps.env.SMTP_FROM)} y lo resolvemos.`,
+      );
+    }
     return c.json({ ok: true as const });
   });

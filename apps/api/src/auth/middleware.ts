@@ -33,7 +33,7 @@ export const authenticate = (opts: { requireDevice: boolean }) =>
     const deps = c.get("deps");
     const header = c.req.header("Authorization") ?? "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-    if (!token) throw unauthorized();
+    if (!token) throw unauthorized("Tenés que iniciar sesión para continuar.", "no_session");
 
     const { sub } = await deps.verifier.verify(token);
 
@@ -59,8 +59,18 @@ export const authenticate = (opts: { requireDevice: boolean }) =>
     await next();
   });
 
+const ROLE_PLURAL: Record<Role, string> = {
+  caregiver: "cuidadores/as",
+  patient: "personas cuidadas",
+  admin: "administradores/as",
+};
+
 export const requireRole = (...roles: Role[]) =>
   createMiddleware<AppEnv>(async (c, next) => {
-    if (!roles.includes(c.get("user").role)) throw forbidden();
+    if (!roles.includes(c.get("user").role))
+      throw forbidden(
+        `Esta parte es solo para ${roles.map((r) => ROLE_PLURAL[r]).join(" y ")}.`,
+        "wrong_role",
+      );
     await next();
   });

@@ -49,11 +49,13 @@ export function useMailLog() {
 }
 
 /** Mutación del panel de admin que refresca todo lo de "admin" al terminar. */
-function useAdminMutation<V, R>(fn: (v: V) => Promise<R>) {
+function useAdminMutation<V, R>(fn: (v: V) => Promise<R>, { onError = false } = {}) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
+    // El envío fallido también deja una fila en el historial.
+    ...(onError && { onError: () => qc.invalidateQueries({ queryKey: ["admin"] }) }),
   });
 }
 
@@ -105,8 +107,9 @@ export function useResetPasskey() {
 }
 export function useSendTestMail() {
   const api = useApi();
-  return useAdminMutation((to: string) =>
-    unwrap(call(api.admin.mail.test.$post, { json: { to } })),
+  return useAdminMutation(
+    (to: string) => unwrap(call(api.admin.mail.test.$post, { json: { to } })),
+    { onError: true },
   );
 }
 

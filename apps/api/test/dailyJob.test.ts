@@ -62,7 +62,11 @@ describe("tarea diaria (F7)", () => {
     await h.caregiver({ email: "marta@ejemplo.org", birth_date: "1975-10-22" });
     at("2026-10-22T12:00:00Z");
     h.failMail(true);
-    expect(await (await run()).json()).toMatchObject({ sent: 0, failed: 1 });
+    expect(await (await run()).json()).toMatchObject({
+      sent: 0,
+      failed: 1,
+      failed_by_kind: { unknown: 1 },
+    });
     expect(await h.sql`select status, error from mail_log`).toEqual([
       { status: "failed", error: "SMTP caído" },
     ]);

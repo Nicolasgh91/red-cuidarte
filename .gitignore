@@ -18,3 +18,4 @@ supabase/.temp/
 # Permisos locales de Claude Code
 .claude/settings.local.json
 assets/Paisaje montañoso al amanecer con flores.png
+supabase/migrations

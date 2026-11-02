@@ -4,24 +4,24 @@ Qué hace la app y con qué reglas. Cómo está construida: [`architecture.md`](
 
 ## Stack (cerrado)
 
-| Capa                 | Decisión                                                                                                                           |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Repo                 | https://github.com/Nicolasgh91/red-cuidarte (privado, monorepo pnpm)                                                               |
-| Dominio              | redasistir.online (DNS en DonWeb)                                                                                                  |
-| Front                | React + Vite + TypeScript                                                                                                          |
-| Apps de tienda       | Capacitor sobre el mismo front. Android primero; iOS cuando se pague Apple Developer                                               |
-| Web                  | Vercel (plan Hobby) → redasistir.online, instalable como PWA                                                                       |
-| Back                 | TypeScript + Hono sobre Vercel Functions (Node.js), proyecto Vercel aparte → api.redasistir.online. Sin Java ni servidores propios |
-| Base de datos y auth | Supabase (Postgres + Auth): cuidarte-prod y cuidarte-dev. La API accede por el pooler                                              |
-| Acceso a datos       | postgres (postgres.js), SQL escrito a mano, validación con Zod                                                                     |
-| Migraciones          | SQL en supabase/migrations, aplicadas a mano en el editor SQL de Supabase (sin CI)                                                 |
-| WebAuthn             | @simplewebauthn/server                                                                                                             |
-| LLM del asistente    | Groq (free tier)                                                                                                                   |
-| Mails                | Nodemailer con el SMTP de la casilla info@redasistir.online en DonWeb                                                              |
-| Tareas programadas   | Vercel Cron (Hobby: una vez por día, precisión por hora) → endpoint interno protegido                                              |
-| Despliegue           | Integración Git de Vercel (web y api). GitHub Actions: CI y backup semanal                                                         |
-| Recordatorios        | Notificaciones locales del dispositivo (Capacitor Local Notifications), sin servidor                                               |
-| Costo                | US$ 0 de infraestructura. Únicos costos: Google Play US$ 25 una vez y Apple Developer US$ 99/año (iOS, en espera)                  |
+| Capa                 | Decisión                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Repo                 | https://github.com/Nicolasgh91/red-cuidarte (privado, monorepo pnpm)                                                       |
+| Dominio              | redasistir.online (DNS en DonWeb)                                                                                          |
+| Front                | React + Vite + TypeScript                                                                                                  |
+| Apps de tienda       | Capacitor sobre el mismo front. Android primero; iOS cuando se pague Apple Developer                                       |
+| Web                  | Vercel (plan Hobby) → redasistir.online, instalable como PWA                                                               |
+| Back                 | TypeScript + Hono sobre Vercel Functions (Node.js), proyecto Vercel aparte → api.redasistir.online. Sin servidores propios |
+| Base de datos y auth | Supabase (Postgres + Auth): cuidarte-prod y cuidarte-dev. La API accede por el pooler                                      |
+| Acceso a datos       | postgres (postgres.js), SQL escrito a mano, validación con Zod                                                             |
+| Migraciones          | SQL en supabase/migrations, aplicadas a mano en el editor SQL de Supabase (sin CI)                                         |
+| WebAuthn             | @simplewebauthn/server                                                                                                     |
+| LLM del asistente    | Groq (free tier)                                                                                                           |
+| Mails                | Nodemailer con el SMTP de la casilla info@redasistir.online en DonWeb                                                      |
+| Tareas programadas   | Vercel Cron (Hobby: una vez por día, precisión por hora) → endpoint interno protegido                                      |
+| Despliegue           | Integración Git de Vercel (web y api). GitHub Actions: CI y backup semanal                                                 |
+| Recordatorios        | Notificaciones locales del dispositivo (Capacitor Local Notifications), sin servidor                                       |
+| Costo                | US$ 0 de infraestructura. Únicos costos: Google Play US$ 25 una vez y Apple Developer US$ 99/año (iOS, en espera)          |
 
 ## Decisiones cerradas
 
@@ -38,11 +38,11 @@ Qué hace la app y con qué reglas. Cómo está construida: [`architecture.md`](
 
 ## Roles
 
-| Rol           | Ve                                                                    | Puede                                                                                                                   |
-| ------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| caregiver     | Inicio, Turnos, Tareas, Asistente, Bienestar, Pausa, Recursos, Perfil | Cargar turnos (a mano o por chat), tildar tareas, agregar tareas diarias, registrar bienestar, configurar recordatorios |
-| admin (Jorge) | Panel, Cuidadores, Pacientes, Passkeys, Correos, Contenido            | Alta de cuidadores y pacientes, asignaciones, medicación, restablecer passkeys, editar los textos de la web             |
-| patient       | Hoy (quién lo cuida, medicación del día, urgencia)                    | Solo lectura; compartir su código para vincularse con un cuidador                                                       |
+| Rol       | Ve                                                                    | Puede                                                                                                                   |
+| --------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| caregiver | Inicio, Turnos, Tareas, Asistente, Bienestar, Pausa, Recursos, Perfil | Cargar turnos (a mano o por chat), tildar tareas, agregar tareas diarias, registrar bienestar, configurar recordatorios |
+| admin     | Panel, Cuidadores, Pacientes, Passkeys, Correos, Contenido            | Alta de cuidadores y pacientes, asignaciones, medicación, restablecer passkeys, editar los textos de la web             |
+| patient   | Hoy (quién lo cuida, medicación del día, urgencia)                    | Solo lectura; compartir su código para vincularse con un cuidador                                                       |
 
 ## Modelo de datos
 
@@ -74,7 +74,7 @@ site_content(key PK, value JSONB, updated_at, updated_by)  -- textos que edita e
 ## Requerimientos
 
 - **Casilla DonWeb:** info@redasistir.online; credenciales SMTP en variables de entorno de Vercel; SPF, DKIM y DMARC en el DNS; mail de prueba. El remitente (`SMTP_FROM`) es esa misma casilla.
-- **Contacto:** el mail info@redasistir.online se muestra como enlace `mailto` (Contacto, pantalla de la passkey e ingreso). Formulario para usuarios con sesión de cualquier rol (Mi perfil, pie de Inicio y menú Mi cuenta; no va en la barra lateral). Campos: asunto (opcional, máx. 100, sin saltos de línea ni caracteres de control) y mensaje (obligatorio, máx. 2000). Se manda a `SMTP_FROM` con `Reply-To` = mail de la cuenta y, en el cuerpo, nombre, rol, id de usuario y mensaje; queda en `mail_log` (kind `contact`, sin el asunto). Límite: 3 mensajes por usuario en 24 horas móviles (en la base); el 4.º recibe 429. El mensaje no se guarda en la base: si el SMTP falla responde 502, queda `failed` en `mail_log` y la pantalla conserva lo escrito para reintentar. El formulario avisa «No incluyas datos de salud ni de medicación en este mensaje.». Fuera de alcance: adjuntos, bandeja de entrada para el admin, captcha y respuestas automáticas.
+- **Contacto:** el mail info@redasistir.online se muestra como enlace `mailto` (Contacto, pantalla de la passkey e ingreso). Formulario para usuarios con sesión de cualquier rol (Mi perfil, pie de Inicio y menú Mi cuenta; no va en la barra lateral). Campos: asunto (opcional, máx. 100, sin saltos de línea ni caracteres de control) y mensaje (obligatorio, máx. 2000). Se manda a `SMTP_FROM` con `Reply-To` = mail de la cuenta y, en el cuerpo, nombre, rol, id de usuario y mensaje; queda en `mail_log` (kind `contact`, sin el asunto). Límite: 3 mensajes por usuario en 24 horas móviles (en la base); el 4.º recibe 429. El mensaje no se guarda en la base: si el SMTP falla responde 502 `mail_failed` (503 `mail_unavailable` si es de configuración: host, TLS o clave), queda `failed` en `mail_log` con el motivo y la pantalla conserva lo escrito para reintentar. El formulario avisa «No incluyas datos de salud ni de medicación en este mensaje.». Fuera de alcance: adjuntos, bandeja de entrada para el admin, captcha y respuestas automáticas.
 - **Passkeys:** ver decisión. Pantalla admin › Passkeys: estado, sincronizable / con respaldo, última IP, último uso, restablecer.
 - **Cumpleaños:** Vercel Cron diario a las 12:00 UTC → endpoint interno → cuidadores que cumplen hoy → mail → `mail_log`. En Hobby dispara entre las 09:00 y las 09:59 hora AR. Idempotente por (mail, tipo, año).
 - **Asistente + turnos:** el cuidador cuenta sus turnos en lenguaje natural → el modelo resuelve las fechas → `agregar_turnos` valida paciente asignado, formato y superposición → confirma en el chat con opción Deshacer. Cada turno se puede exportar a Google Calendar.

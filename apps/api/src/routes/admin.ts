@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../deps.js";
-import { badRequest, conflict, notFound } from "../errors.js";
+import { HttpError, badRequest, conflict, notFound } from "../errors.js";
 import { email, newCaregiver, newMedication, newPatient, uuid } from "../lib/schemas.js";
 import { addDays, dayNum, nowAR } from "../lib/time.js";
 import { validate } from "../lib/validate.js";
@@ -10,7 +10,7 @@ import { CONTENT_KEYS } from "../content/site.js";
 import { createCaregiver, createPatient } from "../services/accounts.js";
 import { loadContent } from "../services/content.js";
 import { addMedication, listMedications, removeMedication } from "../services/medications.js";
-import { sendLogged } from "../services/mail.js";
+import { ADMIN_MAIL_MESSAGE, sendLogged } from "../services/mail.js";
 
 const idParam = z.object({ id: uuid });
 const keyParam = z.object({ key: z.enum(CONTENT_KEYS) });
@@ -192,7 +192,7 @@ export const admin = new Hono<AppEnv>()
   .post("/mail/test", validate("json", z.object({ to: email })), async (c) => {
     const deps = c.get("deps");
     const to = c.req.valid("json").to;
-    const status = await sendLogged(
+    const { status, failure } = await sendLogged(
       deps,
       {
         to,
@@ -202,6 +202,8 @@ export const admin = new Hono<AppEnv>()
       "test",
       nowAR(deps.now()).year,
     );
+    if (status === "failed" && failure)
+      throw new HttpError(502, "mail_failed", ADMIN_MAIL_MESSAGE[failure.kind]);
     return c.json({ status });
   })
   .get("/mail/log", async (c) => {
