@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createHarness, type Harness } from "./harness.js";
+import { createApp } from "../src/app.js";
+import { signDeviceToken } from "../src/auth/deviceToken.js";
+import { TEST_ENV, createHarness, deviceCookie, type Harness } from "./harness.js";
 
 let h: Harness;
 beforeAll(async () => void (h = await createHarness()));
@@ -222,5 +225,75 @@ describe("perfil y pacientes asignados", () => {
   it("un admin no puede borrarse con DELETE /me", async () => {
     const a = await h.admin();
     expect((await h.req("/me", { as: a, method: "DELETE" })).status).toBe(403);
+  });
+});
+
+describe("guarda de rol de /me (F9)", () => {
+  const wrongRole = async (r: Response) => {
+    expect(r.status).toBe(403);
+    expect(((await r.json()) as { error: { code: string } }).error.code).toBe("wrong_role");
+  };
+
+  /** Todas las rutas /me registradas en la app, menos GET /me (esa es para cualquier rol). */
+  const caregiverRoutes = () =>
+    [
+      ...new Set(
+        h.app.routes
+          .filter((r) => r.method !== "ALL" && /^\/me(\/|$)/.test(r.path))
+          .map((r) => `${r.method} ${r.path}`)
+          .filter((k) => k !== "GET /me"),
+      ),
+    ].sort();
+
+  it("el paciente y el admin reciben 403 wrong_role en cada ruta de cuidador de /me", async () => {
+    const p = await h.patient({ email: "p@example.org" });
+    const a = await h.admin();
+    const routes = caregiverRoutes();
+    // Las 7 conocidas; si se agrega otra, entra sola en la enumeración y tiene que seguir cerrada.
+    expect(routes).toEqual(
+      [
+        "DELETE /me",
+        "DELETE /me/medications/:id",
+        "GET /me/patients",
+        "POST /me/patients",
+        "POST /me/patients/:id/medications",
+        "POST /me/patients/link",
+        "PUT /me/profile",
+      ].sort(),
+    );
+    for (const who of [p, a]) {
+      for (const route of routes) {
+        const [method, path] = route.split(" ") as [string, string];
+        const json = method === "GET" ? undefined : {};
+        await wrongRole(await h.req(path.replace(":id", randomUUID()), { as: who, method, json }));
+      }
+    }
+    expect(await h.sql`select 1 from users where id in (${p}, ${a})`).toHaveLength(2);
+    expect(h.authDeleted).toEqual([]);
+  });
+
+  it("GET /me sigue abierto a los tres roles", async () => {
+    const c = await h.caregiver();
+    const p = await h.patient({ email: "p@example.org" });
+    const a = await h.admin();
+    for (const who of [c, p, a]) expect((await h.req("/me", { as: who })).status).toBe(200);
+  });
+
+  it("una ruta agregada después bajo /me nace cerrada para quien no es cuidador", async () => {
+    const app = createApp(h.deps);
+    app.get("/me/nueva", (c) => c.json({ ok: true }));
+    const as = async (id: string) =>
+      app.request("/me/nueva", {
+        headers: {
+          Authorization: `Bearer ${await h.token(id)}`,
+          Cookie: deviceCookie(
+            await signDeviceToken(TEST_ENV.DEVICE_TOKEN_SECRET, id, `test-credential${id}`),
+          ),
+        },
+      });
+    const c = await h.caregiver();
+    expect((await as(c)).status).toBe(200);
+    await wrongRole(await as(await h.patient({ email: "p@example.org" })));
+    await wrongRole(await as(await h.admin()));
   });
 });

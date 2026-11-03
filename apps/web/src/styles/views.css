@@ -187,6 +187,20 @@
   color: var(--bad);
   font-size: 0.93rem;
 }
+.msg.urgent-msg {
+  align-self: stretch;
+  max-width: 100%;
+  background: var(--bad-bg);
+  color: var(--text);
+  border: 2px solid var(--bad);
+  display: grid;
+  gap: 10px;
+  font-weight: 500;
+}
+.msg.urgent-msg .danger {
+  justify-self: start;
+  text-decoration: none;
+}
 .msg.card-msg {
   align-self: stretch;
   max-width: 100%;

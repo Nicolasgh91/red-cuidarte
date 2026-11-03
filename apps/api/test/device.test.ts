@@ -301,7 +301,7 @@ describe("passkey de la cuenta (F6)", () => {
     ).toBe(400);
   });
 
-  it("vale para los tres roles: administrador y persona cuidada también registran su passkey", async () => {
+  it("vale para los tres roles: administrador y paciente también registran su passkey", async () => {
     const a = await withoutPasskey(() => h.admin());
     const p = await withoutPasskey(() => h.patient({ email: "p@example.org" }));
     for (const who of [a, p]) {

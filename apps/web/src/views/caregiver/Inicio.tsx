@@ -53,14 +53,17 @@ export function Inicio() {
   const groups = tasks.data?.patients ?? [];
   const total = groups.reduce((n, g) => n + g.tasks.length, 0);
   const ok = groups.reduce((n, g) => n + g.tasks.filter((t) => t.done).length, 0);
+  // Sin pacientes no hay turnos ni tareas que mostrar: se invita a sumar el primero.
+  const noPatients = patients.isSuccess && patients.data.length === 0;
 
-  const shiftText = shifts.isPending
-    ? "Cargando…"
-    : shifts.isError
-      ? "No pudimos cargar tus turnos."
-      : next
-        ? `${relDay(next.date)}, ${hrsLabel(next)} · ${patientName(patients.data, next.patient_id)}`
-        : "No tenés turnos cargados. Contáselos al asistente.";
+  const shiftText =
+    shifts.isPending || patients.isPending
+      ? "Cargando…"
+      : shifts.isError
+        ? "No pudimos cargar tus turnos."
+        : next
+          ? `${relDay(next.date)}, ${hrsLabel(next)} · ${patientName(patients.data, next.patient_id)}`
+          : "No tenés turnos cargados. Contáselos al asistente.";
   const taskText = tasks.isPending
     ? "Cargando…"
     : tasks.isError
@@ -73,13 +76,13 @@ export function Inicio() {
     <div className="page wide">
       <div className="head">
         <p className="hello">{name ? `Hola, ${name}` : "Hola"}</p>
-        <h1 className="home-h1">Tu momento especial para vos...!!!</h1>
-        <p className="lead-up">Comencemos hoy para ser tu mejor versión.</p>
+        <h1 className="home-h1">Un momento para vos</h1>
+        <p className="lead-up">Empecemos el día con calma.</p>
       </div>
       <div className="group">
         <div className="tiles">
           <Link className="tile t-blue" to="/bienestar">
-            <Icon name="sun" /> Registrar cómo estoy...
+            <Icon name="sun" /> Registrar cómo estoy…
           </Link>
           <Link className="tile t-green" to="/pausa">
             <Icon name="pause" /> Hacer una pausa
@@ -88,26 +91,40 @@ export function Inicio() {
             <Icon name="user" /> Escaneo corporal
           </button>
           <button className="tile t-orange" onClick={() => openPlayer("ritual")}>
-            <Icon name="moon" /> Ritual fin de la jornada
+            <Icon name="moon" /> Ritual de desconexión
           </button>
         </div>
         <UrgentButton />
       </div>
       <div className="group">
         <h2 className="serif">Tu día</h2>
-        <div className="cards2">
-          <NavCard to="/turnos" icon="calendar" title="Próximo turno">
-            <p className="card-text">{shiftText}</p>
-          </NavCard>
-          <NavCard to="/tareas" icon="list" title="Tareas de hoy">
-            <p className="card-text tnum">{taskText}</p>
-            {total > 0 && (
-              <div className="mini-bar">
-                <i style={{ width: `${Math.round((ok / total) * 100)}%` }} />
-              </div>
-            )}
-          </NavCard>
-        </div>
+        {noPatients ? (
+          <section className="card rcard">
+            <div>
+              <p className="card-title">Todavía no tenés pacientes</p>
+              <p className="card-text">
+                Para ver tus turnos y tus tareas, primero sumá a quien acompañás.
+              </p>
+            </div>
+            <Link className="primary-btn auto" to="/pacientes">
+              <Icon name="plus" /> Agregá o vinculá a tu primer paciente
+            </Link>
+          </section>
+        ) : (
+          <div className="cards2">
+            <NavCard to="/turnos" icon="calendar" title="Próximo turno">
+              <p className="card-text">{shiftText}</p>
+            </NavCard>
+            <NavCard to="/tareas" icon="list" title="Tareas de hoy">
+              <p className="card-text tnum">{taskText}</p>
+              {total > 0 && (
+                <div className="mini-bar">
+                  <i style={{ width: `${Math.round((ok / total) * 100)}%` }} />
+                </div>
+              )}
+            </NavCard>
+          </div>
+        )}
       </div>
       <div className="group">
         <h2 className="serif">Para acompañarte</h2>
@@ -115,8 +132,8 @@ export function Inicio() {
           <NavCard to="/recursos" icon="book" title="Cuidarte mientras cuidás">
             <p className="card-text">Estrés, descanso, autocuidado y técnicas para el día a día.</p>
           </NavCard>
-          <NavCard to="/pacientes" icon="heart" title="Personas cuidadas">
-            <p className="card-text">Quiénes acompañás, y sumá a alguien nuevo.</p>
+          <NavCard to="/pacientes" icon="heart" title="Pacientes">
+            <p className="card-text">Quiénes acompañás. Sumá o vinculá a un paciente.</p>
           </NavCard>
           <NavCard to="/asistente" icon="sparkle" title="Asistente">
             <p className="card-text">Preguntale lo que necesites o contale tus turnos.</p>

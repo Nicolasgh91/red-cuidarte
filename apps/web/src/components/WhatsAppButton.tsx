@@ -13,7 +13,7 @@ export function WhatsAppButton({ role }: { role: Role }) {
       href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_GREETING)}`}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Escribinos por WhatsApp"
+      aria-label="Escribinos por WhatsApp (se abre en una pestaña nueva)"
     >
       {/* Ícono propio: globo de diálogo con un teléfono adentro. */}
       <svg viewBox="0 0 24 24" aria-hidden="true">

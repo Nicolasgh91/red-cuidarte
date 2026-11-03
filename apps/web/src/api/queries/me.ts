@@ -29,7 +29,7 @@ export function useMyPatients() {
   });
 }
 
-/** El cuidador/a da de alta a una persona cuidada y queda asignado a ella. */
+/** El cuidador/a da de alta a un paciente y queda asignado a él o ella. */
 export function useAddMyPatient() {
   const api = useApi();
   const qc = useQueryClient();
@@ -40,7 +40,7 @@ export function useAddMyPatient() {
   });
 }
 
-/** El cuidador/a canjea el código que le pasó una persona cuidada. */
+/** El cuidador/a canjea el código que le pasó un paciente. */
 export function useLinkPatient() {
   const api = useApi();
   const qc = useQueryClient();

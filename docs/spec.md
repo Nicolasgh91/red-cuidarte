@@ -27,7 +27,7 @@ Qué hace la app y con qué reglas. Cómo está construida: [`architecture.md`](
 
 - **Una passkey por cuenta como segundo factor** (ver [`architecture.md`](architecture.md#9-decisiones-vigentes)): no se puede identificar el equipo físico (los navegadores no exponen la MAC, la IP no sirve por CGNAT, DHCP y cambios de wifi/datos, y una passkey sincronizada sirve en varios equipos). Se registra en el primer ingreso y funciona desde cualquier equipo donde esté (sincronizada o desde el teléfono con QR). Se usa siempre con verificación de usuario (huella, rostro o PIN). Registrar otra requiere que el admin restablezca la actual. La última IP se guarda solo como registro.
 - **Administradores:** se cargan directamente en la base de datos. No hay UI para crear admins.
-- **Medicación = dato sensible de salud (Ley 25.326):** visible solo para el admin y los cuidadores asignados; consentimiento de la persona cuidada o su representante; cifrado en reposo.
+- **Medicación = dato sensible de salud (Ley 25.326):** visible solo para el admin, los cuidadores asignados y el propio paciente (su medicación del día); consentimiento del paciente o su representante; cifrado en reposo.
 - **Registro de bienestar:** lo ve solo el cuidador. El admin y el asistente no acceden.
 - **Asistente IA:** Groq free tier (no usa los datos para entrenar). Se alimenta de los recursos de la app, la FAQ, los turnos del cuidador, sus pacientes asignados y su medicación. Sin búsqueda web, sin diagnósticos. Herramientas: `listar_turnos`, `agregar_turnos`. Límite: 20 mensajes por usuario por día.
 - **Tema:** claro / oscuro / sistema, preferencia por dispositivo.
@@ -38,11 +38,13 @@ Qué hace la app y con qué reglas. Cómo está construida: [`architecture.md`](
 
 ## Roles
 
-| Rol       | Ve                                                                    | Puede                                                                                                                   |
-| --------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| caregiver | Inicio, Turnos, Tareas, Asistente, Bienestar, Pausa, Recursos, Perfil | Cargar turnos (a mano o por chat), tildar tareas, agregar tareas diarias, registrar bienestar, configurar recordatorios |
-| admin     | Panel, Cuidadores, Pacientes, Passkeys, Correos, Contenido            | Alta de cuidadores y pacientes, asignaciones, medicación, restablecer passkeys, editar los textos de la web             |
-| patient   | Hoy (quién lo cuida, medicación del día, urgencia)                    | Solo lectura; compartir su código para vincularse con un cuidador                                                       |
+Mapa de pantallas con diagramas: [`vistas-por-rol.md`](vistas-por-rol.md).
+
+| Rol       | Ve                                                                                              | Puede                                                                                                                                                                                         |
+| --------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| caregiver | Inicio, Pacientes, Turnos, Tareas, Asistente, Bienestar, Pausa, Recursos, Recordatorios, Perfil | Dar de alta o vincular pacientes (por código) y cargar su medicación, cargar turnos (a mano o por chat), tildar tareas, agregar tareas diarias, registrar bienestar, configurar recordatorios |
+| admin     | Panel, Cuidadores, Pacientes, Passkeys, Correos, Contenido                                      | Alta de cuidadores y pacientes, asignaciones, medicación, restablecer passkeys, editar los textos de la web                                                                                   |
+| patient   | Hoy (quién lo cuida, medicación del día, urgencia)                                              | Solo lectura; compartir su código para vincularse con un cuidador                                                                                                                             |
 
 ## Modelo de datos
 

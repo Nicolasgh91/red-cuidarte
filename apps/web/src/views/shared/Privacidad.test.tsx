@@ -22,4 +22,19 @@ describe("Privacidad", () => {
     );
     expect(screen.getByText(/formulario de Contacto/)).toBeInTheDocument();
   });
+
+  it("tiene «Volver» y salto al contenido", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <Privacidad />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Volver" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Saltar al contenido" })).toHaveAttribute(
+      "href",
+      "#main",
+    );
+  });
 });

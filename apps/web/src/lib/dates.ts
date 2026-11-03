@@ -18,6 +18,16 @@ export const fmtLong = (d: Date): string =>
   cap(d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }));
 export const fmtDM = (d: Date): string =>
   d.toLocaleDateString("es-AR", { day: "numeric", month: "long" });
+/** Fecha y hora de un instante: "jueves, 23 de octubre, 15:00". */
+export const fmtDateTime = (ts: string | Date): string =>
+  new Date(ts).toLocaleString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
 
 /** "HH:MM" (o "HH:MM:SS") → minutos desde 00:00; null si no es un horario. */
 export const toMin = (t: string | null | undefined): number | null => {

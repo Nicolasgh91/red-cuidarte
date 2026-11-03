@@ -11,18 +11,21 @@ import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { useContent } from "../../api/queries/content";
 import { hrsLabel, listJoin, relDay } from "../../lib/dates";
+import { DISCLAIMER, SAME_NUMBER } from "../../lib/labels";
 import { patientName, personName } from "../../api/types";
 
-const SUGGEST = [
-  "La semana que viene trabajo lunes y miércoles de 8 a 14 con Elena",
+/** Ejemplos para empezar; usan el nombre de un paciente asignado si hay. */
+const suggestions = (patient: string | undefined) => [
+  `La semana que viene trabajo lunes y miércoles de 8 a 14 con ${patient ?? "mi paciente"}`,
   "¿Qué turnos tengo esta semana?",
-  "¿Cómo ayudo a Raúl a pararse sin lastimarme la espalda?",
-  "Estoy agotada, ¿qué puedo hacer hoy?",
+  `¿Cómo ayudo a ${patient ?? "mi paciente"} a pararse sin lastimarme la espalda?`,
+  "Me siento sin energía, ¿qué puedo hacer hoy?",
 ];
 
 type Item =
   | { type: "user"; text: string }
   | { type: "bot"; text: string }
+  | { type: "urgent"; text: string }
   | { type: "err"; text: string }
   | { type: "card"; shifts: Shift[]; undone: boolean };
 
@@ -75,6 +78,7 @@ export function Asistente() {
   const { toast } = useToast();
   const patients = patientsQ.data ?? [];
   const name = me.data?.profile?.first_name;
+  const noPatients = patientsQ.isSuccess && patients.length === 0;
 
   const [items, setItems] = useState<Item[]>([]);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -100,7 +104,7 @@ export function Asistente() {
       setTurns([...sent, { role: "assistant", content: r.reply }]);
       setItems((l) => [
         ...l,
-        { type: "bot", text: r.reply },
+        { type: r.urgent ? "urgent" : "bot", text: r.reply },
         ...(r.added.length ? [{ type: "card" as const, shifts: r.added, undone: false }] : []),
       ]);
     } catch (e) {
@@ -177,6 +181,12 @@ export function Asistente() {
                   Hola{name ? `, ${name}` : ""}. Puedo responder dudas sobre el cuidado y tus
                   recursos, decirte tus turnos o cargarlos en tu calendario si me los contás.
                 </p>
+                {noPatients && (
+                  <p>
+                    Para cargar turnos primero necesitás un paciente.{" "}
+                    <Link to="/pacientes">Agregá o vinculá a uno</Link>.
+                  </p>
+                )}
               </div>
             )}
             {items.map((m, i) =>
@@ -187,6 +197,13 @@ export function Asistente() {
               ) : m.type === "err" ? (
                 <div className="msg err-msg" key={i} role="alert">
                   {m.text}
+                </div>
+              ) : m.type === "urgent" ? (
+                <div className="msg urgent-msg" key={i} role="alert">
+                  <Markdown text={m.text} />
+                  <a className="danger" href={`tel:${SAME_NUMBER}`}>
+                    Llamar al {SAME_NUMBER}
+                  </a>
                 </div>
               ) : m.type === "card" ? (
                 <CardMsg
@@ -207,7 +224,7 @@ export function Asistente() {
           <form className="composer" onSubmit={onSubmit} noValidate>
             {items.length === 0 && (
               <div className="chips">
-                {SUGGEST.map((s) => (
+                {suggestions(patients[0]?.first_name).map((s) => (
                   <button
                     type="button"
                     className="chip"
@@ -265,6 +282,7 @@ export function Asistente() {
           </details>
         </aside>
       </div>
+      <p className="disclaimer">{DISCLAIMER}</p>
     </div>
   );
 }

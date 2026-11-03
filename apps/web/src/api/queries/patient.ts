@@ -10,7 +10,7 @@ export function usePatientToday() {
   });
 }
 
-/** Código para que un cuidador/a se vincule con esta persona. */
+/** Código para que un cuidador/a se vincule con este paciente. */
 export function useLinkCode() {
   const api = useApi();
   return useQuery({

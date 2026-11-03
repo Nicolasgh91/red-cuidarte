@@ -1,14 +1,14 @@
+import { Link } from "react-router";
 import { errorMessage } from "../../api/errors";
-import { useContent } from "../../api/queries/content";
 import { useLinkCode, usePatientToday, useRenewLinkCode } from "../../api/queries/patient";
 import { Async } from "../../components/common";
 import { useToast } from "../../components/Toasts";
 import { Icon } from "../../components/icons";
 import { UrgentButton } from "../../components/Layer";
-import { fmtLong, fromIso, hrsLabel, relDay } from "../../lib/dates";
-import { quoteOfDay } from "../../lib/labels";
+import { fmtDateTime, fmtLong, fromIso, hrsLabel, relDay } from "../../lib/dates";
+import { DISCLAIMER } from "../../lib/labels";
 
-/** Código de un solo uso para que un cuidador/a se vincule con esta persona. */
+/** Código de un solo uso para que un cuidador/a se vincule con este paciente. */
 function LinkCode() {
   const q = useLinkCode();
   const renew = useRenewLinkCode();
@@ -25,23 +25,45 @@ function LinkCode() {
           y se usa una sola vez.
         </p>
         {code ? (
-          <p
-            className="tnum"
-            style={{ fontSize: "1.8rem", letterSpacing: "0.12em", margin: "12px 0" }}
-            aria-label={`Código ${code.split("").join(" ")}`}
-          >
-            {code.slice(0, 4)}-{code.slice(4)}
-          </p>
+          <>
+            <p
+              className="tnum"
+              style={{ fontSize: "1.8rem", letterSpacing: "0.12em", margin: "12px 0 0" }}
+              aria-label={`Código ${code.split("").join(" ")}`}
+            >
+              {code.slice(0, 4)}-{code.slice(4)}
+            </p>
+            {q.data?.expires_at && (
+              <p className="optional" style={{ margin: "4px 0 12px" }}>
+                Vale hasta {fmtDateTime(q.data.expires_at)}.
+              </p>
+            )}
+          </>
+        ) : q.isError ? (
+          <div role="alert">
+            <p className="optional">{errorMessage(q.error)}</p>
+            <button className="ghost" type="button" onClick={() => void q.refetch()}>
+              Reintentar
+            </button>
+          </div>
         ) : (
           <p className="optional" role="status">
-            {q.isError ? errorMessage(q.error) : "Generando el código…"}
+            Generando el código…
           </p>
         )}
+        <p className="optional" style={{ margin: "0 0 8px" }}>
+          Si generás uno nuevo, el anterior deja de funcionar.
+        </p>
         <button
           className="ghost"
           type="button"
           disabled={renew.isPending}
-          onClick={() => renew.mutate(undefined, { onError: (e) => toast(errorMessage(e)) })}
+          onClick={() =>
+            renew.mutate(undefined, {
+              onSuccess: () => toast("Código nuevo listo."),
+              onError: (e) => toast(errorMessage(e)),
+            })
+          }
         >
           Generar un código nuevo
         </button>
@@ -51,7 +73,6 @@ function LinkCode() {
 }
 
 export function Hoy() {
-  const { quotes } = useContent();
   const q = usePatientToday();
   return (
     <Async query={q}>
@@ -78,7 +99,7 @@ export function Hoy() {
                       ? `${cur.caregiver}, hasta las ${cur.end}`
                       : nxt
                         ? `${nxt.caregiver} · ${relDay(nxt.date)}, ${hrsLabel(nxt)}`
-                        : "No hay turnos cargados."}
+                        : "Todavía no hay turnos cargados. Cuando quien te cuida los cargue, los vas a ver acá. Si todavía no tenés a nadie vinculado, compartí el código de más abajo."}
                   </p>
                 </div>
               </div>
@@ -120,12 +141,10 @@ export function Hoy() {
               </p>
             </section>
             <LinkCode />
-            <div className="quote">
-              <div>
-                <p>{quoteOfDay(new Date(), quotes)}</p>
-                <small>Frase del día · Red Cuidar</small>
-              </div>
-            </div>
+            <p className="optional" style={{ margin: 0 }}>
+              ¿Necesitás ayuda con la app? <Link to="/contacto">Contacto</Link>
+            </p>
+            <p className="disclaimer">{DISCLAIMER}</p>
           </div>
         );
       }}

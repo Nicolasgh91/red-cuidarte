@@ -109,8 +109,8 @@ const DEFAULT_LANDING: LandingContent = {
   steps: [
     { title: "Creá tu cuenta", text: "Con tu mail y una contraseña. Lleva un minuto." },
     {
-      title: "Registrá tu dispositivo",
-      text: "Tu cuenta queda ligada a tu celular o computadora con la huella, el rostro o el bloqueo de pantalla.",
+      title: "Registrá tu passkey",
+      text: "Es un segundo paso para ingresar: la creás con la huella, el rostro o el bloqueo de pantalla. Sirve en cualquier dispositivo donde esté guardada, o desde tu celular con un código QR.",
     },
     {
       title: "Empezá",
@@ -129,32 +129,32 @@ const DEFAULT_TERMINOS: PageContent = {
     ["h", "Qué datos pedimos"],
     [
       "p",
-      "Para cuidadores: nombre, apellidos, mail, celular y fecha de nacimiento. Para personas cuidadas: nombre, apellido, mail (si tienen cuenta) y medicación. Los administradores se cargan directamente en el sistema.",
+      "Para cuidadores: nombre, apellidos, mail, celular y fecha de nacimiento. Para pacientes: nombre, apellido, mail (si tienen cuenta) y medicación. Los administradores se cargan directamente en el sistema.",
     ],
     ["h", "Tu registro de bienestar"],
     [
       "p",
       "Cómo te sentís es información sensible según la Ley 25.326. Tus registros los ves solo vos: ni el administrador ni el asistente acceden a ellos.",
     ],
-    ["h", "Datos de salud de la persona cuidada"],
+    ["h", "Datos de salud de los pacientes"],
     [
       "p",
-      "La medicación es un dato de salud. Solo la ven el administrador y los cuidadores asignados a esa persona, y se carga con el consentimiento de la persona cuidada o de quien la represente.",
+      "La medicación es un dato de salud. La ven el administrador, los cuidadores asignados a cada paciente y el propio paciente en su pantalla, y se carga con el consentimiento del paciente o de quien lo represente.",
     ],
-    ["h", "Un dispositivo por cuenta"],
+    ["h", "Una passkey por cuenta"],
     [
       "p",
-      "Cada cuenta se usa desde un solo dispositivo. Guardamos qué dispositivo es y la última dirección IP de acceso para proteger tu cuenta. Para cambiar de dispositivo, el administrador libera la cuenta.",
+      "Además de tu contraseña, cada cuenta tiene una passkey como segundo paso para ingresar. Funciona en cualquier dispositivo donde esté guardada (por ejemplo, sincronizada con Google o iCloud) o desde tu celular con un código QR. Guardamos la passkey, su descripción y la última dirección IP de acceso para proteger tu cuenta. Si la perdés, el administrador puede restablecerla.",
     ],
     ["h", "Recordatorios y mails"],
     [
       "p",
-      "Los recordatorios son opcionales. Usamos tu fecha de nacimiento para mandarte un saludo por mail en tu cumpleaños.",
+      "Los recordatorios de agua y de estiramientos vienen activados, y podés apagarlos o cambiarlos cuando quieras desde Recordatorios. Usamos tu fecha de nacimiento para mandarte un saludo por mail en tu cumpleaños.",
     ],
     ["h", "Mensajes de contacto"],
     [
       "p",
-      "Si nos escribís desde Contacto, guardamos tu mensaje (asunto y texto) y lo enviamos por mail a info@redasistir.online, con tu nombre, tu rol y el mail de tu cuenta para poder responderte. Podés mandar hasta 3 mensajes por día. No incluyas datos de salud ni de medicación.",
+      "Si nos escribís desde Contacto, no guardamos tu mensaje: lo enviamos por mail a info@redasistir.online, con tu nombre, tu rol y el mail de tu cuenta para poder responderte. Solo queda un registro del envío, sin asunto ni texto. Podés mandar hasta 3 mensajes cada 24 horas. No incluyas datos de salud ni de medicación.",
     ],
     ["h", "Asistente"],
     [
@@ -162,7 +162,10 @@ const DEFAULT_TERMINOS: PageContent = {
       "El asistente responde con los recursos de la app, preguntas frecuentes, tus turnos y la medicación de tus pacientes. No ve tu registro de bienestar.",
     ],
     ["h", "Tus derechos"],
-    ["p", "Podés ver y corregir tus datos en Mi perfil, y borrar tu cuenta con todos tus datos."],
+    [
+      "p",
+      "Si sos cuidador/a, podés ver y corregir tus datos en Mi perfil y borrar tu cuenta con todos tus datos desde ahí. Si sos paciente o administrador/a, escribinos por Contacto y lo resolvemos.",
+    ],
   ],
 };
 
@@ -178,17 +181,17 @@ const DEFAULT_PRIVACIDAD: PageContent = {
     ["h", "Qué datos guardamos"],
     [
       "p",
-      "Cuidadores: nombre, apellidos, mail, celular y fecha de nacimiento; sus turnos, las tareas que tildan, su configuración de recordatorios y los registros de bienestar. Personas cuidadas: nombre, apellido, mail (si tienen cuenta) y medicación (nombre, dosis y horarios). Administradores: nombre, apellido, mail y celular. Para proteger cada cuenta también guardamos una credencial del dispositivo (passkey), su descripción, la última dirección IP de acceso y los intentos de ingreso desde otros dispositivos. Si nos escribís desde el formulario de Contacto, guardamos tu mensaje (asunto y texto) junto con tu cuenta y lo enviamos por mail a info@redasistir.online; no incluyas datos de salud ni de medicación en esos mensajes.",
+      "Cuidadores: nombre, apellidos, mail, celular y fecha de nacimiento; sus turnos, las tareas que tildan, su configuración de recordatorios y los registros de bienestar. Pacientes: nombre, apellido, mail (si tienen cuenta) y medicación (nombre, dosis y horarios). Administradores: nombre, apellido, mail y celular. Para proteger cada cuenta también guardamos su passkey (la credencial de ingreso), su descripción y la última dirección IP de acceso. Si nos escribís desde el formulario de Contacto, no guardamos tu mensaje: lo enviamos por mail a info@redasistir.online, con tu nombre, tu rol y el mail de tu cuenta, y solo queda un registro del envío, sin asunto ni texto. No incluyas datos de salud ni de medicación en esos mensajes.",
     ],
     ["h", "Datos de salud"],
     [
       "p",
-      "La medicación y los registros de bienestar son datos de salud, considerados sensibles por la Ley 25.326. La medicación solo la ven los administradores y los cuidadores asignados a esa persona, y se carga con el consentimiento de la persona cuidada o de quien la represente; se guarda cifrada. Los registros de bienestar los ve únicamente el cuidador que los hizo: ni los administradores ni el asistente acceden a ellos.",
+      "La medicación y los registros de bienestar son datos de salud, considerados sensibles por la Ley 25.326. La medicación la ven los administradores, los cuidadores asignados a cada paciente y el propio paciente en su pantalla, y se carga con el consentimiento del paciente o de quien lo represente; se guarda cifrada. Los registros de bienestar los ve únicamente el cuidador que los hizo: ni los administradores ni el asistente acceden a ellos.",
     ],
     ["h", "Para qué los usamos"],
     [
       "p",
-      "Para que la app funcione: mostrar turnos y tareas, armar el checklist de medicación, enviarte recordatorios que vos configurás, saludarte por mail en tu cumpleaños y permitir que cada cuenta se use desde un solo dispositivo.",
+      "Para que la app funcione: mostrar turnos y tareas, armar el checklist de medicación, enviarte recordatorios que vos configurás, saludarte por mail en tu cumpleaños y confirmar tu identidad al ingresar con la passkey de tu cuenta.",
     ],
     ["h", "Asistente"],
     [
@@ -213,7 +216,7 @@ const DEFAULT_PRIVACIDAD: PageContent = {
     ["h", "Cuánto tiempo y tus derechos"],
     [
       "p",
-      "Podés ver y corregir tus datos en Mi perfil y borrar tu cuenta con todos tus datos desde Mi perfil › Borrar mi cuenta. Para ejercer tus derechos de acceso, rectificación y supresión también podés escribirnos.",
+      "Si sos cuidador/a, podés ver y corregir tus datos en Mi perfil y borrar tu cuenta con todos tus datos desde ahí. Si sos paciente o administrador/a, escribinos por Contacto y lo resolvemos. Sea cual sea tu rol, también podés escribirnos para ejercer tus derechos de acceso, rectificación y supresión.",
     ],
     [
       "p",
@@ -236,6 +239,7 @@ const DEFAULT_ACERCA: PageContent = {
       "p",
       "Cuidarte+ es su espacio digital: pausas guiadas, recursos, recordatorios, turnos, tareas y un registro diario de cómo estás, para que cuidar a otro no signifique dejar de cuidarte.",
     ],
+    ["p", "También es para los pacientes: ven quién los cuida y su medicación del día."],
   ],
 };
 

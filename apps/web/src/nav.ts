@@ -33,7 +33,7 @@ interface NavItem {
 export const NAV: Record<Role, NavItem[]> = {
   caregiver: [
     { path: "inicio", label: "Inicio", icon: "home", mobile: true },
-    { path: "pacientes", label: "Pacientes", icon: "heart" },
+    { path: "pacientes", label: "Pacientes", icon: "heart", mobile: true },
     { path: "turnos", label: "Turnos", icon: "calendar", mobile: true },
     { path: "tareas", label: "Tareas", icon: "list", mobile: true },
     { path: "asistente", label: "Asistente", icon: "sparkle", mobile: true },

@@ -127,6 +127,9 @@ describe("errores de la API", () => {
       code: "wrong_role",
       message: "Esta parte es solo para administradores/as.",
     });
+    const r2 = await h.req("/patient/today", { as: c });
+    expect(r2.status).toBe(403);
+    expect((await body(r2)).message).toBe("Esta parte es solo para pacientes.");
   });
 
   it("borrar cuenta: si Auth falla avisa que los datos se borraron y a quién escribir", async () => {

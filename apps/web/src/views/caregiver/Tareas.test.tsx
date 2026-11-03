@@ -86,8 +86,10 @@ describe("Tareas", () => {
     const a = api();
     const user = userEvent.setup();
     renderWithApp(<Tareas />, { api: a });
-    const buttons = await screen.findAllByRole("button", { name: "Quitar tarea diaria" });
+    const buttons = await screen.findAllByRole("button", { name: /^Quitar tarea diaria/ });
     expect(buttons).toHaveLength(1);
+    // el nombre accesible incluye la tarea: con varias iguales, el lector de pantalla las distingue
+    expect(buttons[0]).toHaveAccessibleName("Quitar tarea diaria: Almuerzo");
     await user.click(buttons[0]!);
     const del = (
       a as unknown as { tasks: { templates: { ":id": { $delete: ReturnType<typeof vi.fn> } } } }

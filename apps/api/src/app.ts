@@ -11,7 +11,7 @@ import { assistant } from "./routes/assistant.js";
 import { contact } from "./routes/contact.js";
 import { device } from "./routes/device.js";
 import { internal } from "./routes/internal.js";
-import { me } from "./routes/me.js";
+import { me, meCaregiver } from "./routes/me.js";
 import { patient } from "./routes/patient.js";
 import { reminders } from "./routes/reminders.js";
 import { shifts } from "./routes/shifts.js";
@@ -85,7 +85,9 @@ export function createApp(deps: Deps) {
 
   const bound = new Hono<AppEnv>()
     .use("*", authenticate({ requireDevice: true }))
+    // /me para cualquier rol va primero: el router de cuidadores guarda todo lo que se le agregue.
     .route("/me", me)
+    .route("/me", new Hono<AppEnv>().use("*", requireRole("caregiver")).route("/", meCaregiver))
     .route("/contact", contact)
     .route("/shifts", new Hono<AppEnv>().use("*", requireRole("caregiver")).route("/", shifts))
     .route("/tasks", new Hono<AppEnv>().use("*", requireRole("caregiver")).route("/", tasks))

@@ -85,7 +85,7 @@ export const admin = new Hono<AppEnv>()
     validate("param", idParam),
     validate("json", z.object({ patient_ids: z.array(uuid) })),
     async (c) => {
-      const { sql } = c.get("deps");
+      const { sql, now } = c.get("deps");
       const { id } = c.req.valid("param");
       const ids = [...new Set(c.req.valid("json").patient_ids)];
       if (!(await sql`select 1 from caregivers where user_id = ${id}`).length)
@@ -96,7 +96,12 @@ export const admin = new Hono<AppEnv>()
       ) {
         throw conflict("Alguno de los pacientes elegidos no existe.", "unknown_patient");
       }
+      const today = nowAR(now()).date;
       await sql.begin(async (tx) => {
+        // Al quitar un paciente se borran sus turnos de hoy en adelante; los pasados quedan de historial.
+        await tx`delete from shifts where caregiver_id = ${id} and date >= ${today}
+                 and patient_id in (select patient_id from caregiver_patients where caregiver_id = ${id})
+                 and patient_id <> all(${tx.array(ids)}::uuid[])`;
         await tx`delete from caregiver_patients where caregiver_id = ${id}`;
         for (const pid of ids)
           await tx`insert into caregiver_patients (caregiver_id, patient_id) values (${id}, ${pid})`;

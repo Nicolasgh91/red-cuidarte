@@ -57,17 +57,18 @@ Workspace de pnpm con dos paquetes y sin paquetes compartidos: la web importa de
 
 **Stack:** Hono 4, zod 4, `postgres` (porsager) con SQL a mano, `jose`, `@simplewebauthn/server`, nodemailer. Sin ORM.
 
-| Prefijo                                                       | Autenticación                      | Rol                                                        |
-| ------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------- |
-| `GET /health`, `GET /content`                                 | ninguna                            | –                                                          |
-| `POST /signup`                                                | ninguna, límite por IP             | –                                                          |
-| `POST /logout`                                                | ninguna, solo `ALLOWED_ORIGINS`    | –                                                          |
-| `/internal`                                                   | `Bearer CRON_SECRET` (timing-safe) | –                                                          |
-| `/device`                                                     | JWT, sin token de la passkey       | cualquiera registrado                                      |
-| `/me`, `/contact`                                             | JWT + token                        | cualquiera (`/me/patients*`, `/me/medications*`: cuidador) |
-| `/shifts`, `/tasks`, `/wellbeing`, `/reminders`, `/assistant` | JWT + token                        | `caregiver`                                                |
-| `/patient`                                                    | JWT + token                        | `patient`                                                  |
-| `/admin`                                                      | JWT + token                        | `admin`                                                    |
+| Prefijo                                                          | Autenticación                      | Rol                   |
+| ---------------------------------------------------------------- | ---------------------------------- | --------------------- |
+| `GET /health`, `GET /content`                                    | ninguna                            | –                     |
+| `POST /signup`                                                   | ninguna, límite por IP             | –                     |
+| `POST /logout`                                                   | ninguna, solo `ALLOWED_ORIGINS`    | –                     |
+| `/internal`                                                      | `Bearer CRON_SECRET` (timing-safe) | –                     |
+| `/device`                                                        | JWT, sin token de la passkey       | cualquiera registrado |
+| `GET /me`, `/contact`                                            | JWT + token                        | cualquiera            |
+| `/me/profile`, `/me/patients*`, `/me/medications*`, `DELETE /me` | JWT + token                        | `caregiver`           |
+| `/shifts`, `/tasks`, `/wellbeing`, `/reminders`, `/assistant`    | JWT + token                        | `caregiver`           |
+| `/patient`                                                       | JWT + token                        | `patient`             |
+| `/admin`                                                         | JWT + token                        | `admin`               |
 
 - El rol se controla por prefijo en `app.ts`; la **asignación** (¿este cuidador cuida a esta persona?) la controla cada servicio (`services/access.ts` o `caregiver_id = user.id` en el SQL).
 - **Dependencias inyectadas** ([`deps.ts`](../apps/api/src/deps.ts), [`createDeps.ts`](../apps/api/src/createDeps.ts)): `env`, `sql`, `verifier`, `authAdmin`, `mailer`, `llm`, `now`. En los tests ([`test/harness.ts`](../apps/api/test/harness.ts)) son falsas salvo la base. Los handlers las leen con `c.get("deps")`.
@@ -88,6 +89,8 @@ App.tsx  /privacidad (pública, la pide Google Play)
                → LayerProvider (pausa guiada, urgencia) → RoleApp (GET /me)
                  → [RemindersRuntime, solo cuidadores] → AppShell → RoleRoutes
 ```
+
+Los diagramas de pantallas y vistas por rol están en [`vistas-por-rol.md`](vistas-por-rol.md).
 
 - **Navegación:** [`nav.ts`](../apps/web/src/nav.ts) tiene, por rol, el menú (`NAV`), la pantalla inicial (`HOME`) y las rutas (`VIEWS`). El filtro por rol en la web es solo de experiencia: **la autorización la hace la API**.
 - **Cliente de la API** ([`api/client.ts`](../apps/web/src/api/client.ts)): `hc<AppType>`. En producción `VITE_API_URL=/api` (rewrite, mismo origen). Cada pedido lleva el JWT, `credentials: "include"` (la cookie del token), timeout de 20 s y, en Android, `X-Device-Token`. Ante 401 cierra la sesión; ante 403 `device_login_required` hace **un** re-ingreso con passkey y **un** reintento. `unwrap()` convierte la respuesta en datos o `ApiError`; los hooks están en `api/queries/<dominio>.ts`.
@@ -110,7 +113,7 @@ sequenceDiagram
   else con passkey y sin token vigente
     W->>API: login/options → usar passkey → login/verify
   end
-  API-->>W: Set-Cookie __Host-cuidarte_device (HttpOnly; en Android, también en el cuerpo)
+  API-->>W: Set-Cookie __Host-cuidarte_device (HttpOnly, en Android, también en el cuerpo)
 ```
 
 | Situación                                   | Qué pasa                                                                                                                                                                                                                                                                                                                                                              |
@@ -130,7 +133,7 @@ sequenceDiagram
 
 El esquema vive en [`supabase/migrations/`](../supabase/migrations/); el modelo completo está en [`spec.md`](spec.md).
 
-- **`users` no tiene FK a `auth.users`:** una persona cuidada sin mail es solo una ficha con UUID propio.
+- **`users` no tiene FK a `auth.users`:** un paciente sin mail es solo una ficha con UUID propio.
 - **Turnos sin superposición:** además del chequeo en el servicio, la restricción `shifts_no_overlap` (`EXCLUDE USING gist`) lo garantiza ante pedidos simultáneos. Un turno con fin menor que inicio cruza la medianoche.
 - **`task_completions`:** PK `(date, patient_id, task_key)`; `task_key` es el id de la plantilla o `med-<id>-<HH:MM>`.
 - **`mail_log`:** se registra `pending` antes de enviar y `sent`/`failed` después (si el SMTP confirma pero falla la escritura, no se reenvía). `mailer.ts` clasifica la falla (`MailError.kind`: dns, connect, timeout, tls, auth, rejected, unknown) y `mail_log.error` guarda un texto legible; ver «Si el correo falla» en [`ops.md`](ops.md). Índice único parcial: un mail de cumpleaños por año.
@@ -176,18 +179,13 @@ El esquema vive en [`supabase/migrations/`](../supabase/migrations/); el modelo 
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Agregar un endpoint**                  | Esquema zod en `lib/schemas.ts` → handler en `routes/<dominio>.ts` con `validate(...)` → lógica en `services/` → test en `test/<dominio>.test.ts`. Prefijo nuevo: montarlo en `app.ts` con su `requireRole`.                                        |
 | **Consumirlo desde la web**              | Hook en `src/api/queries/<dominio>.ts` con `useApi()` + `unwrap()`; los tipos salen de `AppType`.                                                                                                                                                   |
-| **Agregar una pantalla**                 | Componente en `src/views/<rol>/` y entrada en `VIEWS` (y en `NAV` si va en el menú) de `src/nav.ts`.                                                                                                                                                |
+| **Agregar una pantalla**                 | Componente en `src/views/<rol>/` y entrada en `VIEWS` (y en `NAV` si va en el menú) de `src/nav.ts`. Actualizar los diagramas de [`vistas-por-rol.md`](vistas-por-rol.md).                                                                          |
 | **Cambiar el esquema**                   | Migración nueva en `supabase/migrations/`; `pnpm db:migrate` y `pnpm test` en local; el SQL se corre a mano en Supabase antes del deploy (lo que borra, después).                                                                                   |
 | **Limitar un pedido**                    | `hit(sql, "<uso>:<clave>", { limit, windowMs, now, message })` de `lib/rateLimit.ts`.                                                                                                                                                               |
 | **Agregar una dependencia externa**      | Interfaz en `deps.ts`, real en `createDeps.ts`, falsa en `test/harness.ts`.                                                                                                                                                                         |
 | **Agregar una variable de entorno**      | `src/env.ts` (API) o `.env.example` (web), [`ops.md`](ops.md#variables-de-entorno) y el panel de Vercel.                                                                                                                                            |
 | **Agregar una herramienta al asistente** | Definición y ejecución en `services/assistant.ts` y su texto en `renderToolReply`. Si escribe datos, después no se vuelve al modelo. La definición no lleva datos de la persona (rompería el caché); cuidar el costo en tokens del _system prompt_. |
 
-## 11. Pendientes conocidos
+## 11. Pendientes
 
-- **Idempotencia del asistente:** si la respuesta se pierde después de cargar turnos (se corta la red o se cierra la app) y la persona lo pide de nuevo con otras palabras, el modelo puede resolver fechas distintas que no se pisan y cargarlas. Se ven en Turnos y se pueden borrar. Una garantía estricta necesita una clave por mensaje guardada en la base (columna `shifts.request_id` con índice único y un `request_id` del cliente): es una migración, para cuando aparezcan casos reales.
-- **Pruebas con servicios reales sin hacer:** passkeys en Android, API en Vercel (SMTP, JWKS real, cron, arranque en frío) y calidad de Groq con herramientas ([`ops.md`](ops.md#pruebas-pendientes-con-servicios-reales)).
-- **Dominios:** la configuración prevista está en [`dns.md`](dns.md), pero aún no se aplicó: hoy la web reescribe a `red-cuidarte.vercel.app` y `api.redasistir.online` no está configurado.
-- **Versiones de Postgres:** Docker local y CI usan 16; Supabase y el backup, 17.
-- **Build de Vercel sin `strict`:** el build de la API no lee el `tsconfig` base, por eso `pnpm typecheck` compila también con `--strict false` y los tipos de entrada salen de los esquemas de zod.
-- Sin rotación de `MEDICATIONS_KEY`; términos y privacidad provisorios hasta la revisión legal.
+Van en un solo documento: [`pendientes.md`](pendientes.md).

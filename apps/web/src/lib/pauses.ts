@@ -23,7 +23,7 @@ export const PAUSES: Record<string, Pause> = {
     icon: "user",
     secs: 300,
     steps: [
-      "Sentate o acostate cómodo. Cerrá los ojos si querés.",
+      "Sentate o acostate en una posición cómoda. Cerrá los ojos si querés.",
       "Llevá la atención a tus pies. Notá el apoyo.",
       "Subí a las piernas. Aflojá las rodillas.",
       "Notá tu abdomen subir y bajar con la respiración.",
@@ -32,7 +32,7 @@ export const PAUSES: Record<string, Pause> = {
       "Recorré brazos y manos. Abrí los dedos.",
       "Aflojá el cuello y la mandíbula.",
       "Relajá la frente y los ojos.",
-      "Sentí todo tu cuerpo junto. Respirá tranquilo.",
+      "Sentí todo tu cuerpo junto. Respirá con calma.",
     ],
   },
   micro: {
@@ -70,7 +70,7 @@ export const PAUSES: Record<string, Pause> = {
     secs: 180,
     steps: [
       "Parate derecho, con los pies separados al ancho de la cadera.",
-      "Inclinás la cabeza hacia un hombro. Sostené. Cambiá de lado.",
+      "Incliná la cabeza hacia un hombro. Sostené. Cambiá de lado.",
       "Girá los hombros hacia atrás, cinco veces, despacio.",
       "Entrelazá los dedos y estirá los brazos hacia adelante.",
       "Llevá los brazos arriba y estirate hacia el techo.",

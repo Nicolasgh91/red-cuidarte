@@ -19,7 +19,11 @@ const toolTurn = (...calls: ToolCall[]): LlmResult => ({ content: null, tool_cal
 const say = (content: string): LlmResult => ({ content, tool_calls: [] });
 const chat = (who: string, text = "hola") =>
   h.req("/assistant/chat", { as: who, json: { messages: [{ role: "user", content: text }] } });
-type ChatRes = { reply: string; added: { id: string; date: string; patient_id: string }[] };
+type ChatRes = {
+  reply: string;
+  added: { id: string; date: string; patient_id: string }[];
+  urgent: boolean;
+};
 const chatJson = async (who: string, text?: string) =>
   (await (await chat(who, text)).json()) as ChatRes;
 const turno = (paciente: string, fecha = "2026-10-26", desde = "08:00", hasta = "14:00") => ({
@@ -54,6 +58,7 @@ describe("asistente (F8)", () => {
       "La semana que viene trabajo lunes y miércoles de 8 a 14 con Elena",
     );
     expect(res.reply).toBe("Listo, cargué 2 turnos.");
+    expect(res.urgent).toBe(false);
     expect(res.added.map((s) => [s.date, s.patient_id])).toEqual([
       ["2026-10-26", elena],
       ["2026-10-28", elena],
@@ -240,6 +245,7 @@ describe("asistente (F8)", () => {
     h.setLlm(() => toolTurn(call("listar_turnos", { desde: "ayer", hasta: "hoy" })));
     const res = await chatJson(c);
     expect(res.reply).toContain("no pude terminar");
+    expect(res.urgent).toBe(false);
     expect(h.llmCalls).toHaveLength(4);
   });
 
@@ -306,7 +312,7 @@ describe("asistente: urgencias", () => {
   it("una urgencia activa se responde sin Groq y sin gastar el cupo", async () => {
     const { c } = await setup();
     const res = await chatJson(c, "Mi mamá no respira, ¿qué hago?");
-    expect(res).toEqual({ reply: EMERGENCY_REPLY, added: [] });
+    expect(res).toEqual({ reply: EMERGENCY_REPLY, added: [], urgent: true });
     expect(res.reply).toContain("SAME 107");
     expect(h.llmCalls).toHaveLength(0);
     expect(await usageOf(c)).toEqual([]);
@@ -320,13 +326,26 @@ describe("asistente: urgencias", () => {
     });
     const r = await chat(c, "Se cayó y se golpeó la cabeza");
     expect(r.status).toBe(200);
-    expect(((await r.json()) as ChatRes).reply).toBe(EMERGENCY_REPLY);
+    const body = (await r.json()) as ChatRes;
+    expect(body.reply).toBe(EMERGENCY_REPLY);
+    expect(body.urgent).toBe(true);
   });
 
-  it("una pregunta hipotética sigue por Groq", async () => {
+  it("una pregunta hipotética sigue por Groq y no se marca como urgencia", async () => {
     const { c } = await setup();
-    await chat(c, "¿Qué hago si se desmaya?");
+    const res = await chatJson(c, "¿Qué hago si se desmaya?");
     expect(h.llmCalls).toHaveLength(1);
+    expect(res.urgent).toBe(false);
+  });
+
+  it("urgent es false en toda respuesta que no sea el aviso fijo, aunque el modelo hable de una urgencia", async () => {
+    const { c } = await setup();
+    h.setLlm(() => say("Si es una urgencia, llamá al SAME 107."));
+    const plain = await chatJson(c, "¿Cuándo hay que llamar al SAME?");
+    expect(plain).toMatchObject({ reply: "Si es una urgencia, llamá al SAME 107.", urgent: false });
+    h.setLlm(() => toolTurn(call("listar_turnos", { desde: "2026-10-26", hasta: "2026-10-26" })));
+    const tool = await chatJson(c, "¿Qué turnos tengo el lunes?");
+    expect(tool.urgent).toBe(false);
   });
 });
 
@@ -402,6 +421,7 @@ describe("asistente: integridad de los turnos", () => {
     );
     const res = await chatJson(c);
     expect(res.reply).toBe("¿Qué días trabajás?");
+    expect(res.urgent).toBe(false);
     expect(h.llmCalls).toHaveLength(2);
     const sent = h.llmCalls[1]!.messages.at(-1) as { role: string; content: string };
     expect(sent.role).toBe("tool");

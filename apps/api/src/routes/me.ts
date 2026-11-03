@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../deps.js";
-import { requireRole } from "../auth/middleware.js";
 import { HttpError, conflict, notFound } from "../errors.js";
 import { caregiverProfile, linkCode, newMedication, newPatient, uuid } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
@@ -12,19 +11,25 @@ import { addressOf } from "../services/mail.js";
 
 const idParam = z.object({ id: uuid });
 
-export const me = new Hono<AppEnv>()
-  .get("/", async (c) => {
-    const { sql } = c.get("deps");
-    const user = c.get("user");
-    const [profile] =
-      user.role === "caregiver"
-        ? await sql`select first_name, last_names, phone, email, birth_date from caregivers where user_id = ${user.id}`
-        : user.role === "admin"
-          ? await sql`select first_name, last_name, email, mobile from admins where user_id = ${user.id}`
-          : await sql`select first_name, last_name from patients where user_id = ${user.id}`;
-    return c.json({ id: user.id, role: user.role, profile: profile ?? null });
-  })
-  .put("/profile", requireRole("caregiver"), validate("json", caregiverProfile), async (c) => {
+/** Cualquier rol autenticado: quién soy y mi perfil. */
+export const me = new Hono<AppEnv>().get("/", async (c) => {
+  const { sql } = c.get("deps");
+  const user = c.get("user");
+  const [profile] =
+    user.role === "caregiver"
+      ? await sql`select first_name, last_names, phone, email, birth_date from caregivers where user_id = ${user.id}`
+      : user.role === "admin"
+        ? await sql`select first_name, last_name, email, mobile from admins where user_id = ${user.id}`
+        : await sql`select first_name, last_name from patients where user_id = ${user.id}`;
+  return c.json({ id: user.id, role: user.role, profile: profile ?? null });
+});
+
+/**
+ * Solo cuidadores: perfil, pacientes y medicación. Se monta detrás de requireRole("caregiver") en
+ * app.ts, así que una ruta nueva acá queda protegida sin repetir la guarda.
+ */
+export const meCaregiver = new Hono<AppEnv>()
+  .put("/profile", validate("json", caregiverProfile), async (c) => {
     const { sql } = c.get("deps");
     const id = c.get("user").id;
     const p = c.req.valid("json");
@@ -37,7 +42,7 @@ export const me = new Hono<AppEnv>()
     });
     return c.json({ ok: true as const });
   })
-  .get("/patients", requireRole("caregiver"), async (c) => {
+  .get("/patients", async (c) => {
     // Pacientes asignados con su medicación (dato de salud: solo cuidadores asignados y admin).
     const deps = c.get("deps");
     const rows = await deps.sql<{ user_id: string; first_name: string; last_name: string }[]>`
@@ -58,7 +63,7 @@ export const me = new Hono<AppEnv>()
       })),
     });
   })
-  .post("/patients", requireRole("caregiver"), validate("json", newPatient), async (c) => {
+  .post("/patients", validate("json", newPatient), async (c) => {
     // El cuidador/a da de alta a su paciente y queda asignado a él/ella. No puede asignarse
     // pacientes existentes: eso lo hace el admin.
     const id = await createPatient(c.get("deps"), c.req.valid("json"), {
@@ -66,7 +71,7 @@ export const me = new Hono<AppEnv>()
     });
     return c.json({ id }, 201);
   })
-  .post("/patients/link", requireRole("caregiver"), validate("json", linkCode), async (c) => {
+  .post("/patients/link", validate("json", linkCode), async (c) => {
     // El paciente le pasó su código: queda asignado a este cuidador/a.
     const { sql, now } = c.get("deps");
     const id = await redeemLinkCode(sql, c.get("user").id, c.req.valid("json").code, now());
@@ -74,7 +79,6 @@ export const me = new Hono<AppEnv>()
   })
   .post(
     "/patients/:id/medications",
-    requireRole("caregiver"),
     validate("param", idParam),
     validate("json", newMedication),
     async (c) => {
@@ -90,11 +94,11 @@ export const me = new Hono<AppEnv>()
       return c.json(med, 201);
     },
   )
-  .delete("/medications/:id", requireRole("caregiver"), validate("param", idParam), async (c) => {
+  .delete("/medications/:id", validate("param", idParam), async (c) => {
     await removeMedication(c.get("deps").sql, c.get("user"), c.req.valid("param").id);
     return c.json({ ok: true as const });
   })
-  .delete("/", requireRole("caregiver"), async (c) => {
+  .delete("/", async (c) => {
     // Borra perfil, bienestar, turnos y recordatorios (cascade) y la cuenta de Auth.
     const deps = c.get("deps");
     const id = c.get("user").id;

@@ -6,11 +6,13 @@ beforeAll(async () => void (h = await createHarness()));
 beforeEach(() => h.reset());
 afterAll(() => h.close());
 
-describe("persona cuidada: Hoy", () => {
+describe("paciente: Hoy", () => {
   it("muestra quién la cuida ahora, el próximo turno y la medicación del día", async () => {
     const p = await h.patient({ first_name: "Elena", email: "elena@example.org" });
     const sofia = await h.caregiver({ first_name: "Sofía", last_names: "Ejemplo" });
     const luis = await h.caregiver({ first_name: "Luis", last_names: "Ejemplo" });
+    await h.assign(sofia, p);
+    await h.assign(luis, p);
     await h.shift(sofia, p, "2026-10-21", "08:00", "14:00"); // ahora son las 12:00 en Argentina
     await h.shift(luis, p, "2026-10-21", "14:00", "20:00");
     await h.medication(p, "Metformina", "500 mg", ["20:00", "08:00"]);
@@ -31,6 +33,32 @@ describe("persona cuidada: Hoy", () => {
       "08:00 Metformina",
       "20:00 Metformina",
     ]);
+  });
+
+  it("no muestra turnos de un cuidador que ya no está asignado", async () => {
+    const p = await h.patient({ first_name: "Elena", email: "elena@example.org" });
+    const sofia = await h.caregiver({ first_name: "Sofía" });
+    const luis = await h.caregiver({ first_name: "Luis" });
+    await h.assign(sofia, p);
+    await h.assign(luis, p);
+    await h.shift(sofia, p, "2026-10-21", "08:00", "14:00");
+    await h.shift(luis, p, "2026-10-21", "14:00", "20:00");
+    const today = async () =>
+      (await (await h.req("/patient/today", { as: p })).json()) as {
+        current: { caregiver: string } | null;
+        next: { caregiver: string } | null;
+        today_shifts: { caregiver: string }[];
+      };
+    expect((await today()).today_shifts.map((s) => s.caregiver)).toEqual([
+      "Sofía Ejemplo",
+      "Luis Ejemplo",
+    ]);
+    // El turno de Sofía queda en la base (p. ej. un dato viejo), pero ya no la cuida.
+    await h.sql`delete from caregiver_patients where caregiver_id = ${sofia} and patient_id = ${p}`;
+    const body = await today();
+    expect(body.today_shifts.map((s) => s.caregiver)).toEqual(["Luis Ejemplo"]);
+    expect(body.current).toBeNull();
+    expect(body.next).toMatchObject({ caregiver: "Luis Ejemplo" });
   });
 
   it("no mezcla turnos ni medicación de otras personas", async () => {

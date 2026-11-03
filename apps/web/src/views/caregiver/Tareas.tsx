@@ -78,7 +78,7 @@ function PatientTasks({ group, date }: { group: TaskGroup; date: string }) {
               <button
                 type="button"
                 className="icon-btn"
-                aria-label="Quitar tarea diaria"
+                aria-label={`Quitar tarea diaria: ${t.text}`}
                 onClick={(e) => {
                   e.preventDefault();
                   remove.mutate(t.key, { onError: (err) => toast(errorMessage(err)) });
@@ -126,7 +126,7 @@ export function Tareas() {
       <div className="head">
         <h1>Tareas del día</h1>
         <p className="sub">
-          Un checklist por cada persona que cuidás. Se arma solo todos los días.
+          Un checklist por cada paciente que cuidás. Se arma solo todos los días.
         </p>
       </div>
       <div className="toolbar">
@@ -170,8 +170,8 @@ export function Tareas() {
         }
       </Async>
       <p className="foot-note">
-        Las tareas de medicación salen de la ficha de cada paciente, que cargás en Personas
-        cuidadas. Las demás las podés agregar o quitar vos.
+        Las tareas de medicación salen de la ficha de cada paciente, que cargás en Pacientes. Las
+        demás las podés agregar o quitar vos.
       </p>
     </div>
   );

@@ -247,7 +247,7 @@ export function Bienestar() {
           <textarea
             id="reg-note"
             maxLength={500}
-            placeholder="Algo que quieras recordar de hoy..."
+            placeholder="Algo que quieras recordar de hoy…"
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />

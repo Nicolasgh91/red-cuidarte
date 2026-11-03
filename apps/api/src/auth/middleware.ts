@@ -61,7 +61,7 @@ export const authenticate = (opts: { requireDevice: boolean }) =>
 
 const ROLE_PLURAL: Record<Role, string> = {
   caregiver: "cuidadores/as",
-  patient: "personas cuidadas",
+  patient: "pacientes",
   admin: "administradores/as",
 };
 

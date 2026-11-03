@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_CONTENT } from "../src/content/site.js";
+import { contentSchemas } from "../src/content/schemas.js";
+import { CONTENT_KEYS, DEFAULT_CONTENT } from "../src/content/site.js";
 import type { SiteContent } from "../src/content/site.js";
 import { createHarness, type Harness } from "./harness.js";
 
@@ -145,5 +146,52 @@ describe("contenido de la web", () => {
     }
     expect((await h.req("/admin/content/quotes", { method: "PUT", json: ["x"] })).status).toBe(401);
     expect(await h.sql`select 1 from site_content`).toHaveLength(0);
+  });
+});
+
+describe("textos originales", () => {
+  const text = (v: unknown) => JSON.stringify(v);
+
+  it("cumplen el esquema que valida lo que guarda el admin (se pueden restaurar y volver a guardar)", () => {
+    for (const key of CONTENT_KEYS) {
+      const r = contentSchemas[key].safeParse(JSON.parse(text(DEFAULT_CONTENT[key])));
+      expect(r.success, `${key}: ${r.error?.issues[0]?.message}`).toBe(true);
+    }
+  });
+
+  it("usan «paciente» y no «persona cuidada»", () => {
+    expect(text(DEFAULT_CONTENT)).not.toMatch(/personas? cuidadas?/i);
+    expect(DEFAULT_CONTENT.faq.map((f) => f[1]).join(" ")).toContain("en Pacientes");
+  });
+
+  it("no describen lo que el código ya no hace: mensajes de contacto guardados, intentos de ingreso, un solo dispositivo", () => {
+    const legal = text([DEFAULT_CONTENT.terminos, DEFAULT_CONTENT.privacidad]);
+    expect(legal).not.toMatch(/(?<!no )guardamos tu mensaje/i);
+    expect(legal).not.toMatch(/intentos de ingreso/i);
+    const all = text(DEFAULT_CONTENT);
+    expect(all).not.toMatch(/un solo dispositivo|libere tu cuenta|Registrá tu dispositivo/i);
+    expect(all).not.toMatch(/Mi perfil › Borrar mi cuenta/);
+  });
+
+  it("dicen cómo es el contacto (no se guarda, 3 cada 24 horas), la passkey y los recordatorios", () => {
+    const terminos = text(DEFAULT_CONTENT.terminos);
+    expect(terminos).toContain("no guardamos tu mensaje");
+    expect(terminos).toContain("3 mensajes cada 24 horas");
+    expect(terminos).toContain("passkey");
+    expect(terminos).toContain("el administrador puede restablecerla");
+    expect(terminos).toMatch(/agua y de estiramientos vienen activados/);
+    expect(text(DEFAULT_CONTENT.privacidad)).toContain("no guardamos tu mensaje");
+  });
+
+  it("la promesa de derechos distingue a cuidadores de pacientes y administradores", () => {
+    for (const page of [DEFAULT_CONTENT.terminos, DEFAULT_CONTENT.privacidad]) {
+      const t = text(page);
+      expect(t).toContain("Si sos cuidador/a, podés ver y corregir tus datos en Mi perfil");
+      expect(t).toContain("Si sos paciente o administrador/a, escribinos por Contacto");
+    }
+  });
+
+  it("Acerca incluye a los pacientes", () => {
+    expect(text(DEFAULT_CONTENT.acerca)).toContain("También es para los pacientes");
   });
 });

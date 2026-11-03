@@ -44,17 +44,17 @@ describe("POST /contact", () => {
     ]);
   });
 
-  it("sin asunto manda «Sin asunto»; lo pueden usar el admin y la persona cuidada", async () => {
+  it("sin asunto manda «Sin asunto»; lo pueden usar el admin y el paciente", async () => {
     const a = await h.admin();
     const p = await h.patient({ first_name: "Elena", email: "elena@example.org" });
     expect((await send(a, { message: "Del admin" })).status).toBe(200);
-    expect((await send(p, { subject: "", message: "De la persona cuidada" })).status).toBe(200);
+    expect((await send(p, { subject: "", message: "Del paciente" })).status).toBe(200);
     expect(h.sent.map((m) => m.subject)).toEqual([
       "[Contacto] Sin asunto",
       "[Contacto] Sin asunto",
     ]);
     expect(h.sent[0]!.text).toContain("Rol: Administrador/a");
-    expect(h.sent[1]!.text).toContain("Rol: Persona cuidada");
+    expect(h.sent[1]!.text).toContain("Rol: Paciente");
     expect(h.sent[1]!.replyTo).toBe("elena@example.org");
   });
 

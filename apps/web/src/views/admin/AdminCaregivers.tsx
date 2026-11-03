@@ -14,7 +14,7 @@ import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { birthToIso, isoToBirth } from "../../lib/dates";
 import { okMail, okPhone } from "../../lib/validators";
-import { personName } from "../../api/types";
+import { patientName, personName } from "../../api/types";
 
 function AssignCell({
   caregiver,
@@ -31,6 +31,13 @@ function AssignCell({
     .join(", ");
 
   function change(pid: string, on: boolean) {
+    if (
+      !on &&
+      !window.confirm(
+        `¿Quitar a ${patientName(patients, pid)} de ${personName(caregiver)}? Se pierde el acceso a su medicación y a sus tareas, y se borran los turnos futuros de este cuidador con ese paciente.`,
+      )
+    )
+      return;
     const ids = on
       ? [...new Set([...caregiver.patient_ids, pid])]
       : caregiver.patient_ids.filter((x) => x !== pid);
@@ -90,7 +97,7 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
     const next: Errors = {};
     if (!v.first) next.first = "Falta el nombre.";
     if (!v.last) next.last = "Faltan los apellidos.";
-    if (!okPhone(v.phone)) next.phone = "Revisá el teléfono.";
+    if (!okPhone(v.phone)) next.phone = "Revisá el celular.";
     if (!okMail(v.email)) next.email = "Revisá el mail.";
     if (!birthIso) next.birth = "Usá dd/mm/aaaa.";
     setErrors(next);
@@ -110,7 +117,10 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
       setEmail("");
       setBirth("");
       setIds([]);
-      toast("Cuidador/a agregado. Le va a llegar un código por mail al ingresar.");
+      toast(
+        "Cuidador/a agregado. Avisale que, para ingresar, toque «¿Primera vez u olvidaste tu contraseña?» y pida el código por mail.",
+        8000,
+      );
     } catch (err) {
       if (err instanceof ApiError && err.code === "email_taken") setErrors({ email: err.message });
       else setErrors({ form: errorMessage(err) });
@@ -144,7 +154,7 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
         <div className="two">
           <Field
             id="ac-tel"
-            label="Teléfono"
+            label="Celular"
             hint="Con código de área, sin 0 ni 15."
             error={errors.phone}
           >
@@ -193,7 +203,8 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
           </div>
         </div>
         <p className="optional" style={{ margin: 0 }}>
-          No lleva contraseña: al ingresar, le llega un código por mail.
+          No lleva contraseña: para ingresar, tiene que tocar «¿Primera vez u olvidaste tu
+          contraseña?» en la pantalla de ingreso y pedir el código por mail.
         </p>
         {errors.form && (
           <p className="err" role="alert">
@@ -229,7 +240,7 @@ export function AdminCaregivers() {
                       <tr>
                         <th>Nombre</th>
                         <th>Apellidos</th>
-                        <th>Teléfono</th>
+                        <th>Celular</th>
                         <th>Mail</th>
                         <th>Nacimiento</th>
                         <th>Pacientes</th>
@@ -267,7 +278,7 @@ export function AdminCaregivers() {
       <section className="group">
         <div className="row-between">
           <h2 className="section">Administradores</h2>
-          <span className="pill neutral">Se cargan en la base de datos</span>
+          <span className="pill neutral">Alta por el equipo técnico</span>
         </div>
         <Async query={admins}>
           {(list) => (

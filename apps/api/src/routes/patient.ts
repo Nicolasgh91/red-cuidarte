@@ -4,7 +4,7 @@ import { addDays, hhmm, nowAR, nowAbs, span, toMin } from "../lib/time.js";
 import { linkCodeFor } from "../services/linkCode.js";
 import { listMedications } from "../services/medications.js";
 
-// Persona cuidada: solo lectura de su propio día.
+// Paciente: solo lectura de su propio día.
 export const patient = new Hono<AppEnv>()
   .get("/link-code", async (c) => {
     // Código para compartir con el cuidador/a: vale 48 horas y se usa una sola vez.
@@ -32,7 +32,9 @@ export const patient = new Hono<AppEnv>()
       }[]
     >`
     select s.date, s.start_time, s.end_time, c.first_name, c.last_names
-    from shifts s join caregivers c on c.user_id = s.caregiver_id
+    from shifts s
+      join caregivers c on c.user_id = s.caregiver_id
+      join caregiver_patients cp on cp.caregiver_id = s.caregiver_id and cp.patient_id = s.patient_id
     where s.patient_id = ${id} and s.date between ${addDays(today, -1)} and ${addDays(today, 60)}
     order by s.date, s.start_time`;
     const shifts = rows.map((r) => ({

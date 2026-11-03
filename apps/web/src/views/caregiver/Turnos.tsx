@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/errors";
 import { useMyPatients } from "../../api/queries/me";
@@ -70,11 +70,16 @@ function AddShiftForm({ patients, defaultDate }: { patients: Patient[]; defaultD
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("14:00");
   const [repeat, setRepeat] = useState<1 | 4 | 8>(1);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<ReactNode>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!patientId) return setErr("Primero necesitás un paciente. Agregalo en Personas cuidadas.");
+    if (!patientId)
+      return setErr(
+        <>
+          Primero necesitás un paciente. <Link to="/pacientes">Agregalo en Pacientes</Link>.
+        </>,
+      );
     if (!date || !start || !end) return setErr("Completá fecha, desde y hasta.");
     if (start === end) return setErr("El turno no puede empezar y terminar a la misma hora.");
     setErr(null);

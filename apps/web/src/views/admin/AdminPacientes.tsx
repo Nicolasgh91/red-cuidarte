@@ -52,12 +52,12 @@ export function AdminPacientes() {
   return (
     <div className="page">
       <div className="head">
-        <h1>Personas cuidadas</h1>
+        <h1>Pacientes</h1>
         <p className="sub">Nombre, apellido y medicación.</p>
       </div>
       <p className="note">
-        La medicación es un dato de salud: la ven solo el administrador y los cuidadores asignados.
-        Cada toma aparece como tarea en el checklist diario del cuidador.
+        La medicación es un dato de salud: la ven el administrador, los cuidadores asignados y el
+        propio paciente. Cada toma aparece como tarea en el checklist diario del cuidador.
       </p>
       <Async query={patients}>
         {(list) => (

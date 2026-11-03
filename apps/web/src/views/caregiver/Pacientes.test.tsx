@@ -19,7 +19,7 @@ function api(patients: unknown[], post = vi.fn().mockResolvedValue(ok({ id: "nue
 }
 
 describe("Pacientes", () => {
-  it("lista las personas cuidadas con su medicación", async () => {
+  it("lista los pacientes con su medicación", async () => {
     renderWithApp(<Pacientes />, { api: api([elena]).api });
     expect(await screen.findByText("Elena Ejemplo")).toBeInTheDocument();
     expect(screen.getByText("Enalapril")).toBeInTheDocument();
@@ -59,17 +59,28 @@ describe("Pacientes", () => {
       },
     });
     const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm");
     renderWithApp(<Pacientes />, { api: a });
-    await user.click(await screen.findByRole("button", { name: "Quitar Enalapril" }));
+    const quitar = await screen.findByRole("button", { name: "Quitar Enalapril" });
+    // Sin confirmar no se borra nada.
+    confirm.mockReturnValueOnce(false);
+    await user.click(quitar);
+    expect(confirm).toHaveBeenCalledWith(
+      "¿Quitar Enalapril? Se borra de la ficha y de las tareas de hoy.",
+    );
+    expect(del).not.toHaveBeenCalled();
+    confirm.mockReturnValueOnce(true);
+    await user.click(quitar);
     await waitFor(() => expect(del).toHaveBeenCalledWith({ param: { id: "m1" } }));
+    confirm.mockRestore();
   });
 
   it("sin pacientes invita a agregar el primero", async () => {
     renderWithApp(<Pacientes />, { api: api([]).api });
-    expect(await screen.findByText(/Todavía no tenés personas cuidadas/)).toBeInTheDocument();
+    expect(await screen.findByText(/Todavía no tenés pacientes/)).toBeInTheDocument();
   });
 
-  it("el cuidador da de alta a una persona y la API recibe sus datos", async () => {
+  it("el cuidador da de alta a un paciente y la API recibe sus datos", async () => {
     const { api: a, post } = api([]);
     const user = userEvent.setup();
     renderWithApp(<Pacientes />, { api: a });
@@ -79,7 +90,7 @@ describe("Pacientes", () => {
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith({ json: { first_name: "Raúl", last_name: "Paz" } }),
     );
-    expect(await screen.findByText("Persona cuidada agregada.")).toBeInTheDocument();
+    expect(await screen.findByText("Paciente agregado.")).toBeInTheDocument();
   });
 
   it("valida los campos y muestra el error de mail repetido", async () => {
@@ -103,7 +114,7 @@ describe("Pacientes", () => {
     });
   });
 
-  it("vincula a una persona con su código", async () => {
+  it("vincula a un paciente con su código", async () => {
     const link = vi.fn().mockResolvedValue(ok({ id: "p9" }));
     const a = fakeApi({
       me: { patients: { $get: vi.fn(async () => ok({ patients: [] })), link: { $post: link } } },
@@ -113,7 +124,7 @@ describe("Pacientes", () => {
     await user.type(await screen.findByLabelText("Código"), "abcd-2345");
     await user.click(screen.getByRole("button", { name: /Vincular/ }));
     await waitFor(() => expect(link).toHaveBeenCalledWith({ json: { code: "abcd-2345" } }));
-    expect(await screen.findByText("Listo, ya la acompañás.")).toBeInTheDocument();
+    expect(await screen.findByText("Listo, paciente vinculado.")).toBeInTheDocument();
   });
 
   it("muestra el error de un código inválido", async () => {

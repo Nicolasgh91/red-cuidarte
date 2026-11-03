@@ -119,6 +119,78 @@ describe("admin: cuidadores", () => {
     ).toBe(404);
   });
 
+  describe("al quitar un paciente", () => {
+    const put = (a: string, c: string, patient_ids: string[]) =>
+      h.req(`/admin/caregivers/${c}/patients`, { as: a, method: "PUT", json: { patient_ids } });
+    const shiftIds = async () =>
+      (await h.sql<{ id: string }[]>`select id from shifts`).map((r) => r.id).sort();
+
+    async function scenario() {
+      // Hoy es miércoles 2026-10-21 en Argentina.
+      const a = await h.admin();
+      const c = await h.caregiver();
+      const otro = await h.caregiver();
+      const p1 = await h.patient();
+      const p2 = await h.patient();
+      await h.assign(c, p1);
+      await h.assign(c, p2);
+      await h.assign(otro, p1);
+      const s = {
+        past: await h.shift(c, p1, "2026-10-20", "08:00", "14:00"),
+        today: await h.shift(c, p1, "2026-10-21", "08:00", "14:00"),
+        future: await h.shift(c, p1, "2026-10-28", "08:00", "14:00"),
+        keptPatient: await h.shift(c, p2, "2026-10-28", "15:00", "20:00"),
+        otherCaregiver: await h.shift(otro, p1, "2026-10-28", "08:00", "14:00"),
+      };
+      return { a, c, p1, p2, s };
+    }
+
+    it("se borran sus turnos de hoy en adelante; los pasados y los de otros quedan", async () => {
+      const { a, c, p2, s } = await scenario();
+      const r = await put(a, c, [p2]);
+      expect(r.status).toBe(200);
+      expect(await r.json()).toEqual({ ok: true });
+      expect(await shiftIds()).toEqual([s.past, s.keptPatient, s.otherCaregiver].sort());
+      expect(
+        (
+          await h.sql<
+            { patient_id: string }[]
+          >`select patient_id from caregiver_patients where caregiver_id = ${c}`
+        ).map((x) => x.patient_id),
+      ).toEqual([p2]);
+    });
+
+    it("sin pacientes se borran todos los turnos futuros del cuidador/a, no los de otro", async () => {
+      const { a, c, s } = await scenario();
+      expect((await put(a, c, [])).status).toBe(200);
+      expect(await shiftIds()).toEqual([s.past, s.otherCaregiver].sort());
+    });
+
+    it("si las asignaciones no cambian (o solo se suman), no toca ningún turno", async () => {
+      const { a, c, p1, p2, s } = await scenario();
+      const nuevo = await h.patient();
+      const all = Object.values(s).sort();
+      expect((await put(a, c, [p1, p2])).status).toBe(200);
+      expect(await shiftIds()).toEqual(all);
+      expect((await put(a, c, [p2, p1, nuevo])).status).toBe(200);
+      expect(await shiftIds()).toEqual(all);
+    });
+
+    it("«hoy» es la fecha de Argentina: de noche, con otra fecha en UTC, el turno de hoy se borra", async () => {
+      const { a, c, p2, s } = await scenario();
+      h.setNow(new Date("2026-10-22T01:00:00Z")); // 22:00 del 21 en Argentina
+      expect((await put(a, c, [p2])).status).toBe(200);
+      expect(await shiftIds()).toEqual([s.past, s.keptPatient, s.otherCaregiver].sort());
+    });
+
+    it("si el pedido falla (paciente inexistente) no se borra nada", async () => {
+      const { a, c, p2, s } = await scenario();
+      const r = await put(a, c, [p2, "00000000-0000-4000-8000-000000000000"]);
+      expect(r.status).toBe(409);
+      expect(await shiftIds()).toEqual(Object.values(s).sort());
+    });
+  });
+
   it("el cuidador no puede usar estas rutas", async () => {
     const c = await h.caregiver();
     for (const [path, method] of [
@@ -136,7 +208,7 @@ describe("admin: cuidadores", () => {
   });
 });
 
-describe("admin: personas cuidadas y medicación", () => {
+describe("admin: pacientes y medicación", () => {
   it("da de alta una persona sin mail (solo ficha) y otra con mail (con ingreso)", async () => {
     const a = await h.admin();
     const r1 = await h.req("/admin/patients", {

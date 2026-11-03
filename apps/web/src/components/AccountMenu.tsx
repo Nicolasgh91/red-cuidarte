@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import type { Role } from "../api/types";
 import { useAuth } from "../auth/AuthProvider";
@@ -13,6 +13,7 @@ export function AccountMenu({ role, name }: { role: Role; name: string }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const ref = useRef<HTMLDivElement>(null);
+  const menuId = useId();
   const { pathname } = useLocation();
 
   // Cierra al navegar, al tocar afuera o con Escape.
@@ -41,14 +42,15 @@ export function AccountMenu({ role, name }: { role: Role; name: string }) {
     <div className="acct" ref={ref}>
       <button
         className="acct-btn"
-        aria-haspopup="true"
+        aria-label="Mi cuenta"
+        aria-controls={menuId}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
         <Icon name="user" />
         <span>Mi cuenta</span>
       </button>
-      <div className="menu" hidden={!open}>
+      <div className="menu" id={menuId} role="group" aria-label="Menú de cuenta" hidden={!open}>
         <div className="who">
           <b>{name || "Sin nombre"}</b>
           <span>{ROLES[role]}</span>
@@ -62,6 +64,7 @@ export function AccountMenu({ role, name }: { role: Role; name: string }) {
         <Link to="/acerca">Acerca de Red Cuidar</Link>
         <Link to="/contacto">Contacto</Link>
         <Link to="/terminos">Términos y privacidad</Link>
+        <Link to="/privacidad">Privacidad</Link>
         <div className="mlabel">Tema</div>
         <div className="segc" role="group" aria-label="Tema">
           {THEMES.map(([value, label]) => (

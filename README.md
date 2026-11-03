@@ -252,7 +252,7 @@ flowchart LR
 | Base y Auth | Supabase (entornos dev y prod) | Conexión por pooler en modo transacción.                             |
 | Android     | Capacitor                      | Empaqueta el mismo build de la web.                                  |
 
-Variables, configuración de Vercel y Supabase y checklist de lanzamiento en [`docs/ops.md`](docs/ops.md).
+Variables y configuración de Vercel y Supabase en [`docs/ops.md`](docs/ops.md); lo que falta y el checklist de lanzamiento en [`docs/pendientes.md`](docs/pendientes.md).
 
 ## Seguridad
 
@@ -268,6 +268,8 @@ Variables, configuración de Vercel y Supabase y checklist de lanzamiento en [`d
 | ------------------------------------------------------ | --------------------------------------------------------- |
 | [`docs/architecture.md`](docs/architecture.md)         | Arquitectura, decisiones vigentes y dónde tocar cada cosa |
 | [`docs/spec.md`](docs/spec.md)                         | Especificación funcional                                  |
+| [`docs/vistas-por-rol.md`](docs/vistas-por-rol.md)     | Pantallas y vistas por rol, con diagramas                 |
+| [`docs/pendientes.md`](docs/pendientes.md)             | Pendientes y checklist de lanzamiento (único lugar)       |
 | [`docs/ops.md`](docs/ops.md)                           | Variables, Vercel, Supabase, límites y lanzamiento        |
 | [`docs/passkeys.md`](docs/passkeys.md)                 | Passkeys: requisitos, alternativas por equipo y errores   |
 | [`docs/android.md`](docs/android.md)                   | App Android: build, passkeys y publicación                |

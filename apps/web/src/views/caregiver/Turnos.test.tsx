@@ -115,4 +115,23 @@ describe("Turnos", () => {
       json: { patient_id: "p1", start: "08:00", end: "14:00", repeat_weeks: 1 },
     });
   });
+
+  it("sin pacientes, el error lleva a Pacientes", async () => {
+    const post = vi.fn();
+    const sin = fakeApi({
+      me: { patients: { $get: vi.fn().mockResolvedValue(ok({ patients: [] })) } },
+      shifts: { $get: vi.fn().mockResolvedValue(ok({ shifts: [] })), $post: post },
+    });
+    const user = userEvent.setup();
+    renderWithApp(<Turnos />, { api: sin });
+    await user.click(await screen.findByRole("button", { name: /Agregar turno/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Primero necesitás un paciente. Agregalo en Pacientes.",
+    );
+    expect(screen.getByRole("link", { name: "Agregalo en Pacientes" })).toHaveAttribute(
+      "href",
+      "/pacientes",
+    );
+    expect(post).not.toHaveBeenCalled();
+  });
 });

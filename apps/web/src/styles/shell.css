@@ -47,6 +47,23 @@ svg.i {
 .tnum {
   font-variant-numeric: tabular-nums;
 }
+/* "Saltar al contenido": fuera de la pantalla hasta que recibe el foco con el teclado. */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 8px;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--primary);
+  border-radius: 10px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 8px;
+}
 
 .shell {
   display: grid;
@@ -211,6 +228,10 @@ svg.i {
 main {
   min-width: 0;
   padding-bottom: 64px;
+}
+/* Recibe el foco al saltar al contenido: no hace falta resaltar toda la región. */
+main:focus {
+  outline: none;
 }
 .page {
   max-width: 852px;

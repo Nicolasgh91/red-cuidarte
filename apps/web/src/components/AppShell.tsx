@@ -6,6 +6,7 @@ import { RoleRoutes } from "../RoleRoutes";
 import { HOME, NAV, sectionOf } from "../nav";
 import { ROLES } from "../lib/labels";
 import { AccountMenu } from "./AccountMenu";
+import { SkipLink } from "./common";
 import { Icon, Logo } from "./icons";
 import { WhatsAppButton } from "./WhatsAppButton";
 
@@ -23,6 +24,7 @@ export function AppShell({ me }: { me: Me }) {
 
   return (
     <div className={`shell${bare ? " bare" : ""}`}>
+      <SkipLink />
       <header className="top">
         <Link className="logo" to={`/${HOME[role]}`} aria-label="Cuidarte+, ir al inicio">
           <Logo />
@@ -48,7 +50,7 @@ export function AppShell({ me }: { me: Me }) {
             </NavLink>
           ))}
         </nav>
-        <p className="role-tag">Viendo como: {ROLES[role]}</p>
+        <p className="role-tag">Ingresaste como: {ROLES[role]}</p>
       </aside>
       <main id="main" tabIndex={-1}>
         <RoleRoutes role={role} />

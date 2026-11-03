@@ -191,7 +191,12 @@ function PauseDialog({ id, onClose }: { id: string; onClose: () => void }) {
 function UrgentDialog({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const numRef = useRef<HTMLParagraphElement>(null);
+  const callRef = useRef<HTMLAnchorElement>(null);
   const n = SAME_NUMBER;
+
+  useEffect(() => {
+    callRef.current?.focus();
+  }, []);
 
   async function copy() {
     try {
@@ -206,7 +211,7 @@ function UrgentDialog({ onClose }: { onClose: () => void }) {
         sel.removeAllRanges();
         sel.addRange(r);
       }
-      toast("Número seleccionado. Copialo desde el menú.");
+      toast("Número seleccionado. Copialo y pegalo donde lo necesites.");
     }
   }
 
@@ -223,6 +228,7 @@ function UrgentDialog({ onClose }: { onClose: () => void }) {
         </p>
         <div className="btn-row">
           <a
+            ref={callRef}
             className="danger"
             style={{ textDecoration: "none" }}
             href={`tel:${n.replace(/[^\d+]/g, "")}`}

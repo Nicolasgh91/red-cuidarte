@@ -43,13 +43,19 @@ function PasskeyRow({ d }: { d: AdminDevice }) {
           <button
             className="ghost"
             disabled={reset.isPending}
-            onClick={() =>
+            onClick={() => {
+              if (
+                !window.confirm(
+                  `¿Restablecer la passkey de ${d.name}? La próxima vez que ingrese tendrá que crear una nueva.`,
+                )
+              )
+                return;
               reset.mutate(d.id, {
                 onSuccess: () =>
                   toast("Passkey restablecida. Se registra una nueva en el próximo ingreso."),
                 onError: (e) => toast(errorMessage(e)),
-              })
-            }
+              });
+            }}
           >
             Restablecer passkey
           </button>

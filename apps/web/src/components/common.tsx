@@ -1,4 +1,5 @@
 import type { UseQueryResult } from "@tanstack/react-query";
+import { cloneElement, isValidElement } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { errorMessage } from "../api/errors";
@@ -10,6 +11,22 @@ export function BackLink({ to, children }: { to: string; children: ReactNode }) 
     <Link className="back" to={to}>
       <Icon name="chevL" /> {children}
     </Link>
+  );
+}
+
+/** Primer elemento enfocable de cada página: salta directo al contenido (`<main id="main">`). */
+export function SkipLink() {
+  return (
+    <a
+      className="skip-link"
+      href="#main"
+      onClick={(e) => {
+        e.preventDefault();
+        document.getElementById("main")?.focus();
+      }}
+    >
+      Saltar al contenido
+    </a>
   );
 }
 
@@ -80,7 +97,12 @@ export function Async<T>({
   return <>{children(query.data)}</>;
 }
 
-/** Campo de formulario con etiqueta, pista y error. */
+interface ControlA11y {
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+}
+
+/** Campo de formulario con etiqueta, pista y error (enlazados al control para los lectores de pantalla). */
 export function Field({
   id,
   label,
@@ -94,11 +116,28 @@ export function Field({
   error?: string | null;
   children: ReactNode;
 }) {
+  const describedBy = [hint && `${id}-hint`, error && `${id}-err`].filter(Boolean).join(" ");
+  const control = isValidElement<ControlA11y>(children)
+    ? cloneElement(children, {
+        ...(describedBy
+          ? {
+              "aria-describedby": [children.props["aria-describedby"], describedBy]
+                .filter(Boolean)
+                .join(" "),
+            }
+          : {}),
+        ...(error ? { "aria-invalid": true } : {}),
+      })
+    : children;
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      {hint && <p className="hint">{hint}</p>}
-      {children}
+      {hint && (
+        <p className="hint" id={`${id}-hint`}>
+          {hint}
+        </p>
+      )}
+      {control}
       {error && (
         <p className="err" id={`${id}-err`} role="alert">
           {error}

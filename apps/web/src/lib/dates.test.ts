@@ -7,6 +7,7 @@ import {
   birthToIso,
   dayNum,
   durMin,
+  fmtDateTime,
   fmtHours,
   gcalShift,
   hrsLabel,
@@ -61,6 +62,10 @@ describe("fechas y horarios", () => {
     expect(relDay("2026-10-23", now)).toBe("Mañana");
     expect(relDay("2026-10-21", now)).toBe("Ayer");
     expect(relDay("2026-10-26", now)).toMatch(/^Lunes/);
+  });
+
+  it("fmtDateTime muestra día y hora locales", () => {
+    expect(fmtDateTime(new Date(2026, 9, 23, 15, 5))).toMatch(/23 de octubre.*15:05/);
   });
 
   it("ago", () => {

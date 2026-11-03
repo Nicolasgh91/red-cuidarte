@@ -52,12 +52,12 @@ describe("rutas protegidas por rol", () => {
     expect(screen.getByRole("heading", { name: "Inicio cuidador" })).toBeInTheDocument();
   });
 
-  it("un admin no entra a las de cuidador ni a las de la persona cuidada", () => {
+  it("un admin no entra a las de cuidador ni a las del paciente", () => {
     at("admin", "/turnos");
     expect(screen.getByRole("heading", { name: "Panel admin" })).toBeInTheDocument();
   });
 
-  it("la persona cuidada solo ve Hoy (y las páginas comunes)", () => {
+  it("el paciente solo ve Hoy (y las páginas comunes)", () => {
     const { unmount } = at("patient", "/admin");
     expect(screen.getByRole("heading", { name: "Hoy paciente" })).toBeInTheDocument();
     unmount();

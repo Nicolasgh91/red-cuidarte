@@ -18,7 +18,7 @@ interface NewPatientMutation {
   isPending: boolean;
 }
 
-/** Alta de una persona cuidada: la usan el admin y el cuidador/a (que queda asignado a ella). */
+/** Alta de un paciente: la usan el admin y el cuidador/a (que queda asignado a él o ella). */
 export function AddPatientForm({ mutation: add }: { mutation: NewPatientMutation }) {
   const { toast } = useToast();
   const [first, setFirst] = useState("");
@@ -46,7 +46,7 @@ export function AddPatientForm({ mutation: add }: { mutation: NewPatientMutation
       setFirst("");
       setLast("");
       setEmail("");
-      toast("Persona cuidada agregada.");
+      toast("Paciente agregado.");
     } catch (err) {
       if (err instanceof ApiError && err.code === "email_taken") setErrors({ email: err.message });
       else setErrors({ form: errorMessage(err) });
@@ -56,7 +56,7 @@ export function AddPatientForm({ mutation: add }: { mutation: NewPatientMutation
   return (
     <section className="card rcard">
       <h2 className="section" style={{ fontSize: "1.2rem" }}>
-        Agregar persona cuidada
+        Agregar paciente
       </h2>
       <form className="form" onSubmit={submit} noValidate>
         <div className="two">
@@ -84,7 +84,7 @@ export function AddPatientForm({ mutation: add }: { mutation: NewPatientMutation
               Mail <span className="light">(opcional, para que pueda ingresar)</span>
             </>
           }
-          hint="Sin mail es solo una ficha: la persona no puede ingresar a la app."
+          hint="Sin mail es solo una ficha: no puede ingresar a la app. Con mail, ingresa tocando «¿Primera vez u olvidaste tu contraseña?» y pidiendo el código por mail."
           error={errors.email}
         >
           <input

@@ -97,7 +97,7 @@ function ProfileForm({ me }: { me: Me }) {
       <Field
         id="p-phone"
         label="Celular con código de área"
-        hint="Sin el 0 ni el 15 adelante, por ejemplo 342 155 123456."
+        hint="Sin el 0 ni el 15 adelante, por ejemplo 342 123 4567."
         error={errors.phone}
       >
         <input

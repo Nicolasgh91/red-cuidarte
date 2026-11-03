@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, fakeApi, ok, renderWithApp } from "../../test/render";
 import { AdminDispositivos } from "./AdminDispositivos";
 
@@ -54,6 +54,12 @@ function setup() {
 }
 
 describe("Admin › Passkeys", () => {
+  let confirm: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  });
+  afterEach(() => confirm.mockRestore());
+
   it("muestra el estado y las marcas de sincronización y respaldo", async () => {
     renderWithApp(<AdminDispositivos />, { api: setup().api });
     expect(await screen.findAllByText("Activa")).toHaveLength(2);
@@ -71,10 +77,23 @@ describe("Admin › Passkeys", () => {
     const buttons = await screen.findAllByRole("button", { name: "Restablecer passkey" });
     expect(buttons).toHaveLength(2); // la cuenta sin passkey no tiene el botón
     await user.click(buttons[0]!);
+    expect(confirm).toHaveBeenCalledWith(
+      "¿Restablecer la passkey de Sofía Ejemplo? La próxima vez que ingrese tendrá que crear una nueva.",
+    );
     await waitFor(() => expect(release).toHaveBeenCalledWith({ param: { id: "u-sincronizada" } }));
     expect(
       await screen.findByText("Passkey restablecida. Se registra una nueva en el próximo ingreso."),
     ).toBeInTheDocument();
+  });
+
+  it("si no se confirma, no restablece nada", async () => {
+    const { api, release } = setup();
+    confirm.mockReturnValue(false);
+    const user = userEvent.setup();
+    renderWithApp(<AdminDispositivos />, { api });
+    await user.click((await screen.findAllByRole("button", { name: "Restablecer passkey" }))[0]!);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(release).not.toHaveBeenCalled();
   });
 
   it("si la API falla, muestra el motivo", async () => {

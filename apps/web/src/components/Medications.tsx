@@ -108,7 +108,7 @@ function MedicationForm({
   );
 }
 
-/** Medicación de una persona cuidada: tabla con quitar y formulario para agregar. */
+/** Medicación de un paciente: tabla con quitar y formulario para agregar. */
 export function Medications({
   patientId,
   medications,
@@ -142,9 +142,15 @@ export function Medications({
                     <button
                       className="icon-btn"
                       aria-label={`Quitar ${m.name}`}
-                      onClick={() =>
-                        remove.mutate(m.id, { onError: (e) => toast(errorMessage(e)) })
-                      }
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            `¿Quitar ${m.name}? Se borra de la ficha y de las tareas de hoy.`,
+                          )
+                        )
+                          return;
+                        remove.mutate(m.id, { onError: (e) => toast(errorMessage(e)) });
+                      }}
                     >
                       <Icon name="trash" />
                     </button>

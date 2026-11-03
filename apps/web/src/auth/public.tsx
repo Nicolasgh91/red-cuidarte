@@ -3,7 +3,7 @@ import type { FormEvent, InputHTMLAttributes, ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router";
 import { errorMessage } from "../api/errors";
 import { useContent } from "../api/queries/content";
-import { Field } from "../components/common";
+import { Field, SkipLink } from "../components/common";
 import { Icon, Logo } from "../components/icons";
 import type { IconName } from "../components/icons";
 import { birthToIso } from "../lib/dates";
@@ -20,6 +20,7 @@ export const MIN_PASSWORD = 8;
 function AuthScene({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className="auth-scene">
+      <SkipLink />
       <main id="main" tabIndex={-1} className={wide ? "auth-main wide" : "auth-main"}>
         {children}
         <p className="disclaimer auth-disclaimer">{DISCLAIMER}</p>
@@ -635,6 +636,7 @@ export function RecoverScreen() {
 function PublicTerminos() {
   return (
     <div className="shell bare">
+      <SkipLink />
       <header className="top">
         <Link to="/" className="logo">
           <Logo />

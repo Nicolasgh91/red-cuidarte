@@ -62,6 +62,12 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+@media (max-width: 360px) {
+  /* Seis secciones en la barra inferior (cuidador y admin): en pantallas muy angostas, letra un poco menor. */
+  .nav-link {
+    font-size: 0.68rem;
+  }
+}
 @media (max-width: 620px) {
   .auth-card {
     padding: 24px 18px 22px;

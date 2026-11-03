@@ -130,7 +130,7 @@ export const ARTICLES: readonly Article[] = [
     id: "comunicacion",
     cat: "Técnica",
     icon: "chat",
-    title: "Comunicación empática con la persona cuidada",
+    title: "Comunicación empática con el paciente",
     desc: "Claves para conectar desde el respeto y la escucha activa.",
     body: [
       [
@@ -186,11 +186,11 @@ export const FAQ: readonly (readonly [string, string])[] = [
   ],
   [
     "¿Quién ve mi registro de bienestar?",
-    "Solo vos. Ni el administrador ni la persona cuidada pueden verlo.",
+    "Solo vos. Ni el administrador ni los pacientes pueden verlo.",
   ],
   [
     "¿Qué hago si cambio de celular?",
-    "Cada cuenta funciona en un solo dispositivo. Pedile al administrador que libere tu cuenta y entrá desde el nuevo.",
+    "Tu passkey funciona en cualquier dispositivo donde esté guardada (por ejemplo, sincronizada con Google o iCloud), o desde tu celular anterior con un código QR. Si no podés usarla, pedile al administrador que la restablezca y creá una nueva.",
   ],
   [
     "¿Cómo cambio los recordatorios?",
@@ -198,7 +198,7 @@ export const FAQ: readonly (readonly [string, string])[] = [
   ],
   [
     "¿De dónde salen las tareas de medicación?",
-    "De la ficha de cada paciente, que cargás vos en Personas cuidadas. Si algo no coincide con la receta, seguí la indicación médica.",
+    "De la ficha de cada paciente, que cargan el administrador o los cuidadores en Pacientes. Si algo no coincide con la receta, seguí la indicación médica.",
   ],
   [
     "¿Qué hago ante una urgencia?",

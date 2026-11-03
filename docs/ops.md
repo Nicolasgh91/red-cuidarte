@@ -1,6 +1,6 @@
 # Operación
 
-Todo lo que hace falta para desplegar y mantener Cuidarte+: variables, Vercel, Supabase, correo, límites de los planes gratuitos y el checklist de lanzamiento. La arquitectura está en [`architecture.md`](architecture.md); DNS en [`dns.md`](dns.md); Android en [`android.md`](android.md).
+Todo lo que hace falta para desplegar y mantener Cuidarte+: variables, Vercel, Supabase, correo, límites de los planes gratuitos. Lo que falta, las pruebas con servicios reales y el checklist de lanzamiento están en [`pendientes.md`](pendientes.md). La arquitectura está en [`architecture.md`](architecture.md); DNS en [`dns.md`](dns.md); Android en [`android.md`](android.md).
 
 ## Variables de entorno
 
@@ -97,7 +97,7 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 | `auth`     | Usuario o clave rechazados                    | `SMTP_USER` y `SMTP_PASS` (la casilla completa, `info@redasistir.online`)                    |
 | `rejected` | El servidor rechazó el mensaje                | Dirección de destino y `SMTP_FROM`                                                           |
 
-`EBUSY`, `EAI_AGAIN` y `ETIMEDOUT` se reintentan una vez. Contacto responde 503 `mail_unavailable` ante `dns`, `tls` y `auth` (reintentar no sirve) y 502 `mail_failed` en el resto. El cron suma `failed_by_kind` a su respuesta. Los códigos de recuperación de contraseña salen por el SMTP de Supabase Auth, que se configura aparte: si «Mandar código» falla, revisar el host también ahí.
+`EBUSY`, `EAI_AGAIN` y `ETIMEDOUT` se reintentan una vez. Contacto responde 503 `mail_unavailable` ante `dns`, `tls` y `auth` (reintentar no sirve) y 502 `mail_failed` en el resto. El cron suma `failed_by_kind` a su respuesta. Los códigos de recuperación de contraseña salen por el SMTP de Supabase Auth, que se configura aparte: si «Enviarme el código» falla, revisar el host también ahí.
 
 **Consumo del asistente:** cada consulta deja en los logs una línea `assistant usage`, sin texto ni datos personales:
 
@@ -107,41 +107,6 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 - `ms` y `finish` (`length` indica que se cortó la salida).
 - `limits`: los headers `x-ratelimit-*` de la última llamada. En Groq, `remaining-requests` es el cupo de pedidos **del día** (RPD) y `remaining-tokens` el de tokens **del minuto** (TPM). TPD y RPM no vienen en los headers: solo aparecen en el 429. Si Groq agrega headers separados de entrada y salida (ITPM/OTPM), también quedan acá.
 
-## Pruebas pendientes con servicios reales
+## Pruebas con servicios reales y lanzamiento
 
-- **Passkeys en Android:** ver [`android.md`](android.md#passkeys-y-assetlinksjson). Hasta resolverlo, la app Android no se puede usar en producción.
-- **API en Vercel:** validar el JWT contra el JWKS real de Supabase (`iss`/`aud`), SMTP saliente a DonWeb por 465 y 587 (si falla, es bloqueante), que el cron llegue con el header, y la latencia de arranque en frío (10 pedidos tras 15 min de inactividad).
-- **Groq con herramientas:** `GROQ_API_KEY=… pnpm --filter api eval:assistant 5` corre cada caso 5 veces contra la base de pruebas local (la recrea; nunca toca datos reales): cargar turnos con las fechas correctas, listar, preguntar si falta el paciente, urgencia activa e hipotética, no cambiar dosis, responder con los recursos e historial largo. Muestra por caso aciertos, tokens efectivos (primera corrida y resto, para ver el caché), llamadas, latencia, 429 y motivo de fin. Correrlo con `openai/gpt-oss-120b`, `openai/gpt-oss-20b` y `qwen/qwen3.8-27b` (`GROQ_MODEL=…`) y anotar acá los números. Gasta cupo de la cuenta.
-
-## Checklist de lanzamiento
-
-**Decisiones y legales**
-
-- [ ] Revisión legal de términos, privacidad (Ley 25.326) y consentimiento para la medicación. Los textos actuales son **provisorios**.
-- [ ] Confirmar si el proyecto es comercial (si lo es, Vercel Pro antes de lanzar).
-- [ ] Registrar la base de datos personales ante la AAIP si corresponde.
-- [ ] Validar con un profesional de Red Cuidar el aviso de urgencia del asistente (`EMERGENCY_REPLY` en `apps/api/src/services/emergency.ts`).
-
-**Infraestructura**
-
-- [ ] Dominios `redasistir.online` y `api.redasistir.online` con HTTPS ([`dns.md`](dns.md)).
-- [ ] Variables separadas Preview/Production; ninguna en el repo.
-- [ ] Supabase Auth configurado (arriba). Migraciones aplicadas en orden. Admin cargado.
-- [ ] RLS contra producción: un pedido con la anon key a `/rest/v1/<tabla>` no devuelve nada.
-
-**Operación**
-
-- [ ] Rotación de secretos documentada: `MEDICATIONS_KEY` (requiere re-cifrar), `DEVICE_TOKEN_SECRET` (todos vuelven a verificar la passkey), `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `SMTP_PASS`.
-- [ ] Correr `backup.yml` a mano y **restaurar** con `scripts/restore-backup.sh`.
-- [ ] Correo configurado (arriba); un mensaje de Contacto llega con `Reply-To` = mail de quien escribe.
-- [ ] El cron corrió 3 días seguidos y dejó filas en `mail_log` cuando correspondía.
-- [ ] Vigilar los límites de la tabla de arriba.
-
-**Android** ([`android.md`](android.md))
-
-- [ ] Build firmado en un Android real; recordatorios sonando con la app cerrada.
-- [ ] `assetlinks.json` publicado con las huellas de debug y de Play App Signing; passkeys en Android resueltas.
-- [ ] Formulario de seguridad de datos ([`play-data-safety.md`](play-data-safety.md)) y política en `https://redasistir.online/privacidad`.
-- [ ] Prueba interna en Google Play y envío a revisión.
-
-**iOS** (en espera del pago de Apple Developer): Capacitor iOS, passkeys (repetir la validación hecha en Android), TestFlight y formulario de privacidad de App Store.
+Las pruebas pendientes con servicios reales y el checklist de lanzamiento están en [`pendientes.md`](pendientes.md#8-pruebas-con-servicios-reales).

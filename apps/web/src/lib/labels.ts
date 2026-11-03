@@ -12,8 +12,8 @@ export const FREQS: readonly (readonly [number, string])[] = [
 ];
 export const ROLES: Record<Role, string> = {
   caregiver: "Cuidador/a",
-  admin: "Administrador",
-  patient: "Persona cuidada",
+  admin: "Administrador/a",
+  patient: "Paciente",
 };
 
 export type Scale = readonly string[];
@@ -42,4 +42,4 @@ export const SAME_NUMBER = "107";
 export const CONTACT_EMAIL = "info@redasistir.online";
 
 export const DISCLAIMER =
-  "Es una herramienta de orientación y soporte destinada a complementar el cuidado personal. No reemplaza bajo ninguna circunstancia el consejo, diagnóstico o tratamiento médico profesional. Ante una emergencia, contáctese inmediatamente a su servicio de salud local.";
+  "Es una herramienta de orientación y soporte pensada para complementar el cuidado personal. No reemplaza, bajo ninguna circunstancia, el consejo, el diagnóstico ni el tratamiento médico profesional. Ante una emergencia, comunicate de inmediato con tu servicio de salud local.";

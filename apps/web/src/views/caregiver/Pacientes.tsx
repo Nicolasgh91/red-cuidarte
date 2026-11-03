@@ -15,7 +15,7 @@ import { useToast } from "../../components/Toasts";
 import { Medications } from "../../components/Medications";
 import { personName } from "../../api/types";
 
-/** Una persona que ya se registró le pasa su código y queda vinculada. */
+/** Un paciente que ya se registró le pasa su código y queda vinculado. */
 function LinkForm() {
   const link = useLinkPatient();
   const { toast } = useToast();
@@ -29,7 +29,7 @@ function LinkForm() {
     try {
       await link.mutateAsync(code.trim());
       setCode("");
-      toast("Listo, ya la acompañás.");
+      toast("Listo, paciente vinculado.");
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -65,7 +65,7 @@ function LinkForm() {
   );
 }
 
-/** Las personas que cuida: las que le asigna el admin y las que da de alta ella misma. */
+/** Los pacientes que cuida: los que le asigna el admin y los que da de alta ella misma. */
 export function Pacientes() {
   const patients = useMyPatients();
   const addPatient = useAddMyPatient();
@@ -74,7 +74,7 @@ export function Pacientes() {
   return (
     <div className="page">
       <div className="head">
-        <h1>Personas cuidadas</h1>
+        <h1>Pacientes</h1>
         <p className="sub">
           Quienes acompañás. Sumá a alguien nuevo o vinculá a quien ya tiene cuenta con su código.
         </p>
@@ -97,7 +97,8 @@ export function Pacientes() {
             ))
           ) : (
             <EmptyCard>
-              Todavía no tenés personas cuidadas. Agregá a la primera acá abajo.
+              Todavía no tenés pacientes. Agregá uno acá abajo o vinculá a alguien que ya tiene
+              cuenta con su código.
             </EmptyCard>
           )
         }

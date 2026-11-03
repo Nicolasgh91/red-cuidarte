@@ -15,6 +15,8 @@
 | Compilar el APK/AAB                                                                               | **Pendiente**: nunca se compiló                                      |
 | Prueba en un Android real, Play Console, prueba interna                                           | Pendiente                                                            |
 
+Lo que falta para publicar está en [`pendientes.md`](pendientes.md#9-checklist-de-lanzamiento).
+
 ## Compilar (con Android Studio)
 
 ```bash

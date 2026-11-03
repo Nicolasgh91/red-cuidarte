@@ -15,9 +15,8 @@ function supabase(): SupabaseClient {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !key) {
-    throw new AuthFlowError(
-      "Falta configurar el ingreso (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).",
-    );
+    console.error("Falta configurar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.");
+    throw new AuthFlowError("No pudimos iniciar el ingreso. Probá de nuevo más tarde.");
   }
   client = createClient(url, key, {
     // Sin enlaces: la recuperación es por código, así funciona igual en PWA y en Capacitor.
@@ -47,7 +46,7 @@ export async function signIn(email: string, password: string): Promise<{ userId:
       throw new AuthFlowError("Tu mail todavía no está confirmado. Pedile ayuda al administrador.");
     throw new AuthFlowError(
       error?.status === 400 || error?.code === "invalid_credentials"
-        ? "Mail o contraseña incorrectos. Si es tu primera vez, definí tu contraseña con «¿Primera vez?»."
+        ? "Mail o contraseña incorrectos. Si es tu primera vez, definí tu contraseña con «¿Primera vez u olvidaste tu contraseña?»."
         : "No pudimos iniciar sesión. Probá de nuevo en un rato.",
     );
   }

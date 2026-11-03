@@ -211,12 +211,13 @@ async function withDeadline<T>(p: Promise<T>, deadline: number): Promise<T> {
   }
 }
 
+/** `urgent`: la respuesta es el aviso de urgencia fijo (EMERGENCY_REPLY), para que la web lo destaque. */
 export async function runAssistant(
   deps: Deps,
   caregiverId: string,
   history: Turn[],
   deadlineMs = ASSISTANT_DEADLINE_MS,
-): Promise<{ reply: string; added: Shift[] }> {
+): Promise<{ reply: string; added: Shift[]; urgent: boolean }> {
   const { sql, env, llm, now } = deps;
   const started = Date.now();
   const deadline = started + deadlineMs;
@@ -236,7 +237,7 @@ export async function runAssistant(
   // Una urgencia se responde acá: no depende de Groq ni del cupo diario.
   if (classifyEmergency(history.at(-1)?.content ?? "") === "active") {
     logUsage("emergency");
-    return { reply: EMERGENCY_REPLY, added: [] };
+    return { reply: EMERGENCY_REPLY, added: [], urgent: true };
   }
 
   const today = nowAR(now()).date;
@@ -291,6 +292,7 @@ export async function runAssistant(
         return {
           reply: res.content?.trim() || "No pude armar una respuesta. Probá de nuevo.",
           added,
+          urgent: false,
         };
       }
       const seen = new Set<string>();
@@ -302,7 +304,7 @@ export async function runAssistant(
       // se vuelve al modelo: otra ronda podría cargar los mismos turnos de nuevo.
       if (outs.some((o) => "agregados" in o) || outs.every((o) => !("error" in o))) {
         logUsage("tool_rendered");
-        return { reply: renderToolReply(outs), added };
+        return { reply: renderToolReply(outs), added, urgent: false };
       }
       messages.push({ role: "assistant", content: res.content, tool_calls: res.tool_calls });
       res.tool_calls.forEach((call, i) => {
@@ -320,6 +322,7 @@ export async function runAssistant(
     return {
       reply: "Hice varios intentos y no pude terminar. Probá pedirlo de otra forma.",
       added,
+      urgent: false,
     };
   } catch (e) {
     await refundMessage(deps, caregiverId, today);

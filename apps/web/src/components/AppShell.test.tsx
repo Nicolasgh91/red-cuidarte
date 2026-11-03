@@ -39,9 +39,33 @@ describe("AppShell", () => {
     const nav = screen.getByRole("navigation", { name: "Secciones" });
     expect(nav).toHaveTextContent("InicioPacientesTurnosTareasAsistenteBienestarPausaRecursos");
     expect(screen.getByRole("link", { name: "Inicio" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("Ingresaste como: Cuidador/a")).toBeInTheDocument();
   });
 
-  it("navegación del admin y de la persona cuidada", () => {
+  it("la barra del celular del cuidador tiene 6 secciones, con Pacientes", () => {
+    renderWithApp(
+      <AppShell me={me("caregiver", { first_name: "Sofía", last_names: "Ejemplo" })} />,
+      { api: quiet, route: "/inicio" },
+    );
+    const nav = screen.getByRole("navigation", { name: "Secciones" });
+    const mobile = [...nav.querySelectorAll("a[data-m]")].map((a) => a.textContent);
+    expect(mobile).toEqual(["Inicio", "Pacientes", "Turnos", "Tareas", "Asistente", "Bienestar"]);
+    expect(nav.style.getPropertyValue("--n")).toBe("6");
+  });
+
+  it("tiene un enlace para saltar al contenido que lleva el foco a <main>", async () => {
+    const user = userEvent.setup();
+    renderWithApp(
+      <AppShell me={me("caregiver", { first_name: "Sofía", last_names: "Ejemplo" })} />,
+      { api: quiet, route: "/inicio" },
+    );
+    const skip = screen.getByRole("link", { name: "Saltar al contenido" });
+    expect(skip).toHaveAttribute("href", "#main");
+    await user.click(skip);
+    expect(screen.getByRole("main")).toHaveFocus();
+  });
+
+  it("navegación del admin y del paciente", () => {
     const admin = renderWithApp(
       <AppShell me={me("admin", { first_name: "Jorge", last_name: "Ejemplo" })} />,
       {
@@ -69,6 +93,7 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: "Mi perfil" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Acerca de Red Cuidar" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Términos y privacidad" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Privacidad" })).toHaveAttribute("href", "/privacidad");
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
     expect(screen.queryByText(/Ver la app como/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Admin" })).not.toBeInTheDocument();
@@ -82,7 +107,7 @@ describe("AppShell", () => {
     });
     await user.click(screen.getByRole("button", { name: /Mi cuenta/ }));
     expect(screen.queryByRole("link", { name: "Mi perfil" })).not.toBeInTheDocument();
-    expect(screen.getByText("Administrador")).toBeVisible();
+    expect(screen.getByText("Administrador/a")).toBeVisible();
   });
 
   it("el tema se guarda por dispositivo en localStorage", async () => {

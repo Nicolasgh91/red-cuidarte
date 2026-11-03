@@ -9,7 +9,7 @@ const CONTACT_LIMIT = 3;
 const ROLE_LABEL: Record<Role, string> = {
   caregiver: "Cuidador/a",
   admin: "Administrador/a",
-  patient: "Persona cuidada",
+  patient: "Paciente",
 };
 
 /**

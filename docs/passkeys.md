@@ -21,7 +21,7 @@ Cada cuenta tiene **una** passkey y se usa siempre con verificación de usuario 
 
 - **Código QR:** en la computadora se elige «usar un teléfono o tablet» y se escanea con la cámara. Necesita Bluetooth prendido en los dos equipos. La passkey queda en el teléfono y para ingresar se repite el QR.
 - **Passkey sincronizada** (iCloud o Google): sirve en los otros equipos de la misma cuenta de Apple o Google sin registrar nada más.
-- **Último recurso:** el administrador restablece la passkey (Dispositivos › Restablecer passkey) y el próximo ingreso registra una nueva.
+- **Último recurso:** el administrador restablece la passkey (Passkeys › Restablecer passkey) y el próximo ingreso registra una nueva.
 
 ## Errores
 

@@ -30,7 +30,7 @@ describe("bienestar", () => {
     expect((await add(c, { mood: 1, energy: 2 })).status).toBe(400);
   });
 
-  it("solo el dueño lo ve: ni otro cuidador, ni el admin, ni la persona cuidada", async () => {
+  it("solo el dueño lo ve: ni otro cuidador, ni el admin, ni el paciente", async () => {
     const owner = await h.caregiver();
     const other = await h.caregiver();
     const admin = await h.admin();

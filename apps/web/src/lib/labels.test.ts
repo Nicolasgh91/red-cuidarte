@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { ENERGY, MOODS, STRESS, indexToLabel, labelToIndex, quoteOfDay } from "./labels";
+import {
+  DISCLAIMER,
+  ENERGY,
+  MOODS,
+  ROLES,
+  STRESS,
+  indexToLabel,
+  labelToIndex,
+  quoteOfDay,
+} from "./labels";
 import { DEFAULT_QUOTES } from "../content";
 
 describe("escalas de bienestar (etiqueta ↔ índice 0–4)", () => {
@@ -25,5 +34,19 @@ describe("escalas de bienestar (etiqueta ↔ índice 0–4)", () => {
   });
   it("la frase del día es una de las frases", () => {
     expect(DEFAULT_QUOTES).toContain(quoteOfDay(new Date(2026, 9, 22), DEFAULT_QUOTES));
+  });
+});
+
+describe("glosario y registro", () => {
+  it("los roles usan el término «Paciente» y «Administrador/a»", () => {
+    expect(ROLES).toEqual({
+      caregiver: "Cuidador/a",
+      admin: "Administrador/a",
+      patient: "Paciente",
+    });
+  });
+  it("el aviso médico va en voseo (no en «usted»)", () => {
+    expect(DISCLAIMER).toContain("comunicate de inmediato con tu servicio de salud local");
+    expect(DISCLAIMER).not.toMatch(/contáctese|\bsu servicio\b/);
   });
 });
