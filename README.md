@@ -21,6 +21,7 @@ Aplicación web y Android para personas que cuidan a adultos mayores: organiza t
 - [Despliegue](#despliegue)
 - [Seguridad](#seguridad)
 - [Documentación](#documentación)
+- [Equipo](#equipo)
 
 ## Descripción
 
@@ -275,3 +276,13 @@ Variables y configuración de Vercel y Supabase en [`docs/ops.md`](docs/ops.md);
 | [`docs/android.md`](docs/android.md)                   | App Android: build, passkeys y publicación                |
 | [`docs/dns.md`](docs/dns.md)                           | DNS y configuración de mail (SPF, DKIM, DMARC)            |
 | [`docs/play-data-safety.md`](docs/play-data-safety.md) | Declaración de seguridad de datos para Google Play        |
+
+## Equipo
+
+Cuidarte+ es un producto de Jorge Chiesa.
+
+| Rol                     | Persona           |
+| ----------------------- | --------------    |
+| Producto                | Jorge Chiesa      |
+| Desarrollo (ad honorem) | Nicolás Hruszczak |
+| Comercial               | Angie Gonzalez    |
