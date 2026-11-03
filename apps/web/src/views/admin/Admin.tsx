@@ -40,23 +40,6 @@ export function Admin() {
           );
         }}
       </Async>
-      <section className="group">
-        <h2 className="section">Requiere atención</h2>
-        <div className="card rcard" style={{ gap: 10 }}>
-          <div className="row-between">
-            <b style={{ color: "var(--ink)" }}>Casilla de correo en DonWeb</b>
-            <span className="pill warn">Pendiente</span>
-          </div>
-          <p className="optional" style={{ margin: 0 }}>
-            Hace falta para mandar los saludos de cumpleaños. Se configura fuera de la app.
-          </p>
-          <div className="btn-row">
-            <Link className="ghost" to="/admin-correos">
-              Ver pasos
-            </Link>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
