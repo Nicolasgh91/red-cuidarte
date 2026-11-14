@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import type { Me } from "../api/types";
 import { fullName } from "../api/types";
+import { useDeviceStatus } from "../api/queries/me";
 import { RoleRoutes } from "../RoleRoutes";
 import { HOME, NAV, sectionOf } from "../nav";
 import { ROLES } from "../lib/labels";
@@ -14,7 +15,8 @@ import { WhatsAppButton } from "./WhatsAppButton";
 export function AppShell({ me }: { me: Me }) {
   const { pathname } = useLocation();
   const role = me.role;
-  const nav = NAV[role];
+  const passkeys = useDeviceStatus().data?.enabled !== false; // false = feature flag apagado
+  const nav = NAV[role].filter((n) => passkeys || n.path !== "admin-dispositivos");
   const section = sectionOf(pathname);
   const bare = section === "terminos";
 

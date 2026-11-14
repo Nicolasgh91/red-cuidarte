@@ -53,8 +53,8 @@ const passkeys = {
   login: vi.mocked(startAuthentication),
 };
 
-const status = (registered: boolean, verified: boolean) =>
-  vi.fn(async () => ok({ registered, verified, label: null, last_seen_at: null }));
+const status = (registered: boolean, verified: boolean, enabled = true) =>
+  vi.fn(async () => ok({ enabled, registered, verified, label: null, last_seen_at: null }));
 
 function deviceApi(
   over: { status?: unknown; registerOptions?: unknown; signup?: unknown; logout?: unknown } = {},
@@ -163,6 +163,21 @@ describe("ingreso con mail y contraseña + passkey", () => {
     // en la web el token queda en la cookie HttpOnly: acá solo la pista
     expect(deviceStore.getToken()).toBeNull();
     expect(deviceStore.isVerified("u1")).toBe(true);
+  });
+
+  it("con el feature flag de passkeys apagado: mail + contraseña → app, sin WebAuthn", async () => {
+    const svc = services();
+    mount(svc, deviceApi({ status: status(false, false, false) }));
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText("Correo electrónico"), "sofia@ejemplo.org");
+    await user.type(screen.getByLabelText("Contraseña"), "una-clave");
+    await user.click(screen.getByRole("button", { name: "Ingresar" }));
+
+    expect(await screen.findByText("App lista")).toBeInTheDocument();
+    expect(passkeys.register).not.toHaveBeenCalled();
+    expect(passkeys.login).not.toHaveBeenCalled();
+    expect(screen.queryByText(/passkey/i)).not.toBeInTheDocument();
   });
 
   it("muestra u oculta la contraseña", async () => {
@@ -411,7 +426,13 @@ describe("re-ingreso con passkey ante un 403 device_login_required", () => {
           : json(st, { error: { code: "device_login_required", message: "Verificá tu passkey." } });
       }
       if (path === "/device/status")
-        return json(200, { registered: true, verified: false, label: null, last_seen_at: null });
+        return json(200, {
+          enabled: true,
+          registered: true,
+          verified: false,
+          label: null,
+          last_seen_at: null,
+        });
       if (path === "/device/login/options") return json(200, { challenge: "c" });
       return json(200, { ok: true });
     });

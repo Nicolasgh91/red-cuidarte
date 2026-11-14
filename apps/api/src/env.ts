@@ -30,6 +30,14 @@ export const envSchema = z
         "MEDICATIONS_KEY debe ser 32 bytes en base64",
       ),
     DEVICE_TOKEN_SECRET: z.string().min(32),
+    /**
+     * Feature flag: la passkey como segundo paso del ingreso. Apagada por defecto: se entra solo
+     * con mail y contraseña. Con "true" vuelve a exigirse (registro y verificación de passkey).
+     */
+    PASSKEYS_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     CRON_SECRET: z.string().min(16),
     ALLOWED_ORIGINS: z.string().default("").transform(list),
     /**

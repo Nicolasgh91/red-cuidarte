@@ -142,6 +142,7 @@ function ProfileForm({ me }: { me: Me }) {
 
 function DeviceCard() {
   const q = useDeviceStatus();
+  if (q.data?.enabled === false) return null; // passkeys apagadas por feature flag
   return (
     <section className="group">
       <h2 className="section">Tu passkey</h2>

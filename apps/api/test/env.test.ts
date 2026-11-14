@@ -47,3 +47,16 @@ describe("variables de WebAuthn", () => {
     expect(() => load({ WEBAUTHN_RP_ID: "https://redasistir.online" })).toThrow(/WEBAUTHN_RP_ID/);
   });
 });
+
+describe("PASSKEYS_ENABLED", () => {
+  it("está apagado por defecto", () => {
+    expect(load({}).PASSKEYS_ENABLED).toBe(false);
+  });
+  it("acepta true y false", () => {
+    expect(load({ PASSKEYS_ENABLED: "true" }).PASSKEYS_ENABLED).toBe(true);
+    expect(load({ PASSKEYS_ENABLED: "false" }).PASSKEYS_ENABLED).toBe(false);
+  });
+  it("rechaza otros valores", () => {
+    expect(() => load({ PASSKEYS_ENABLED: "yes" })).toThrow(/PASSKEYS_ENABLED/);
+  });
+});

@@ -14,6 +14,7 @@ export const TEST_ENV = loadEnv({
     process.env.TEST_DATABASE_URL ?? "postgres://postgres:postgres@localhost:54329/cuidarte_test",
   MEDICATIONS_KEY: Buffer.alloc(32, 7).toString("base64"),
   DEVICE_TOKEN_SECRET: "test-device-token-secret-0123456789abcdef",
+  PASSKEYS_ENABLED: "true",
   CRON_SECRET: "test-cron-secret-123",
   ALLOWED_ORIGINS: "https://redasistir.online,capacitor://localhost",
   NATIVE_ORIGINS: "capacitor://localhost",

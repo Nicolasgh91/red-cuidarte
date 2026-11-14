@@ -2,6 +2,8 @@
 
 Cada cuenta tiene **una** passkey y se usa siempre con verificación de usuario (huella, rostro o PIN). Cómo funciona el ingreso: [`architecture.md` §5](architecture.md#5-ingreso-y-passkey).
 
+> **Feature flag.** El paso de passkey está detrás de `PASSKEYS_ENABLED` en la API y viene **apagado** por defecto: con el flag apagado se ingresa solo con mail y contraseña, `/device/register|login/*` responden 404 y se oculta la UI de passkey. Para volver a exigirla: `PASSKEYS_ENABLED=true` y Redeploy. Las passkeys ya registradas no se tocan.
+
 ## Requisitos
 
 - **Bloqueo de pantalla activado** (código, huella, rostro o PIN de Windows Hello). Sin él, el equipo no puede crear la passkey.

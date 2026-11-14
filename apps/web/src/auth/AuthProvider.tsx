@@ -116,10 +116,16 @@ function createSession(
     let phase: "register" | "login" = "register";
     setState({ status: "passkey", phase: "checking", error: null });
     try {
+      const status = await unwrap(api.device.status.$get());
+      // Feature flag apagado en la API: se entra solo con mail y contraseña.
+      if (!status.enabled) {
+        if (userId !== uid) return;
+        needsGesture = false;
+        return setState({ status: "ready" });
+      }
       if (!passkeysSupported()) {
         throw new AuthFlowError("Este navegador no permite usar passkeys. Probá con otro.");
       }
-      const status = await unwrap(api.device.status.$get());
       if (status.verified) deviceStore.setVerified(uid);
       else if (status.registered) {
         phase = "login";

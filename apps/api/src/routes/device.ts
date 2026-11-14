@@ -171,10 +171,18 @@ const assertionBody = z.object({
  * por cuenta: se registra si la cuenta no tiene; si ya tiene, solo el admin la restablece.
  */
 export const device = new Hono<AppEnv>()
+  // Con el flag apagado solo /status responde (el cliente lo usa para saber si pedir la passkey).
+  .use(async (c, next) => {
+    const enabled = c.get("deps").env.PASSKEYS_ENABLED;
+    if (!enabled && !c.req.path.endsWith("/status"))
+      throw notFound("Las passkeys no están habilitadas.", "passkeys_disabled");
+    await next();
+  })
   .get("/status", async (c) => {
     const [d] = await c.get("deps").sql<{ label: string; last_seen_at: Date | null }[]>`
       select label, last_seen_at from devices where user_id = ${c.get("user").id}`;
     return c.json({
+      enabled: c.get("deps").env.PASSKEYS_ENABLED,
       registered: !!d,
       verified: await hasValidDeviceToken(c),
       label: d?.label ?? null,

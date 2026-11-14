@@ -48,7 +48,7 @@ export const authenticate = (opts: { requireDevice: boolean }) =>
       );
     c.set("user", { id: sub, role: row.role, credentialId: row.credential_id });
 
-    if (opts.requireDevice) {
+    if (opts.requireDevice && deps.env.PASSKEYS_ENABLED) {
       if (!row.credential_id) {
         throw forbidden("Falta registrar tu passkey.", "device_unregistered");
       }
