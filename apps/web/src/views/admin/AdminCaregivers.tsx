@@ -13,7 +13,7 @@ import { Async, Field } from "../../components/common";
 import { Icon } from "../../components/icons";
 import { useToast } from "../../components/Toasts";
 import { birthToIso, isoToBirth } from "../../lib/dates";
-import { okMail, okPhone } from "../../lib/validators";
+import { MAX_NAME, okMail, okPhone } from "../../lib/validators";
 import { patientName, personName } from "../../api/types";
 
 function AssignCell({
@@ -96,7 +96,11 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
     const birthIso = birthToIso(v.birth);
     const next: Errors = {};
     if (!v.first) next.first = "Falta el nombre.";
+    else if (v.first.length > MAX_NAME)
+      next.first = `El nombre puede tener hasta ${MAX_NAME} caracteres.`;
     if (!v.last) next.last = "Faltan los apellidos.";
+    else if (v.last.length > MAX_NAME)
+      next.last = `Los apellidos pueden tener hasta ${MAX_NAME} caracteres.`;
     if (!okPhone(v.phone)) next.phone = "Revisá el celular.";
     if (!okMail(v.email)) next.email = "Revisá el mail.";
     if (!birthIso) next.birth = "Usá dd/mm/aaaa.";
@@ -138,6 +142,8 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
             <input
               type="text"
               id="ac-nombre"
+              autoComplete="off"
+              maxLength={MAX_NAME}
               value={first}
               onChange={(e) => setFirst(e.target.value)}
             />
@@ -146,6 +152,8 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
             <input
               type="text"
               id="ac-apellidos"
+              autoComplete="off"
+              maxLength={MAX_NAME}
               value={last}
               onChange={(e) => setLast(e.target.value)}
             />
@@ -162,6 +170,7 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
               type="text"
               id="ac-tel"
               inputMode="tel"
+              autoComplete="off"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
@@ -170,6 +179,7 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
             <input
               type="email"
               id="ac-email"
+              autoComplete="off"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -180,6 +190,7 @@ function AddCaregiverForm({ patients }: { patients: AdminPatient[] }) {
             type="text"
             id="ac-nac"
             inputMode="numeric"
+            autoComplete="off"
             placeholder="dd/mm/aaaa"
             value={birth}
             onChange={(e) => setBirth(e.target.value)}

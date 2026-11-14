@@ -1,6 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_NAME } from "../../lib/validators";
 import { fakeApi, ok, renderWithApp } from "../../test/render";
 import { AdminCaregivers } from "./AdminCaregivers";
 
@@ -50,6 +51,25 @@ describe("Admin › Cuidadores", () => {
     expect(screen.getByText(/«¿Primera vez u olvidaste tu contraseña\?»/)).toBeInTheDocument();
     expect(screen.queryByText(/le llega un código por mail/)).not.toBeInTheDocument();
     expect(screen.getByText("Alta por el equipo técnico")).toBeInTheDocument();
+  });
+
+  it("el alta limita el largo de los nombres y no deja que el navegador autocomplete", async () => {
+    const user = userEvent.setup();
+    renderWithApp(<AdminCaregivers />, { api: setup().api });
+    const first = await screen.findByLabelText("Nombre");
+    const last = screen.getByLabelText("Apellidos");
+    for (const field of [first, last]) expect(field).toHaveAttribute("maxlength", String(MAX_NAME));
+    for (const label of ["Nombre", "Apellidos", "Celular", "Mail", "Fecha de nacimiento"])
+      expect(screen.getByLabelText(label)).toHaveAttribute("autocomplete", "off");
+    fireEvent.change(first, { target: { value: "a".repeat(MAX_NAME + 1) } });
+    fireEvent.change(last, { target: { value: "a".repeat(MAX_NAME + 1) } });
+    await user.click(screen.getByRole("button", { name: "Agregar" }));
+    expect(first).toHaveAccessibleDescription(
+      `El nombre puede tener hasta ${MAX_NAME} caracteres.`,
+    );
+    expect(last).toHaveAccessibleDescription(
+      `Los apellidos pueden tener hasta ${MAX_NAME} caracteres.`,
+    );
   });
 
   it("destildar un paciente pide confirmación y avisa que se borran los turnos futuros", async () => {

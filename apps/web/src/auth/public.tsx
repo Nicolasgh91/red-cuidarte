@@ -8,13 +8,19 @@ import { Icon, Logo } from "../components/icons";
 import type { IconName } from "../components/icons";
 import { birthToIso } from "../lib/dates";
 import { CONTACT_EMAIL, DISCLAIMER, quoteOfDay } from "../lib/labels";
-import { MSG, okMail, okPhone } from "../lib/validators";
+import { MAX_NAME, MSG, okMail, okPhone } from "../lib/validators";
 import { Terminos } from "../views/shared/Terminos";
 import { useAuth } from "./AuthProvider";
 import type { SignupRole } from "./AuthProvider";
 
 /** Mínimo que pide Supabase Auth (configurado en el panel, ver docs/ops.md). */
 export const MIN_PASSWORD = 8;
+
+/**
+ * Debe coincidir con `password` en apps/api/src/lib/schemas.ts:47-50 (.max(72));
+ * si cambia allá, cambiarlo acá.
+ */
+export const MAX_PASSWORD = 72;
 
 /** Must match Supabase Auth > Email OTP length (also mirrored in supabase/config.toml). */
 export const OTP_LENGTH = 6;
@@ -278,8 +284,12 @@ export function RegisterScreen() {
     const next: RegisterErrors = {};
     if (!role) next.role = "Elegí cómo vas a usar Cuidarte+.";
     if (!first.trim()) next.first = "Escribí tu nombre.";
+    else if (first.trim().length > MAX_NAME)
+      next.first = `El nombre puede tener hasta ${MAX_NAME} caracteres.`;
     if (!last.trim())
       next.last = role === "patient" ? "Escribí tu apellido." : "Escribí tus apellidos.";
+    else if (last.trim().length > MAX_NAME)
+      next.last = `${role === "patient" ? "El apellido" : "Los apellidos"} pueden tener hasta ${MAX_NAME} caracteres.`;
     if (role === "caregiver") {
       if (!okPhone(phone.trim())) next.phone = MSG.phone;
       if (!birthIso) next.birth = MSG.birth;
@@ -287,6 +297,8 @@ export function RegisterScreen() {
     if (!okMail(mail)) next.email = MSG.mail;
     if (pass.length < MIN_PASSWORD)
       next.pass = `La contraseña tiene que tener al menos ${MIN_PASSWORD} caracteres.`;
+    else if (pass.length > MAX_PASSWORD)
+      next.pass = `La contraseña puede tener hasta ${MAX_PASSWORD} caracteres.`;
     if (pass2 !== pass) next.pass2 = "Las contraseñas no coinciden.";
     if (!terms) next.terms = "Para crear la cuenta tenés que aceptar los términos.";
     setErrors(next);
@@ -356,6 +368,7 @@ export function RegisterScreen() {
                 type="text"
                 id="reg-first"
                 autoComplete="given-name"
+                maxLength={MAX_NAME}
                 value={first}
                 onChange={(e) => setFirst(e.target.value)}
               />
@@ -369,6 +382,7 @@ export function RegisterScreen() {
                 type="text"
                 id="reg-last"
                 autoComplete="family-name"
+                maxLength={MAX_NAME}
                 value={last}
                 onChange={(e) => setLast(e.target.value)}
               />
@@ -429,6 +443,7 @@ export function RegisterScreen() {
             <PasswordInput
               id="reg-pass"
               autoComplete="new-password"
+              maxLength={MAX_PASSWORD}
               value={pass}
               onChange={(e) => setPass(e.target.value)}
             />
@@ -533,6 +548,8 @@ export function RecoverScreen() {
       return setError(`Escribí el código de ${OTP_LENGTH} dígitos que te llegó.`);
     if (pass.length < MIN_PASSWORD)
       return setError(`La contraseña tiene que tener al menos ${MIN_PASSWORD} caracteres.`);
+    if (pass.length > MAX_PASSWORD)
+      return setError(`La contraseña puede tener hasta ${MAX_PASSWORD} caracteres.`);
     if (pass2 !== pass) return setError("Las contraseñas no coinciden.");
     setError(null);
     setBusy(true);
@@ -615,6 +632,7 @@ export function RecoverScreen() {
             <PasswordInput
               id="rec-pass"
               autoComplete="new-password"
+              maxLength={MAX_PASSWORD}
               value={pass}
               onChange={(e) => setPass(e.target.value)}
             />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError, errorMessage } from "../api/errors";
-import { MSG, okMail } from "../lib/validators";
+import { MAX_NAME, MSG, okMail } from "../lib/validators";
 import { Field } from "./common";
 import { Icon } from "./icons";
 import { useToast } from "./Toasts";
@@ -33,7 +33,11 @@ export function AddPatientForm({ mutation: add }: { mutation: NewPatientMutation
     const v = { first: first.trim(), last: last.trim(), email: email.trim() };
     const next: typeof errors = {};
     if (!v.first) next.first = "Falta el nombre.";
+    else if (v.first.length > MAX_NAME)
+      next.first = `El nombre puede tener hasta ${MAX_NAME} caracteres.`;
     if (!v.last) next.last = "Falta el apellido.";
+    else if (v.last.length > MAX_NAME)
+      next.last = `El apellido puede tener hasta ${MAX_NAME} caracteres.`;
     if (v.email && !okMail(v.email)) next.email = MSG.mail;
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -64,6 +68,7 @@ export function AddPatientForm({ mutation: add }: { mutation: NewPatientMutation
             <input
               type="text"
               id="ap-nombre"
+              maxLength={MAX_NAME}
               value={first}
               onChange={(e) => setFirst(e.target.value)}
             />
@@ -72,6 +77,7 @@ export function AddPatientForm({ mutation: add }: { mutation: NewPatientMutation
             <input
               type="text"
               id="ap-apellido"
+              maxLength={MAX_NAME}
               value={last}
               onChange={(e) => setLast(e.target.value)}
             />

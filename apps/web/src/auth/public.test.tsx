@@ -1,8 +1,9 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApi, renderWithApp } from "../test/render";
-import { LoginScreen, RegisterScreen } from "./public";
+import { MAX_NAME } from "../lib/validators";
+import { LoginScreen, MAX_PASSWORD, RegisterScreen } from "./public";
 
 const api = fakeApi({ me: vi.fn() });
 
@@ -27,6 +28,25 @@ describe("pantallas públicas", () => {
     expect(screen.getByLabelText("Contraseña")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Contraseña")).toHaveAccessibleDescription(
       "Al menos 8 caracteres. La contraseña tiene que tener al menos 8 caracteres.",
+    );
+  });
+
+  it("el registro limita el largo de nombre y contraseña y avisa si se pasan", async () => {
+    const user = userEvent.setup();
+    renderWithApp(<RegisterScreen />, { api });
+    const first = screen.getByLabelText("Nombre");
+    const pass = screen.getByLabelText("Contraseña");
+    expect(first).toHaveAttribute("maxlength", String(MAX_NAME));
+    expect(pass).toHaveAttribute("maxlength", String(MAX_PASSWORD));
+    // fireEvent esquiva maxLength, como un autocompletado o un pegado del navegador
+    fireEvent.change(first, { target: { value: "a".repeat(MAX_NAME + 1) } });
+    fireEvent.change(pass, { target: { value: "a".repeat(MAX_PASSWORD + 1) } });
+    await user.click(screen.getByRole("button", { name: /Crear cuenta/ }));
+    expect(first).toHaveAccessibleDescription(
+      `El nombre puede tener hasta ${MAX_NAME} caracteres.`,
+    );
+    expect(pass).toHaveAccessibleDescription(
+      `Al menos 8 caracteres. La contraseña puede tener hasta ${MAX_PASSWORD} caracteres.`,
     );
   });
 });
