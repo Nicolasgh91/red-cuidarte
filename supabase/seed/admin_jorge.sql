@@ -8,7 +8,7 @@
 --      -v email='<mail>' -v mobile='<celular>' \
 --      -f supabase/seed/admin_jorge.sql
 --
--- Producción: lo corre Nico a mano. El agente no escribe en cuidarte-prod.
+-- Producción (único proyecto, red-cuidarte): lo corre Nico a mano. El agente no escribe en la base.
 
 begin;
 

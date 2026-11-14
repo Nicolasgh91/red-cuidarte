@@ -51,10 +51,10 @@ Crear el Environment `production` en GitHub (Settings › Environments) para `ba
 
 ## Vercel
 
-| Proyecto           | Raíz       | URL                                   |
-| ------------------ | ---------- | ------------------------------------- |
-| `red-cuidarte`     | `apps/api` | `https://red-cuidarte.vercel.app`     |
-| `red-cuidarte-web` | `apps/web` | `https://red-cuidarte-web.vercel.app` |
+| Proyecto           | Raíz       | URL                               |
+| ------------------ | ---------- | --------------------------------- |
+| `red-cuidarte`     | `apps/api` | `https://red-cuidarte.vercel.app` |
+| `red-cuidarte-web` | `apps/web` | `https://redasistir.online/`      |
 
 - La web llama a `/api/...` en su propio dominio y un rewrite la reenvía a la API: si cambia el dominio de la API, hay que cambiar ese rewrite.
 - La función de la API corre en `cle1` (Cleveland), cerca de Supabase `us-east-2` (`apps/api/vercel.json`). Hobby permite **una sola región**.
@@ -62,8 +62,14 @@ Crear el Environment `production` en GitHub (Settings › Environments) para `ba
 
 ## Supabase
 
-- **Dos proyectos:** `cuidarte-prod` y `cuidarte-dev`. El MCP de Supabase se conecta solo a dev (prod tiene datos de salud).
-- **Auth:** Providers › Email activado; **Allow new users to sign up = off** (las cuentas las crea la API ya confirmadas). Contraseñas de **8+ caracteres**. Plantilla «Reset password» con `{{ .Token }}` (código de 6 dígitos, sin enlaces). SMTP propio (el de Supabase tiene un tope muy bajo).
+- **Un solo proyecto:** `red-cuidarte` (= producción, la única base, una sola rama). El MCP de Supabase **no se conecta** a este proyecto (es producción y tiene datos de salud): los agentes no tocan la base.
+- **Auth** (Dashboard › Authentication). **El Dashboard es la fuente de verdad**; [`supabase/config.toml`](../supabase/config.toml) y [`supabase/templates/`](../supabase/templates/) son solo un espejo (la config no se sube con la CLI):
+  - Providers › Email activado; **Allow new users to sign up = off** (las cuentas las crea la API ya confirmadas).
+  - **Site URL:** `https://redasistir.online/`. La lista de redirecciones permitidas incluye también `https://redasistir.online/**`.
+  - **Email OTP:** largo **6**, vencimiento **3600 s** (1 hora). Contraseña mínima: **8** caracteres. La web usa los mismos valores en `OTP_LENGTH`, `OTP_EXPIRY_MINUTES` y `MIN_PASSWORD` (`apps/web/src/auth/public.tsx`): si se cambian en el Dashboard, hay que cambiarlos ahí y en las plantillas.
+  - **SMTP propio** (el de Supabase tiene un tope muy bajo): host `c2881641.ferozo.com`, puerto `465`, usuario y remitente `soporte@redasistir.online`, nombre del remitente «Cuidarte+». La contraseña se carga solo en el Dashboard; para la CLI el espejo la lee de la variable `SUPABASE_AUTH_SMTP_PASS` (solo el nombre, nunca el valor en el repo).
+  - **Plantillas:** las seis (`confirmation`, `invite`, `magic_link`, `email_change`, `recovery`, `reauthentication`) **viven solo en el Dashboard**; la copia del repo es un espejo. En el plan gratuito, Supabase solo deja editarlas con SMTP propio (cambio del 2026-06-03).
+  - La API manda sus propios mails (contacto, avisos) con otra casilla, `info@redasistir.online` (`SMTP_*`, ver [Correo](#correo-donweb)): son dos remitentes distintos y hay que documentar y mantener ambos.
 - **Migraciones:** se ejecutan **a mano** en el editor SQL, en orden y respetando el comentario de cabecera de cada archivo. Las que borran algo dicen «después del deploy»: primero se agrega, después se despliega la API y recién entonces se borra.
 - **Admins:** se cargan por SQL ([`supabase/seed/admin_jorge.sql`](../supabase/seed/admin_jorge.sql)). Para restablecer la passkey de un admin sin otro admin: `delete from devices where user_id = (select id from users where email = '<mail>' and role = 'admin');`.
 
@@ -71,7 +77,7 @@ Crear el Environment `production` en GitHub (Settings › Environments) para `ba
 
 1. Crear la casilla `info@redasistir.online` en el panel de DonWeb y cargar sus datos en `SMTP_*`.
 2. Configurar SPF, DKIM y DMARC para mejorar la entregabilidad (procedimiento en [`dns.md`](dns.md#correo-inforedasistironline)).
-3. Configurar la misma casilla como SMTP de Supabase Auth (códigos de recuperación).
+3. Supabase Auth **no** usa esta casilla: manda los códigos desde `soporte@redasistir.online` por su propio SMTP (ver [Supabase](#supabase) y [`dns.md`](dns.md#correo-soporteredasistironline-supabase-auth)).
 4. Desde **Admin › Correos**, enviar un mail de prueba y comprobar que llegue a la bandeja de entrada ([`dns.md`](dns.md#verificación-del-correo)).
 
 ## Límites de los planes gratuitos
@@ -98,7 +104,7 @@ Relevados el 2026-10-22: volver a verificar antes de lanzar.
 | `auth`     | Usuario o clave rechazados                    | `SMTP_USER` y `SMTP_PASS` (la casilla completa, `info@redasistir.online`)                    |
 | `rejected` | El servidor rechazó el mensaje                | Dirección de destino y `SMTP_FROM`                                                           |
 
-`EBUSY`, `EAI_AGAIN` y `ETIMEDOUT` se reintentan una vez. Contacto responde 503 `mail_unavailable` ante `dns`, `tls` y `auth` (reintentar no sirve) y 502 `mail_failed` en el resto. El cron suma `failed_by_kind` a su respuesta. Los códigos de recuperación de contraseña salen por el SMTP de Supabase Auth, que se configura aparte: si «Enviarme el código» falla, revisar el host también ahí.
+`EBUSY`, `EAI_AGAIN` y `ETIMEDOUT` se reintentan una vez. Contacto responde 503 `mail_unavailable` ante `dns`, `tls` y `auth` (reintentar no sirve) y 502 `mail_failed` en el resto. El cron suma `failed_by_kind` a su respuesta. Los códigos de recuperación de contraseña salen por el SMTP de Supabase Auth (`soporte@redasistir.online`, `c2881641.ferozo.com`), que se configura aparte en el Dashboard: si «Enviarme el código» falla, revisar ese SMTP allí, no las variables `SMTP_*` de la API.
 
 **Consumo del asistente:** cada consulta deja en los logs una línea `assistant usage`, sin texto ni datos personales:
 

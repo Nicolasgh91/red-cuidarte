@@ -230,7 +230,7 @@ En cada pull request y push a `main`, GitHub Actions ejecuta `format:check`, `li
 
 - El esquema vive exclusivamente en [`supabase/migrations/`](supabase/migrations/), en archivos `<timestamp>_<nombre>.sql`.
 - Cada migración se valida en local con `pnpm db:migrate` y `pnpm test`.
-- Las migraciones se aplican a los entornos de Supabase en orden y antes del despliegue de la versión de la API que las requiere.
+- Las migraciones se aplican al proyecto de Supabase (`red-cuidarte`, producción) en orden y antes del despliegue de la versión de la API que las requiere.
 - Toda tabla nueva debe habilitar Row Level Security.
 - Un workflow semanal genera un `pg_dump` cifrado con GPG; se restaura con [`scripts/restore-backup.sh`](scripts/restore-backup.sh).
 
@@ -250,7 +250,7 @@ flowchart LR
 | ----------- | ------------------------------ | -------------------------------------------------------------------- |
 | Web         | Vercel (sitio estático)        | Rewrite de `/api/*` a la API (mismo origen) y fallback de SPA.       |
 | API         | Vercel Functions               | Una sola función para todas las rutas; tarea diaria por Vercel Cron. |
-| Base y Auth | Supabase (entornos dev y prod) | Conexión por pooler en modo transacción.                             |
+| Base y Auth | Supabase (un solo proyecto)    | Conexión por pooler en modo transacción.                             |
 | Android     | Capacitor                      | Empaqueta el mismo build de la web.                                  |
 
 Variables y configuración de Vercel y Supabase en [`docs/ops.md`](docs/ops.md); lo que falta y el checklist de lanzamiento en [`docs/pendientes.md`](docs/pendientes.md).

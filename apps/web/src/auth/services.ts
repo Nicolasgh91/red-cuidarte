@@ -53,7 +53,7 @@ export async function signIn(email: string, password: string): Promise<{ userId:
   return { userId: data.session.user.id };
 }
 
-/** Manda el código de 6 dígitos para definir o cambiar la contraseña. */
+/** Manda por mail el código para definir o cambiar la contraseña. */
 export async function sendRecoveryCode(email: string): Promise<void> {
   const { error } = await supabase().auth.resetPasswordForEmail(email);
   if (!error) return;

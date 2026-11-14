@@ -49,7 +49,18 @@ Repetir la prueba desde datos móviles para descartar un problema del proveedor 
 2. **SPF:** un único registro TXT en la raíz, por ejemplo `v=spf1 include:<dominio SPF de DonWeb> ~all` (usar el valor que indique DonWeb). Si ya existe un SPF, deben combinarse en uno solo: dos registros SPF invalidan ambos.
 3. **DKIM:** DonWeb entrega un selector y una clave pública, que se cargan como registro TXT en `<selector>._domainkey`.
 4. **DMARC:** registro TXT en `_dmarc` con `v=DMARC1; p=none; rua=mailto:info@redasistir.online`. Pasar a `p=quarantine` cuando los informes salgan limpios.
-5. Si Supabase Auth envía los códigos de ingreso por este mismo SMTP (ver [`ops.md`](ops.md#supabase)), el volumen de correo aumenta: revisar el límite de envíos por hora de la casilla en DonWeb.
+5. Supabase Auth **no** usa esta casilla: envía los códigos de ingreso y recuperación desde `soporte@redasistir.online` (sección siguiente). Si ambas casillas están en el mismo hosting de DonWeb, revisar el límite de envíos por hora de cada una.
+
+## Correo `soporte@redasistir.online` (Supabase Auth)
+
+`soporte@redasistir.online` es el remitente de Supabase Auth (códigos de ingreso y de recuperación, confirmaciones). Se configura como SMTP propio en el Dashboard de Supabase: host `c2881641.ferozo.com`, puerto 465, nombre «Cuidarte+» (ver [`ops.md`](ops.md#supabase)). Es distinto de `info@redasistir.online`, que usa la API.
+
+Verificaciones a hacer (Nico), con los valores que entregue DonWeb o el panel del host; no se inventan acá:
+
+1. **SPF:** que el SPF de `redasistir.online` autorice al host que envía (`c2881641.ferozo.com`). Sigue valiendo un único registro SPF.
+2. **DKIM:** que la casilla `soporte@` firme con una clave publicada en `<selector>._domainkey.redasistir.online` y que el dominio de la firma (`d=`) sea `redasistir.online`.
+3. **DMARC:** que SPF o DKIM pasen **alineados** con el dominio del `From` (`redasistir.online`); si el host envía con otro dominio, DMARC falla aunque SPF diga `pass`.
+4. **Prueba real:** pedir un código de recuperación a una casilla de Gmail y una de Outlook y revisar, en el original del mensaje, que SPF, DKIM y DMARC figuren como `pass`, que llegue a la bandeja de entrada y que el remitente sea `soporte@redasistir.online`.
 
 ## Verificación del correo
 

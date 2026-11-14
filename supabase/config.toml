@@ -1,6 +1,52 @@
-# Configuración de Supabase CLI (migraciones). Los proyectos reales son cuidarte-dev y cuidarte-prod.
+# Configuración de Supabase CLI (migraciones). Hay un solo proyecto, red-cuidarte (= producción).
+#
+# Mirror only. The Dashboard is the source of truth; migrations are applied by hand, config is not pushed.
 project_id = "red-cuidarte"
 
 [db]
-# Verificar en Dashboard › Settings › Infrastructure que coincide con los proyectos.
+# Verificar en Dashboard › Settings › Infrastructure que coincide con el proyecto.
 major_version = 17
+
+[auth]
+site_url = "https://redasistir.online/"
+additional_redirect_urls = ["https://redasistir.online/**"]
+minimum_password_length = 8
+
+[auth.email]
+# Deben coincidir con OTP_LENGTH y OTP_EXPIRY_MINUTES en apps/web/src/auth/public.tsx.
+otp_length = 6
+otp_expiry = 3600
+
+[auth.email.smtp]
+enabled = true
+host = "c2881641.ferozo.com"
+port = 465
+user = "soporte@redasistir.online"
+# Solo el nombre de la variable: la contraseña no se escribe en el repo.
+pass = "env(SUPABASE_AUTH_SMTP_PASS)"
+admin_email = "soporte@redasistir.online"
+sender_name = "Cuidarte+"
+
+[auth.email.template.confirmation]
+subject = "Confirmá tu correo en Cuidarte+"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.invite]
+subject = "Te invitaron a Cuidarte+"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "Tu código para ingresar a Cuidarte+"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.email_change]
+subject = "Confirmá tu nuevo correo en Cuidarte+"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.recovery]
+subject = "Tu código para restablecer la contraseña"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.reauthentication]
+subject = "Tu código de verificación de Cuidarte+"
+content_path = "./supabase/templates/reauthentication.html"

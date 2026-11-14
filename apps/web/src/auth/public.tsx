@@ -16,6 +16,23 @@ import type { SignupRole } from "./AuthProvider";
 /** Mínimo que pide Supabase Auth (configurado en el panel, ver docs/ops.md). */
 export const MIN_PASSWORD = 8;
 
+/** Must match Supabase Auth > Email OTP length (also mirrored in supabase/config.toml). */
+export const OTP_LENGTH = 6;
+
+/**
+ * Must match Supabase Auth > Email OTP expiration (3600s). También está escrito a mano ("1 hora")
+ * en las plantillas magic_link, recovery y reauthentication (supabase/templates/): si cambia,
+ * actualizarlas ahí y en el Dashboard.
+ */
+export const OTP_EXPIRY_MINUTES = 60;
+
+const MINUTES_PER_HOUR = 60;
+function expiryPhrase(minutes: number): string {
+  const hours = minutes / MINUTES_PER_HOUR;
+  if (!Number.isInteger(hours)) return `${minutes} minutos`;
+  return hours === 1 ? "1 hora" : `${hours} horas`;
+}
+
 /** Fondo de atardecer de las pantallas sin sesión, con el aviso médico al pie. */
 function AuthScene({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
@@ -456,7 +473,7 @@ export function RegisterScreen() {
   );
 }
 
-const RESEND_SECONDS = 30;
+export const RESEND_SECONDS = 30;
 
 /**
  * Definir o cambiar la contraseña con un código por mail. Es también el primer ingreso de las
@@ -512,7 +529,8 @@ export function RecoverScreen() {
   async function submitReset(e: FormEvent) {
     e.preventDefault();
     if (!sentTo) return;
-    if (code.length < 6) return setError("Escribí el código de 6 dígitos que te llegó.");
+    if (code.length < OTP_LENGTH)
+      return setError(`Escribí el código de ${OTP_LENGTH} dígitos que te llegó.`);
     if (pass.length < MIN_PASSWORD)
       return setError(`La contraseña tiene que tener al menos ${MIN_PASSWORD} caracteres.`);
     if (pass2 !== pass) return setError("Las contraseñas no coinciden.");
@@ -532,7 +550,7 @@ export function RecoverScreen() {
         <Brand />
         <AuthCard
           title="Definí tu contraseña"
-          sub="Si es tu primera vez o te olvidaste la contraseña, te mandamos un código de 6 dígitos por mail."
+          sub={`Si es tu primera vez o te olvidaste la contraseña, te mandamos un código de ${OTP_LENGTH} dígitos por mail.`}
         >
           <form className="form" onSubmit={submitEmail} noValidate>
             <Field id="rec-email" label="Correo electrónico">
@@ -566,20 +584,24 @@ export function RecoverScreen() {
         title="Revisá tu mail"
         sub={
           <>
-            Si hay una cuenta con <b className="who-mail">{sentTo}</b>, te llegó un código de 6
-            dígitos.
+            Si hay una cuenta con <b className="who-mail">{sentTo}</b>, te llegó un código de{" "}
+            {OTP_LENGTH} dígitos.
           </>
         }
       >
         <form className="form" onSubmit={submitReset} noValidate>
-          <Field id="rec-code" label="Código">
+          <Field
+            id="rec-code"
+            label="Código"
+            hint={`Revisá spam. El código vence en ${expiryPhrase(OTP_EXPIRY_MINUTES)}.`}
+          >
             <input
               id="rec-code"
               type="text"
               className="otp-input tnum"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
+              maxLength={OTP_LENGTH}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
             />

@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, fakeApi, ok } from "../test/render";
 import { AuthProvider, useApi } from "./AuthProvider";
+import { OTP_LENGTH, RESEND_SECONDS } from "./public";
 import { deviceStore } from "./deviceStore";
 import * as svc from "./services";
 import { AuthFlowError } from "./services";
@@ -304,15 +305,12 @@ describe("ingreso con mail y contraseña + passkey", () => {
     expect(svc.sendRecoveryCode).toHaveBeenCalledWith("sofia@ejemplo.org");
 
     expect(await screen.findByRole("heading", { name: "Revisá tu mail" })).toBeInTheDocument();
-    await user.type(screen.getByLabelText("Código"), "123456");
+    const code = "1".repeat(OTP_LENGTH);
+    await user.type(screen.getByLabelText("Código"), code);
     await user.type(screen.getByLabelText("Contraseña nueva"), "una-clave-larga");
     await user.type(screen.getByLabelText("Repetí la contraseña"), "una-clave-larga");
     await user.click(screen.getByRole("button", { name: /Guardar e ingresar/ }));
-    expect(svc.resetPassword).toHaveBeenCalledWith(
-      "sofia@ejemplo.org",
-      "123456",
-      "una-clave-larga",
-    );
+    expect(svc.resetPassword).toHaveBeenCalledWith("sofia@ejemplo.org", code, "una-clave-larga");
     expect(await screen.findByText("App lista")).toBeInTheDocument();
   });
 
@@ -326,12 +324,48 @@ describe("ingreso con mail y contraseña + passkey", () => {
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Correo electrónico"), "sofia@ejemplo.org");
     await user.click(screen.getByRole("button", { name: /Enviarme el código/ }));
-    await user.type(await screen.findByLabelText("Código"), "000000");
+    await user.type(await screen.findByLabelText("Código"), "0".repeat(OTP_LENGTH));
     await user.type(screen.getByLabelText("Contraseña nueva"), "una-clave-larga");
     await user.type(screen.getByLabelText("Repetí la contraseña"), "una-clave-larga");
     await user.click(screen.getByRole("button", { name: /Guardar e ingresar/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("El código no es correcto");
     expect(screen.getByLabelText("Código")).toBeInTheDocument();
+  });
+
+  it("reenviar código: el botón espera RESEND_SECONDS y después vuelve a pedir el código", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const svc = services();
+      mount(svc, deviceApi(), "/recuperar");
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await user.type(await screen.findByLabelText("Correo electrónico"), "sofia@ejemplo.org");
+      await user.click(screen.getByRole("button", { name: /Enviarme el código/ }));
+
+      const resend = await screen.findByRole("button", { name: /Reenviar código/ });
+      expect(resend).toBeDisabled();
+      expect(resend).toHaveTextContent(`(${RESEND_SECONDS} s)`);
+
+      // un segundo por vez: cada tick del contador se programa recién después de renderizar
+      for (let i = 0; i < RESEND_SECONDS - 1; i++) {
+        await act(async () => {
+          vi.advanceTimersByTime(1000);
+        });
+      }
+      expect(resend).toBeDisabled();
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(resend).toBeEnabled();
+      expect(resend).toHaveTextContent("Reenviar código");
+
+      await user.click(resend);
+      expect(svc.sendRecoveryCode).toHaveBeenCalledTimes(2);
+      expect(svc.sendRecoveryCode).toHaveBeenLastCalledWith("sofia@ejemplo.org");
+      expect(await screen.findByText("Te mandamos un código nuevo.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Reenviar código/ })).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("la cuenta ya tiene passkey: la pide (no registra otra) y, si no está acá, sugiere el QR", async () => {

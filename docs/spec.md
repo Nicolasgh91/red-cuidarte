@@ -12,7 +12,7 @@ Qué hace la app y con qué reglas. Cómo está construida: [`architecture.md`](
 | Apps de tienda       | Capacitor sobre el mismo front. Android primero; iOS cuando se pague Apple Developer                                       |
 | Web                  | Vercel (plan Hobby) → redasistir.online, instalable como PWA                                                               |
 | Back                 | TypeScript + Hono sobre Vercel Functions (Node.js), proyecto Vercel aparte → api.redasistir.online. Sin servidores propios |
-| Base de datos y auth | Supabase (Postgres + Auth): cuidarte-prod y cuidarte-dev. La API accede por el pooler                                      |
+| Base de datos y auth | Supabase (Postgres + Auth): un solo proyecto, red-cuidarte (= producción). La API accede por el pooler                     |
 | Acceso a datos       | postgres (postgres.js), SQL escrito a mano, validación con Zod                                                             |
 | Migraciones          | SQL en supabase/migrations, aplicadas a mano en el editor SQL de Supabase (sin CI)                                         |
 | WebAuthn             | @simplewebauthn/server                                                                                                     |
@@ -32,7 +32,7 @@ Qué hace la app y con qué reglas. Cómo está construida: [`architecture.md`](
 - **Asistente IA:** Groq free tier (no usa los datos para entrenar). Se alimenta de los recursos de la app, la FAQ, los turnos del cuidador, sus pacientes asignados y su medicación. Sin búsqueda web, sin diagnósticos. Herramientas: `listar_turnos`, `agregar_turnos`. Límite: 20 mensajes por usuario por día.
 - **Tema:** claro / oscuro / sistema, preferencia por dispositivo.
 - **Acceso a datos:** solo la API accede a Postgres. La Data API pública de Supabase queda sin permisos para `anon` y `authenticated` (RLS activado, sin políticas).
-- **MCP de Supabase:** conectado solo a cuidarte-dev. Producción no se expone a agentes.
+- **MCP de Supabase:** no se conecta a este proyecto. Hay un solo proyecto (`red-cuidarte` = producción, con datos de salud) y no se expone a agentes.
 - **Backend sin estado:** nada se guarda en memoria. Límites, desafíos de WebAuthn y control de envíos viven en la base.
 - **Hosting:** Vercel Hobby para web y API. Hobby es solo para uso no comercial: si el proyecto pasa a ser comercial, se migra a Pro antes de lanzar.
 
