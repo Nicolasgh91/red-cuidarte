@@ -5,73 +5,59 @@
 ![pnpm](https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 
-Aplicación web y Android para personas que cuidan a adultos mayores: organiza turnos, tareas y medicación, acompaña el bienestar de quien cuida y ofrece un asistente conversacional.
+Web and Android application for people who care for older adults. It coordinates shifts, daily tasks and medication, supports the caregiver's own wellbeing, and provides a conversational assistant.
 
-## Índice
+## Table of contents
 
-- [Descripción](#descripción)
-- [Funcionalidades](#funcionalidades)
-- [Stack tecnológico](#stack-tecnológico)
-- [Arquitectura](#arquitectura)
-- [Estructura del monorepo](#estructura-del-monorepo)
-- [Primeros pasos](#primeros-pasos)
+- [Overview](#overview)
+- [Key capabilities](#key-capabilities)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Repository layout](#repository-layout)
+- [Getting started](#getting-started)
 - [Scripts](#scripts)
-- [Tests](#tests)
-- [Base de datos y migraciones](#base-de-datos-y-migraciones)
-- [Despliegue](#despliegue)
-- [Seguridad](#seguridad)
-- [Documentación](#documentación)
-- [Equipo](#equipo)
+- [Testing and CI](#testing-and-ci)
+- [Database and migrations](#database-and-migrations)
+- [Deployment and operations](#deployment-and-operations)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Team and license](#team-and-license)
 
-## Descripción
+## Overview
 
-Cuidarte+ (Red Cuidar) centraliza el día a día del cuidado: quién está de turno, qué tareas y tomas de medicación quedan pendientes y cómo se siente la persona que cuida. La aplicación tiene tres roles:
+Cuidarte+ (Red Cuidar) centralizes day-to-day care: who is on shift, which tasks and medication doses are pending, and how the caregiver is doing. Access is role-based:
 
-| Rol         | Quién                      | Qué puede hacer                                                                                                        |
-| ----------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `caregiver` | Cuidador/a                 | Turnos (a mano o por chat), tareas diarias, medicación de sus pacientes, asistente, bienestar, pausas y recordatorios. |
-| `admin`     | Coordinación               | Alta y asignación de cuidadores y pacientes, medicación, restablecimiento de passkeys, registro de mails y contenido.  |
-| `patient`   | Persona cuidada (con mail) | Vista de solo lectura del día: quién la cuida, medicación del día y botón de emergencia.                               |
+| Role        | User                       | Capabilities                                                                                                            |
+| ----------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `caregiver` | Caregiver                  | Shifts (manual or via chat), daily tasks, medication for assigned patients, assistant, wellbeing, breaks and reminders. |
+| `admin`     | Care coordination          | Onboarding and assignment of caregivers and patients, medication, mail log, content management.                         |
+| `patient`   | Care recipient (with mail) | Read-only view of the day: who is caring for them, today's medication, and an emergency button.                         |
 
-## Funcionalidades
+## Key capabilities
 
-- **Turnos** con detección de superposición (también a nivel de base de datos) y turnos que cruzan la medianoche.
-- **Tareas diarias** generadas a partir de plantillas y de las tomas de medicación programadas.
-- **Medicación cifrada** en la aplicación con AES-256-GCM.
-- **Bienestar privado**: registros que solo ve quien los cargó.
-- **Pausas guiadas y recordatorios** (agua, estirar, relajar), locales en web y con notificaciones nativas en Android.
-- **Asistente conversacional** con herramientas para consultar y cargar turnos, con cuota diaria por usuario.
-- **Vinculación cuidador ↔ paciente** mediante código de un solo uso generado por el paciente.
-- **Contenido editable** por la coordinación: landing, recursos, preguntas frecuentes y páginas legales.
-- **Ingreso con dos factores**: mail y contraseña más una passkey por cuenta.
+- **Shifts** with overlap detection enforced at the database level, including shifts that cross midnight.
+- **Daily tasks** generated from templates and scheduled medication doses.
+- **Wellbeing records** per caregiver.
+- **Guided breaks and reminders** (water, stretching, relaxation): local on web, native notifications on Android.
+- **Conversational assistant** with tool calling to query and create shifts, subject to a per-user daily quota.
+- **Caregiver ↔ patient linking** through a single-use code generated by the patient.
+- **Coordinator-editable content**: landing page, resources, FAQ and legal pages.
 
-## Stack tecnológico
+## Architecture
 
-| Capa            | Tecnologías                                                                             |
-| --------------- | --------------------------------------------------------------------------------------- |
-| Frontend        | React 19, Vite 8, React Router 8, TanStack Query 5, CSS con tokens, PWA                 |
-| Mobile          | Capacitor 8 (Android), Local Notifications                                              |
-| API             | Hono 4 (RPC tipado), zod 4, postgres.js (SQL sin ORM), SimpleWebAuthn, jose, Nodemailer |
-| Datos y Auth    | Supabase: Postgres 17 y Supabase Auth                                                   |
-| IA              | Groq (endpoint compatible con OpenAI, tool calling)                                     |
-| Infraestructura | Vercel (sitio estático, Functions y Cron), GitHub Actions                               |
-| Calidad         | TypeScript estricto, ESLint, Prettier, Vitest, Testing Library                          |
-
-## Arquitectura
-
-### Contexto
+### System context
 
 ```mermaid
 flowchart LR
-  subgraph Clientes
+  subgraph Clients
     PWA["Web / PWA<br/>(React + Vite)"]
     APK["Android<br/>(Capacitor)"]
   end
 
   subgraph Vercel
-    WEB["Sitio web<br/>(estático + rewrite /api)"]
-    API["API<br/>(Hono en una Function)"]
-    CRON["Cron diario"]
+    WEB["Web<br/>(static + /api rewrite)"]
+    API["API<br/>(Hono in a single Function)"]
+    CRON["Daily cron"]
   end
 
   subgraph Supabase
@@ -82,67 +68,50 @@ flowchart LR
   GROQ["Groq (LLM)"]
   SMTP["SMTP"]
 
-  PWA -- "HTML/JS y /api/*" --> WEB
+  PWA -- "HTML/JS and /api/*" --> WEB
   WEB -- "rewrite" --> API
   APK -- "HTTPS" --> API
-  PWA & APK -- "contraseña" --> AUTH
-  API -- "verifica JWT (JWKS)" --> AUTH
-  API -- "SQL vía pooler" --> PG
+  PWA & APK -- "sign-in" --> AUTH
+  API -- "validates session" --> AUTH
+  API -- "SQL via pooler" --> PG
   API -- "chat + tools" --> GROQ
-  API -- "mails" --> SMTP
+  API -- "mail" --> SMTP
   CRON -- "/internal/jobs/daily" --> API
 ```
 
-Principios de diseño:
+### Design principles
 
-- **Solo la API accede a la base.** Los clientes nunca hablan con Postgres ni con la Data API de Supabase; Supabase se usa como Postgres y proveedor de Auth.
-- **Backend sin estado.** Cada pedido trae lo necesario (JWT, token de dispositivo, historial del chat); lo que debe persistir entre pedidos se guarda en la base.
-- **Tipos de punta a punta sin generación de código.** La web importa el tipo `AppType` de la API mediante Hono RPC: un cambio de contrato rompe el typecheck del cliente.
-- **Dependencias inyectadas.** Base, Auth, mail, LLM y reloj se inyectan en `createApp(deps)`, lo que permite testear la API completa sin servicios externos.
+- **The API is the only data access path.** Clients never talk to Postgres or the Supabase Data API; Supabase is used purely as managed Postgres and an identity provider.
+- **Stateless backend.** Each request carries what it needs (session, chat history); anything that must outlive a request is persisted in the database.
+- **End-to-end types without code generation.** The web app imports the API's `AppType` through Hono RPC, so a contract change breaks the client's typecheck.
+- **Injected dependencies.** Database, auth, mail, LLM and clock are passed to `createApp(deps)`, so the whole API can be tested without external services.
 
-### Ciclo de un pedido en la API
+### Decisions and trade-offs
+
+| Decision                           | Rationale                                                                                    | Trade-off                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Raw SQL (`postgres.js`), no ORM    | Explicit queries, constraints and exclusion rules live in SQL migrations as the single truth | More boilerplate; row types are maintained by hand             |
+| One Vercel Function for all routes | One deployable unit and a single routing layer                                               | Coarse scaling and observability granularity                   |
+| Postgres 16 locally and in CI      | Lightweight image for fast CI and local setup                                                | Production runs 17: avoid 17-only features or align the images |
+
+### Request lifecycle
 
 ```mermaid
 flowchart LR
-  R[Pedido] --> CORS[CORS] --> NS["Cache-Control:<br/>private, no-store"] --> D[Inyección de deps]
-  D --> AU["authenticate<br/>(JWT + token de dispositivo)"] --> RR[requireRole] --> V["validate<br/>(zod)"] --> H[Handler]
-  H --> S[Servicios] --> DB[(Postgres)]
+  R[Request] --> D[Dependency injection]
+  D --> AU[authenticate] --> RR[requireRole] --> V["validate<br/>(zod)"] --> H[Handler]
+  H --> S[Services] --> DB[(Postgres)]
 ```
 
-La autorización por rol se aplica por prefijo de ruta; la autorización por asignación (si un cuidador atiende a un paciente determinado) se verifica en cada servicio.
+Role checks are applied per route prefix; per-patient assignment checks live in each service.
 
-### Autenticación
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant U as Usuario
-  participant C as Web / App
-  participant SA as Supabase Auth
-  participant API
-  participant DB as Postgres
-
-  U->>C: mail + contraseña
-  C->>SA: signInWithPassword
-  SA-->>C: sesión (JWT)
-  C->>API: GET /device/status
-  API->>DB: rol y passkey registrada
-  API-->>C: registrada / no registrada
-  C->>U: crear o usar passkey (WebAuthn)
-  C->>API: POST /device/register|login/verify
-  API->>DB: valida credencial
-  API-->>C: token de dispositivo (cookie HttpOnly)
-  C->>API: GET /me (JWT + token de dispositivo)
-```
-
-### Modelo de datos (resumen)
+### Data model (summary)
 
 ```mermaid
 erDiagram
-  users ||--o| caregivers : "rol caregiver"
-  users ||--o| admins : "rol admin"
-  users ||--o| patients : "rol patient"
-  users ||--o| devices : "1 passkey por cuenta"
+  users ||--o| caregivers : "role caregiver"
+  users ||--o| admins : "role admin"
+  users ||--o| patients : "role patient"
   caregivers ||--o{ caregiver_patients : ""
   patients ||--o{ caregiver_patients : ""
   caregivers ||--o{ shifts : ""
@@ -154,44 +123,56 @@ erDiagram
   caregivers ||--o{ assistant_usage : ""
 ```
 
-El detalle completo de cada módulo está en [`docs/architecture.md`](docs/architecture.md).
+Per-module detail lives in [`docs/architecture.md`](docs/architecture.md).
 
-## Estructura del monorepo
+## Tech stack
+
+| Layer          | Technologies                                                             |
+| -------------- | ------------------------------------------------------------------------ |
+| Frontend       | React 19, Vite 8, React Router 8, TanStack Query 5, token-based CSS, PWA |
+| Mobile         | Capacitor 8 (Android), Local Notifications                               |
+| API            | Hono 4 (typed RPC), zod 4, postgres.js (raw SQL), Nodemailer             |
+| Data and auth  | Supabase: Postgres 17 and Supabase Auth                                  |
+| AI             | Groq (OpenAI-compatible endpoint, tool calling)                          |
+| Infrastructure | Vercel (static site, Functions, Cron), GitHub Actions                    |
+| Quality        | Strict TypeScript, ESLint, Prettier, Vitest, Testing Library             |
+
+## Repository layout
 
 ```
 apps/
-  api/         API REST en Hono + TypeScript, desplegada como Vercel Function
-  web/         SPA en React + Vite (PWA) y proyecto Android de Capacitor (android/)
+  api/         Hono + TypeScript REST API, deployed as a Vercel Function
+  web/         React + Vite SPA (PWA) and Capacitor Android project (android/)
 supabase/
-  migrations/  esquema de la base versionado en SQL (única fuente de verdad)
-  seed/        datos iniciales
-scripts/       migración local y restauración de backups
-docs/          documentación técnica
-.github/       workflows de CI y backup
+  migrations/  versioned SQL schema (single source of truth)
+  seed/        initial data
+scripts/       local migration runner and backup restore
+docs/          technical documentation (Spanish)
+.github/       CI and backup workflows
 ```
 
-Workspace de pnpm con dos paquetes; no hay paquetes compartidos. La web consume los tipos y el contenido directamente del paquete `api`.
+pnpm workspace with two packages and no shared package: the web app consumes the API's types and content directly from `api`.
 
-## Primeros pasos
+## Getting started
 
-### Requisitos
+### Prerequisites
 
-- Node.js 22 o superior
+- Node.js 22+
 - pnpm 11
-- Docker (Postgres local)
+- Docker (local Postgres)
 
-### Instalación
+### Install
 
 ```bash
 pnpm install
-pnpm db:up          # Postgres 16 local en el puerto 54329
-pnpm db:migrate     # aplica supabase/migrations sobre la base "cuidarte"
+pnpm db:up          # local Postgres 16 on port 54329
+pnpm db:migrate     # applies supabase/migrations to the "cuidarte" database
 ```
 
-### Ejecución en local
+### Run locally
 
-1. Copiar `apps/api/.env.example` a `apps/api/.env.local` y `apps/web/.env.example` a `apps/web/.env.local`, y completar los valores. La descripción de cada variable está en [`docs/ops.md`](docs/ops.md#variables-de-entorno).
-2. Levantar la API y la web en terminales separadas:
+1. Copy `apps/api/.env.example` to `apps/api/.env.local` and `apps/web/.env.example` to `apps/web/.env.local`, then fill in the values. Each variable is documented in [`docs/ops.md`](docs/ops.md#variables-de-entorno).
+2. Start the API and the web app in separate terminals:
 
 ```bash
 pnpm --filter api dev   # http://localhost:8787
@@ -200,89 +181,89 @@ pnpm --filter web dev   # http://localhost:5173
 
 ## Scripts
 
-| Comando                      | Descripción                                  |
-| ---------------------------- | -------------------------------------------- |
-| `pnpm lint`                  | ESLint en todos los paquetes                 |
-| `pnpm typecheck`             | Chequeo de tipos de TypeScript               |
-| `pnpm test`                  | Tests de API y web                           |
-| `pnpm format`                | Formatea el repositorio con Prettier         |
-| `pnpm format:check`          | Verifica el formato (lo usa CI)              |
-| `pnpm db:up`                 | Levanta el Postgres local con Docker Compose |
-| `pnpm db:migrate`            | Aplica las migraciones a la base local       |
-| `pnpm --filter web build`    | Build de producción de la web                |
-| `pnpm --filter web cap:sync` | Build y sincronización del proyecto Android  |
-| `pnpm --filter web cap:open` | Abre el proyecto Android en Android Studio   |
+| Command                            | Description                                |
+| ---------------------------------- | ------------------------------------------ |
+| `pnpm lint`                        | ESLint across all packages                 |
+| `pnpm typecheck`                   | TypeScript type check                      |
+| `pnpm test`                        | API and web tests                          |
+| `pnpm format`                      | Format the repository with Prettier        |
+| `pnpm format:check`                | Verify formatting (used by CI)             |
+| `pnpm db:up`                       | Start local Postgres with Docker Compose   |
+| `pnpm db:migrate`                  | Apply migrations to the local database     |
+| `pnpm --filter web build`          | Production web build                       |
+| `pnpm --filter web cap:sync`       | Build and sync the Android project         |
+| `pnpm --filter web cap:open`       | Open the Android project in Android Studio |
+| `pnpm --filter api eval:assistant` | Run the assistant evaluation script        |
 
-## Tests
+## Testing and CI
 
-| Paquete | Herramientas                   | Enfoque                                                                                                                                                                            |
-| ------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API     | Vitest sobre **Postgres real** | Cada corrida recrea `cuidarte_test` con las migraciones. Las rutas se prueban con `app.request()` y dependencias falsas; un autenticador WebAuthn por software cubre las passkeys. |
-| Web     | Vitest, jsdom, Testing Library | Unitarios de lógica pura (recordatorios, fechas, cliente de la API) e integración de pantallas e ingreso con un cliente de API simulado.                                           |
+| Package | Tooling                          | Approach                                                                                                                            |
+| ------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| API     | Vitest against **real Postgres** | Each run recreates `cuidarte_test` from the migrations. Routes are exercised with `app.request()` and fake dependencies.            |
+| Web     | Vitest, jsdom, Testing Library   | Unit tests for pure logic (reminders, dates, API client) and integration tests for screens and sign-in against a mocked API client. |
 
 ```bash
 pnpm db:up && pnpm test
 ```
 
-En cada pull request y push a `main`, GitHub Actions ejecuta `format:check`, `lint`, `typecheck`, `test` (con un Postgres de servicio) y el build de la web.
+On every pull request and push to `main`, GitHub Actions runs `format:check`, `lint`, `typecheck`, `test` (with a Postgres service container) and the web build.
 
-## Base de datos y migraciones
+## Database and migrations
 
-- El esquema vive exclusivamente en [`supabase/migrations/`](supabase/migrations/), en archivos `<timestamp>_<nombre>.sql`.
-- Cada migración se valida en local con `pnpm db:migrate` y `pnpm test`.
-- Las migraciones se aplican al proyecto de Supabase (`red-cuidarte`, producción) en orden y antes del despliegue de la versión de la API que las requiere.
-- Toda tabla nueva debe habilitar Row Level Security.
-- Un workflow semanal genera un `pg_dump` cifrado con GPG; se restaura con [`scripts/restore-backup.sh`](scripts/restore-backup.sh).
+- The schema lives exclusively in [`supabase/migrations/`](supabase/migrations/) as `<timestamp>_<name>.sql` files.
+- Validate every migration locally with `pnpm db:migrate` and `pnpm test`.
+- Apply migrations to the production Supabase project (`red-cuidarte`) in order and **before** deploying the API version that requires them.
+- A weekly workflow produces a database backup; restore it with [`scripts/restore-backup.sh`](scripts/restore-backup.sh).
 
-## Despliegue
+## Deployment and operations
 
 ```mermaid
 flowchart LR
   DEV[Push / PR] --> CI["GitHub Actions<br/>format · lint · typecheck · test · build"]
   DEV --> V[Vercel]
-  V --> WEB["Proyecto web<br/>(apps/web)"]
-  V --> API["Proyecto API<br/>(apps/api)"]
+  V --> WEB["Web project<br/>(apps/web)"]
+  V --> API["API project<br/>(apps/api)"]
   CRON["Vercel Cron<br/>12:00 UTC"] --> API
   API --> SB[(Supabase)]
 ```
 
-| Componente  | Plataforma                     | Notas                                                                |
-| ----------- | ------------------------------ | -------------------------------------------------------------------- |
-| Web         | Vercel (sitio estático)        | Rewrite de `/api/*` a la API (mismo origen) y fallback de SPA.       |
-| API         | Vercel Functions               | Una sola función para todas las rutas; tarea diaria por Vercel Cron. |
-| Base y Auth | Supabase (un solo proyecto)    | Conexión por pooler en modo transacción.                             |
-| Android     | Capacitor                      | Empaqueta el mismo build de la web.                                  |
+| Component     | Platform                  | Notes                                                       |
+| ------------- | ------------------------- | ----------------------------------------------------------- |
+| Web           | Vercel (static site)      | `/api/*` rewrite to the API (same origin) and SPA fallback. |
+| API           | Vercel Functions          | Single function for all routes; daily job via Vercel Cron.  |
+| Database/Auth | Supabase (single project) | Connection through the pooler in transaction mode.          |
+| Android       | Capacitor                 | Packages the same web build.                                |
 
-Variables y configuración de Vercel y Supabase en [`docs/ops.md`](docs/ops.md); lo que falta y el checklist de lanzamiento en [`docs/pendientes.md`](docs/pendientes.md).
+Vercel and Supabase configuration is in [`docs/ops.md`](docs/ops.md); open items and the launch checklist are in [`docs/pendientes.md`](docs/pendientes.md).
 
-## Seguridad
+## Documentation
 
-- Ningún secreto se guarda en el repositorio: se gestionan como GitHub Secrets y variables de entorno de Vercel.
-- RLS habilitado en todas las tablas sin políticas, y permisos revocados para los roles `anon` y `authenticated`: la Data API de Supabase no expone datos.
-- Doble factor: JWT de Supabase más un token de dispositivo emitido tras verificar la passkey (cookie `HttpOnly`, `Secure`, `SameSite=Strict` en la web).
-- Medicación cifrada en la aplicación; la base nunca ve la clave ni el texto plano.
-- Todas las respuestas de la API se envían con `Cache-Control: private, no-store`.
+Detailed documents are written in Spanish.
 
-## Documentación
+| Document                                           | Contents                                                |
+| -------------------------------------------------- | ------------------------------------------------------- |
+| [`docs/architecture.md`](docs/architecture.md)     | Architecture, current decisions, where to change what   |
+| [`docs/spec.md`](docs/spec.md)                     | Functional specification                                |
+| [`docs/vistas-por-rol.md`](docs/vistas-por-rol.md) | Screens and views per role, with diagrams               |
+| [`docs/pendientes.md`](docs/pendientes.md)         | Open items and launch checklist (single source)         |
+| [`docs/ops.md`](docs/ops.md)                       | Environment variables, Vercel, Supabase, limits, launch |
+| [`docs/android.md`](docs/android.md)               | Android app: build and publishing                       |
+| [`docs/dns.md`](docs/dns.md)                       | DNS and mail configuration (SPF, DKIM, DMARC)           |
 
-| Documento                                              | Contenido                                                 |
-| ------------------------------------------------------ | --------------------------------------------------------- |
-| [`docs/architecture.md`](docs/architecture.md)         | Arquitectura, decisiones vigentes y dónde tocar cada cosa |
-| [`docs/spec.md`](docs/spec.md)                         | Especificación funcional                                  |
-| [`docs/vistas-por-rol.md`](docs/vistas-por-rol.md)     | Pantallas y vistas por rol, con diagramas                 |
-| [`docs/pendientes.md`](docs/pendientes.md)             | Pendientes y checklist de lanzamiento (único lugar)       |
-| [`docs/ops.md`](docs/ops.md)                           | Variables, Vercel, Supabase, límites y lanzamiento        |
-| [`docs/passkeys.md`](docs/passkeys.md)                 | Passkeys: requisitos, alternativas por equipo y errores   |
-| [`docs/android.md`](docs/android.md)                   | App Android: build, passkeys y publicación                |
-| [`docs/dns.md`](docs/dns.md)                           | DNS y configuración de mail (SPF, DKIM, DMARC)            |
-| [`docs/play-data-safety.md`](docs/play-data-safety.md) | Declaración de seguridad de datos para Google Play        |
+## Contributing
 
-## Equipo
+- CI runs on every pull request and push to `main`; run the same checks locally first: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`.
+- Schema changes go in a new file under `supabase/migrations/`.
+- API contract changes are picked up by the web client through `AppType`; a divergence fails its typecheck.
 
-Cuidarte+ es un producto de Jorge Chiesa.
+## Team and license
 
-| Rol                     | Persona           |
-| ----------------------- | --------------    |
-| Producto                | Jorge Chiesa      |
-| Desarrollo (ad honorem) | Nicolás Hruszczak |
-| Comercial               | Angie Gonzalez    |
+Cuidarte+ is a product of Jorge Chiesa.
+
+| Role                    | Person            |
+| ----------------------- | ----------------- |
+| Product                 | Jorge Chiesa      |
+| Development (volunteer) | Nicolás Hruszczak |
+| Business                | Angie Gonzalez    |
+
+Proprietary. All rights reserved.
