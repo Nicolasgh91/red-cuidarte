@@ -51,10 +51,20 @@ describe("bienestar", () => {
     const c = await h.caregiver();
     const ins = (at: string, mood: number, energy: number, stress: number) =>
       h.sql`insert into wellbeing_records (caregiver_id, at, mood, energy, stress) values (${c}, ${at}, ${mood}, ${energy}, ${stress})`;
-    await ins("2026-10-19T23:30:00-03:00", 4, 4, 0); // lunes 19, noche
-    await ins("2026-10-20T10:00:00-03:00", 2, 2, 2); // martes 20, mañana
-    await ins("2026-10-20T20:00:00-03:00", 0, 0, 4); // martes 20, noche (último del día)
-    await ins("2026-10-12T09:00:00-03:00", 3, 3, 1); // semana anterior
+    // Fechas relativas a hoy (hora de Argentina) para que queden dentro de la ventana de 4 semanas.
+    const ar = new Date(Date.now() - 3 * 3600_000); // "reloj de pared" argentino en UTC
+    const monday = new Date(ar);
+    monday.setUTCDate(ar.getUTCDate() - ((ar.getUTCDay() + 6) % 7) - 7); // lunes de la semana pasada
+    const day = (offset: number) => {
+      const d = new Date(monday);
+      d.setUTCDate(monday.getUTCDate() + offset);
+      return d.toISOString().slice(0, 10);
+    };
+    const [mon, tue, prevMon] = [day(0), day(1), day(-7)];
+    await ins(`${mon}T23:30:00-03:00`, 4, 4, 0); // lunes, noche
+    await ins(`${tue}T10:00:00-03:00`, 2, 2, 2); // martes, mañana
+    await ins(`${tue}T20:00:00-03:00`, 0, 0, 4); // martes, noche (último del día)
+    await ins(`${prevMon}T09:00:00-03:00`, 3, 3, 1); // semana anterior
     const { weeks } = (await (await h.req("/wellbeing/weekly?weeks=4", { as: c })).json()) as {
       weeks: {
         week_start: string;
@@ -65,14 +75,14 @@ describe("bienestar", () => {
         mood_by_day: Record<string, number>;
       }[];
     };
-    expect(weeks.map((w) => w.week_start)).toEqual(["2026-10-19", "2026-10-12"]);
+    expect(weeks.map((w) => w.week_start)).toEqual([mon, prevMon]);
     expect(weeks[0]).toMatchObject({
       count: 3,
       avg_mood: 2,
       avg_energy: 2,
       avg_stress: 2,
-      mood_by_day: { "2026-10-19": 4, "2026-10-20": 0 },
+      mood_by_day: { [mon]: 4, [tue]: 0 },
     });
-    expect(weeks[1]).toMatchObject({ count: 1, mood_by_day: { "2026-10-12": 3 } });
+    expect(weeks[1]).toMatchObject({ count: 1, mood_by_day: { [prevMon]: 3 } });
   });
 });
